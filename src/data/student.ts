@@ -1,0 +1,33 @@
+export const student = {
+  name: 'Arjun Kumar',
+  meta: 'CSE - 3rd Year',
+  avatar: 'https://i.pravatar.cc/96?img=12',
+  branch: 'Computer Science & Engineering',
+  batch: '2027',
+  cgpa: 8.6,
+  backlogs: 0,
+  classX: 91,
+  classXII: 88,
+  email: 'arjun.kumar@college.edu',
+  phone: '+91 98765 43210',
+  college: 'Institute of Engineering & Technology',
+  skills: [
+    { name: 'Data Structures & Algorithms', level: 84 },
+    { name: 'System Design', level: 62 },
+    { name: 'React / Frontend', level: 88 },
+    { name: 'Node.js / Backend', level: 79 },
+    { name: 'Databases (SQL + NoSQL)', level: 74 },
+    { name: 'Machine Learning', level: 58 },
+    { name: 'Cloud & DevOps', level: 51 },
+    { name: 'Aptitude & Reasoning', level: 81 },
+  ],
+  projects: [
+    'Real-time collaborative code editor (React, WebSocket, Redis)',
+    'Campus placement analytics dashboard (Next.js, Postgres)',
+    'ML-based resume ranking engine (Python, scikit-learn)',
+  ],
+  internships: [
+    { org: 'Freshworks', role: 'SDE Intern', period: 'May 2025 - Jul 2025' },
+    { org: 'Campus Startup Cell', role: 'Full Stack Intern', period: 'Dec 2024 - Feb 2025' },
+  ],
+}
