@@ -24,7 +24,7 @@ export default function ResumeAnalyzer() {
             Upload resume (PDF)
             <input type="file" accept=".pdf,.doc,.docx" className="hidden" onChange={(e) => setFile(e.target.files?.[0]?.name ?? null)} />
           </label>
-          <span className="text-[12.5px] text-ink-mute">{file ?? 'Arjun_Kumar_Resume.pdf (last analyzed 2 days ago)'}</span>
+          <span className="text-[12.5px] text-ink-mute">{file ?? 'Vivek_Shaganti_Resume.pdf (last analyzed 2 days ago)'}</span>
           <div className="ml-auto text-right">
             <p className="text-[11px] text-ink-mute">Overall score</p>
             <p className="text-[26px] font-bold leading-none text-brand-dark">{overall}<span className="text-[13px] text-ink-mute">/100</span></p>

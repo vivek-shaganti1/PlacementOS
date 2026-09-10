@@ -34,7 +34,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [applied, setApplied] = useState<string[]>([])
   const [assistantOpen, setAssistantOpen] = useState(false)
   const [chat, setChat] = useState<ChatMsg[]>([
-    { role: 'bot', text: 'Hi Arjun! I am your AI Career Assistant. Ask me about eligibility, skills, companies or interview prep.' },
+    { role: 'bot', text: 'Hi Vivek! I am your AI Career Assistant. Ask me about eligibility, skills, companies or interview prep.' },
   ])
 
   const value = useMemo<Ctx>(

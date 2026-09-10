@@ -1,14 +1,14 @@
 export const student = {
-  name: 'Arjun Kumar',
+  name: 'Vivek Shaganti',
   meta: 'CSE - 3rd Year',
-  avatar: 'https://i.pravatar.cc/96?img=12',
+  avatar: '/profile.jpg',
   branch: 'Computer Science & Engineering',
   batch: '2027',
   cgpa: 8.6,
   backlogs: 0,
   classX: 91,
   classXII: 88,
-  email: 'arjun.kumar@college.edu',
+  email: 'vivek.shaganti@college.edu',
   phone: '+91 98765 43210',
   college: 'Institute of Engineering & Technology',
   skills: [
