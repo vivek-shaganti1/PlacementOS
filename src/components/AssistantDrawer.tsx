@@ -3,10 +3,10 @@ import { useApp } from '../lib/store'
 import { IconBot, IconClose, IconSpark } from './Icons'
 
 export default function AssistantDrawer() {
-  const { assistantOpen, closeAssistant, chat, send, clearChat } = useApp()
+  const { assistantOpen, closeAssistant, chat, send, clearChat, thinking } = useApp()
   const [draft, setDraft] = useState('')
   const end = useRef<HTMLDivElement>(null)
-  useEffect(() => end.current?.scrollIntoView({ block: 'end' }), [chat.length, assistantOpen])
+  useEffect(() => end.current?.scrollIntoView({ block: 'end' }), [chat.length, assistantOpen, thinking])
   if (!assistantOpen) return null
 
   return (
@@ -34,7 +34,7 @@ export default function AssistantDrawer() {
           {chat.map((m, i) => (
             <div key={i} className={m.role === 'user' ? 'flex justify-end' : 'flex justify-start'}>
               <p
-                className={`max-w-[86%] rounded-xl2 px-3.5 py-2.5 text-[12.5px] leading-[1.6] ${
+                className={`max-w-[86%] whitespace-pre-wrap rounded-xl2 px-3.5 py-2.5 text-[12.5px] leading-[1.6] ${
                   m.role === 'user' ? 'bg-brand text-white' : 'border border-line bg-white text-ink-soft'
                 }`}
               >
@@ -42,13 +42,18 @@ export default function AssistantDrawer() {
               </p>
             </div>
           ))}
+          {thinking && (
+            <div className="flex justify-start">
+              <p className="rounded-xl2 border border-line bg-white px-3.5 py-2.5 text-[12.5px] text-ink-faint">Thinking…</p>
+            </div>
+          )}
           <div ref={end} />
         </div>
 
         <form
           onSubmit={(e) => {
             e.preventDefault()
-            if (!draft.trim()) return
+            if (!draft.trim() || thinking) return
             send(draft.trim())
             setDraft('')
           }}
@@ -60,7 +65,7 @@ export default function AssistantDrawer() {
             placeholder="Ask about companies, skills, rounds..."
             className="h-[38px] flex-1 rounded-full border border-line bg-[#f7f8fa] px-4 text-[12.5px] outline-none focus:border-[#d5cbff] focus:bg-white"
           />
-          <button className="grid h-[38px] w-[38px] place-items-center rounded-full bg-brand text-white hover:bg-brand-dark">
+          <button disabled={thinking} aria-label="Send" className="grid h-[38px] w-[38px] place-items-center rounded-full bg-brand text-white hover:bg-brand-dark disabled:opacity-50">
             <IconSpark className="h-[17px] w-[17px]" />
           </button>
         </form>

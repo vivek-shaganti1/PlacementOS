@@ -30,6 +30,7 @@ type Ctx = {
   openAssistant: (seed?: string) => void
   closeAssistant: () => void
   chat: ChatMsg[]
+  thinking: boolean
   send: (text: string) => void
   clearChat: () => void
   toast: string | null
@@ -71,6 +72,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [history, setHistory] = useState<ChatMsg[]>([])
   const [assistantOpen, setAssistantOpen] = useState(false)
+  const [thinking, setThinking] = useState(false)
+  const historyRef = useRef<ChatMsg[]>([])
+  historyRef.current = history
   const [toast, setToast] = useState<string | null>(null)
   const toastTimer = useRef<number>()
 
@@ -149,11 +153,31 @@ export function AppProvider({ children }: { children: ReactNode }) {
   )
 
   const ask = useCallback(
-    (text: string) => {
-      if (!profile) return
-      persistChat([{ role: 'user', text }, { role: 'bot', text: canned(text, profile) }])
+    async (text: string) => {
+      if (!profile || thinking) return
+      const userMsg: ChatMsg = { role: 'user', text }
+      const convo = [...historyRef.current, userMsg]
+      persistChat([userMsg])
+      setThinking(true)
+      let reply: string
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json', authorization: `Bearer ${session!.access_token}` },
+          body: JSON.stringify({ messages: convo.slice(-20) }),
+        })
+        const body = (await res.json().catch(() => ({}))) as { reply?: string; error?: string }
+        if (!res.ok || !body.reply) throw new Error(body.error || `HTTP ${res.status}`)
+        reply = body.reply
+      } catch (e) {
+        showToast(`AI unavailable (${errMsg(e)}). Showing a quick answer instead.`)
+        reply = canned(text, profile)
+      } finally {
+        setThinking(false)
+      }
+      persistChat([{ role: 'bot', text: reply }])
     },
-    [profile, persistChat],
+    [profile, thinking, persistChat, session, showToast],
   )
 
   const chat = useMemo<ChatMsg[]>(
@@ -243,6 +267,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       },
       closeAssistant: () => setAssistantOpen(false),
       chat,
+      thinking,
       send: ask,
       clearChat: () => {
         setHistory([])
@@ -255,7 +280,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       toast,
       showToast,
     }),
-    [ready, saved, applications, roadmapDone, bookings, enrollments, attempts, notifications, assistantOpen, chat, toast, uid, toggleIn, fail, ask, showToast],
+    [ready, saved, applications, roadmapDone, bookings, enrollments, attempts, notifications, assistantOpen, chat, thinking, toast, uid, toggleIn, fail, ask, showToast],
   )
 
   return <AppCtx.Provider value={value}>{children}</AppCtx.Provider>
