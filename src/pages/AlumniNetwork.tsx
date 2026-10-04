@@ -4,6 +4,7 @@ import Avatar from '../components/Avatar'
 import { IconLinkedIn, IconMessage } from '../components/Icons'
 import { Card, Page } from '../components/Page'
 import { useApp } from '../lib/store'
+import { linkedInSearch } from '../lib/links'
 
 const all = companies.flatMap((c) => c.alumni.map((a) => ({ ...a, company: c.name, brand: c.brand })))
 
@@ -33,7 +34,7 @@ export default function AlumniNetwork() {
                 <p className="truncate text-[11px] text-ink-mute">{a.title}</p>
               </div>
               <span className="w-[80px] text-[11.5px] text-ink-mute">{a.location}</span>
-              <a href="https://www.linkedin.com" target="_blank" rel="noreferrer" className="grid h-7 w-7 place-items-center rounded-md border border-line text-[#0A66C2] hover:bg-[#f7f8fa]">
+              <a href={linkedInSearch(a.name, a.company)} target="_blank" rel="noreferrer" className="grid h-7 w-7 place-items-center rounded-md border border-line text-[#0A66C2] hover:bg-[#f7f8fa]">
                 <IconLinkedIn className="h-[15px] w-[15px]" />
               </a>
               <button onClick={() => openAssistant(`Draft a short intro message to ${a.name}, ${a.title}.`)} className="flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[11.5px] font-medium text-ink-soft hover:bg-[#f7f8fa]">

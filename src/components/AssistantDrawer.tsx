@@ -1,10 +1,12 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useApp } from '../lib/store'
 import { IconBot, IconClose, IconSpark } from './Icons'
 
 export default function AssistantDrawer() {
-  const { assistantOpen, closeAssistant, chat, send } = useApp()
+  const { assistantOpen, closeAssistant, chat, send, clearChat } = useApp()
   const [draft, setDraft] = useState('')
+  const end = useRef<HTMLDivElement>(null)
+  useEffect(() => end.current?.scrollIntoView({ block: 'end' }), [chat.length, assistantOpen])
   if (!assistantOpen) return null
 
   return (
@@ -18,6 +20,11 @@ export default function AssistantDrawer() {
             <IconBot className="h-[18px] w-[18px]" />
           </span>
           <p className="flex-1 text-[14px] font-semibold">AI Career Assistant</p>
+          {chat.length > 1 && (
+            <button onClick={clearChat} className="rounded-md px-2 py-1 text-[11.5px] font-medium text-ink-mute hover:bg-[#f3f4f6]">
+              Clear
+            </button>
+          )}
           <button onClick={closeAssistant} className="grid h-8 w-8 place-items-center rounded-lg text-ink-mute hover:bg-[#f3f4f6]">
             <IconClose className="h-[18px] w-[18px]" />
           </button>
@@ -35,6 +42,7 @@ export default function AssistantDrawer() {
               </p>
             </div>
           ))}
+          <div ref={end} />
         </div>
 
         <form

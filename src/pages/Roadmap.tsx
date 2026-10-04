@@ -1,5 +1,5 @@
-import { useState } from 'react'
 import { Card, Page } from '../components/Page'
+import { useApp } from '../lib/store'
 
 const phases = [
   { title: 'Phase 1 · Advanced DSA', weeks: 'Weeks 1-4', items: ['Graphs: BFS, DFS, Dijkstra, union-find', 'Dynamic programming patterns', 'Tries and segment trees', '150 curated problems'] },
@@ -9,7 +9,8 @@ const phases = [
 ]
 
 export default function Roadmap() {
-  const [done, setDone] = useState<Record<string, boolean>>({})
+  const { roadmapDone, toggleRoadmap } = useApp()
+  const done = Object.fromEntries(roadmapDone.map((i) => [i, true])) as Record<string, boolean>
   const all = phases.flatMap((p) => p.items)
   const pct = Math.round((all.filter((i) => done[i]).length / all.length) * 100)
 
@@ -35,7 +36,7 @@ export default function Roadmap() {
                 <input
                   type="checkbox"
                   checked={!!done[i]}
-                  onChange={() => setDone((d) => ({ ...d, [i]: !d[i] }))}
+                  onChange={() => toggleRoadmap(i)}
                   className="h-[15px] w-[15px] accent-[#6d4aff]"
                 />
                 <span className={`text-[12.5px] ${done[i] ? 'text-ink-faint line-through' : 'text-ink-soft'}`}>{i}</span>

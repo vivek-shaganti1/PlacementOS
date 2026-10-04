@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { companies } from '../data/companies'
-import { student } from '../data/student'
+import { useProfile } from '../lib/auth'
 import CompanyLogo from '../components/CompanyLogo'
 import { Card, Meter, Page } from '../components/Page'
 import { useApp } from '../lib/store'
@@ -9,6 +9,7 @@ export default function SkillGap() {
   const [targetId, setTargetId] = useState(companies[0].id)
   const target = companies.find((c) => c.id === targetId)!
   const { openAssistant } = useApp()
+  const student = useProfile()
 
   const required: Record<string, number> = {
     'Data Structures & Algorithms': Math.min(95, target.match + 8),
@@ -44,21 +45,25 @@ export default function SkillGap() {
         </Card>
         <Card title={`Required for ${target.name}`}>
           <div className="space-y-3">
-            {student.skills.map((s) => <Meter key={s.name} label={s.name} value={required[s.name]} tone="#12b76a" />)}
+            {student.skills.map((s) => <Meter key={s.name} label={s.name} value={required[s.name] ?? 60} tone="#12b76a" />)}
           </div>
         </Card>
       </div>
 
       <Card title="Gaps to close" action={<button onClick={() => openAssistant('Build me a plan to close my skill gaps.')} className="text-[11.5px] font-medium text-brand-dark hover:underline">Ask AI for a plan →</button>}>
         <div className="divide-y divide-line">
+          {student.skills.every((s) => s.level >= (required[s.name] ?? 60)) && (
+            <p className="py-5 text-center text-[12.5px] text-[#0d9a5b]">No gaps — you meet every skill bar for {target.name}.</p>
+          )}
           {student.skills
-            .map((s) => ({ ...s, gap: required[s.name] - s.level }))
+            .map((s) => ({ ...s, req: required[s.name] ?? 60 }))
+            .map((s) => ({ ...s, gap: s.req - s.level }))
             .filter((s) => s.gap > 0)
             .sort((a, b) => b.gap - a.gap)
             .map((s) => (
               <div key={s.name} className="flex items-center gap-3 py-2.5">
                 <span className="flex-1 text-[12.5px] font-medium text-ink">{s.name}</span>
-                <span className="text-[11.5px] text-ink-mute">{s.level}% → {required[s.name]}%</span>
+                <span className="text-[11.5px] text-ink-mute">{s.level}% → {s.req}%</span>
                 <span className="w-[64px] rounded-md border border-[#fbe3bd] bg-[#fff8ec] py-[3px] text-center text-[11px] font-semibold text-[#d97706]">
                   +{s.gap}
                 </span>

@@ -1,5 +1,5 @@
-import { useState } from 'react'
 import { Card, Page, Stat } from '../components/Page'
+import { useApp } from '../lib/store'
 
 const slots = [
   { id: 's1', type: 'DSA Round', mentor: 'Rahul Reddy · SDE II, Google', when: 'Tomorrow, 6:00 PM' },
@@ -15,7 +15,7 @@ const past = [
 ]
 
 export default function MockInterviews() {
-  const [booked, setBooked] = useState<string[]>([])
+  const { bookings: booked, toggleBooking } = useApp()
 
   return (
     <Page title="Mock Interviews" subtitle="Book a rehearsal with alumni before the real loop.">
@@ -35,7 +35,7 @@ export default function MockInterviews() {
               </div>
               <span className="text-[12px] text-ink-soft">{s.when}</span>
               <button
-                onClick={() => setBooked((b) => (b.includes(s.id) ? b.filter((x) => x !== s.id) : [...b, s.id]))}
+                onClick={() => toggleBooking(s.id)}
                 className={`w-[92px] rounded-[9px] border py-[7px] text-[12px] font-semibold ${
                   booked.includes(s.id) ? 'border-[#c9f0d9] bg-[#ecfdf3] text-[#0d9a5b]' : 'border-[#d5cbff] text-brand-dark hover:bg-[#faf8ff]'
                 }`}

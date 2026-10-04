@@ -1,72 +1,149 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Card, Page, Stat } from '../components/Page'
+import { useApp } from '../lib/store'
 
-const sets = [
-  { topic: 'Arrays & Strings', solved: 48, total: 60, level: 'Easy-Medium' },
-  { topic: 'Linked Lists', solved: 22, total: 30, level: 'Medium' },
-  { topic: 'Trees & Graphs', solved: 31, total: 55, level: 'Medium-Hard' },
-  { topic: 'Dynamic Programming', solved: 18, total: 50, level: 'Hard' },
-  { topic: 'SQL Queries', solved: 26, total: 35, level: 'Medium' },
-  { topic: 'Aptitude & Logical', solved: 64, total: 80, level: 'Easy' },
-]
+type Q = { id: string; q: string; options: string[]; answer: number; why: string }
 
-const question = {
-  q: 'Given an array of integers, return indices of the two numbers that add up to a target. Which approach gives O(n) time?',
-  options: ['Sort then two pointers', 'Hash map of complements', 'Nested loops', 'Binary search per element'],
-  answer: 1,
+const bank: Record<string, { level: string; questions: Q[] }> = {
+  'Arrays & Strings': {
+    level: 'Easy-Medium',
+    questions: [
+      { id: 'arr-1', q: 'Given an array of integers, return indices of the two numbers that add up to a target. Which approach gives O(n) time?', options: ['Sort then two pointers', 'Hash map of complements', 'Nested loops', 'Binary search per element'], answer: 1, why: 'One pass with a hash map of complements is O(n) time, O(n) space.' },
+      { id: 'arr-2', q: 'Longest substring without repeating characters is best solved with…', options: ['Sliding window + set/map', 'Sorting the string', 'Dynamic programming table O(n²)', 'Recursion with memo'], answer: 0, why: 'A sliding window with a last-seen map runs in O(n).' },
+      { id: 'arr-3', q: 'Maximum subarray sum (Kadane) runs in…', options: ['O(n log n)', 'O(n²)', 'O(n)', 'O(log n)'], answer: 2, why: 'Kadane keeps a running best ending at each index: O(n).' },
+    ],
+  },
+  'Linked Lists': {
+    level: 'Medium',
+    questions: [
+      { id: 'll-1', q: 'Detect a cycle in a linked list with O(1) extra space:', options: ['Hash set of visited nodes', 'Floyd’s slow/fast pointers', 'Reverse the list', 'Sort the nodes'], answer: 1, why: 'Floyd’s tortoise and hare meets inside the cycle using two pointers.' },
+      { id: 'll-2', q: 'Find the middle node in one pass:', options: ['Count then walk', 'Slow pointer +1, fast pointer +2', 'Recursion', 'Stack'], answer: 1, why: 'When fast reaches the end, slow is at the middle.' },
+    ],
+  },
+  'Trees & Graphs': {
+    level: 'Medium-Hard',
+    questions: [
+      { id: 'tg-1', q: 'Shortest path in an unweighted graph:', options: ['DFS', 'BFS', 'Dijkstra with a heap', 'Topological sort'], answer: 1, why: 'BFS explores by layers, so first arrival is the shortest path.' },
+      { id: 'tg-2', q: 'In-order traversal of a BST yields…', options: ['Random order', 'Level order', 'Sorted order', 'Reverse insertion order'], answer: 2, why: 'Left, node, right visits BST keys in ascending order.' },
+      { id: 'tg-3', q: 'Detecting a cycle in a directed graph commonly uses…', options: ['Union-find', 'DFS with recursion-stack colors', 'BFS levels', 'Prim’s algorithm'], answer: 1, why: 'A back edge to a node on the current DFS stack means a cycle.' },
+    ],
+  },
+  'Dynamic Programming': {
+    level: 'Hard',
+    questions: [
+      { id: 'dp-1', q: 'Climbing stairs (1 or 2 steps) follows which recurrence?', options: ['f(n)=f(n-1)*2', 'f(n)=f(n-1)+f(n-2)', 'f(n)=n!', 'f(n)=f(n/2)+1'], answer: 1, why: 'The last step is either 1 or 2, so it’s Fibonacci.' },
+      { id: 'dp-2', q: '0/1 knapsack with n items and capacity W runs in…', options: ['O(n + W)', 'O(nW)', 'O(2^n) only', 'O(n log W)'], answer: 1, why: 'The classic table has n×W states, each O(1).' },
+    ],
+  },
+  'SQL Queries': {
+    level: 'Medium',
+    questions: [
+      { id: 'sql-1', q: 'Which clause filters groups after aggregation?', options: ['WHERE', 'HAVING', 'ORDER BY', 'LIMIT'], answer: 1, why: 'WHERE filters rows before grouping; HAVING filters groups.' },
+      { id: 'sql-2', q: 'A LEFT JOIN returns…', options: ['Only matching rows', 'All rows from the right table', 'All rows from the left table plus matches', 'The Cartesian product'], answer: 2, why: 'Unmatched left rows appear with NULLs on the right.' },
+    ],
+  },
+  'Aptitude & Logical': {
+    level: 'Easy',
+    questions: [
+      { id: 'apt-1', q: 'A train 120 m long passes a pole in 6 s. Its speed is…', options: ['60 km/h', '72 km/h', '80 km/h', '20 km/h'], answer: 1, why: '120/6 = 20 m/s = 72 km/h.' },
+      { id: 'apt-2', q: 'Next in the series 2, 6, 12, 20, 30, …?', options: ['40', '42', '44', '36'], answer: 1, why: 'Differences grow by 2: +12 gives 42 (n(n+1)).' },
+    ],
+  },
 }
 
+const topics = Object.keys(bank)
+const allQs = topics.flatMap((t) => bank[t].questions)
+const dayIndex = Math.floor(Date.now() / 86400000) % allQs.length
+
 export default function Practice() {
+  const { attempts, recordAttempt } = useApp()
+  const [topic, setTopic] = useState<string | null>(null)
+  const [current, setCurrent] = useState<Q>(allQs[dayIndex])
   const [picked, setPicked] = useState<number | null>(null)
-  const solved = sets.reduce((a, s) => a + s.solved, 0)
-  const total = sets.reduce((a, s) => a + s.total, 0)
+
+  const solvedIds = useMemo(() => new Set(attempts.filter((a) => a.correct).map((a) => a.question_id)), [attempts])
+  const accuracy = attempts.length ? Math.round((attempts.filter((a) => a.correct).length / attempts.length) * 100) : 0
+  const streak = useMemo(() => {
+    const days = new Set(attempts.map((a) => a.created_at.slice(0, 10)))
+    let n = 0
+    const d = new Date()
+    if (!days.has(d.toISOString().slice(0, 10))) d.setUTCDate(d.getUTCDate() - 1)
+    while (days.has(d.toISOString().slice(0, 10))) {
+      n++
+      d.setUTCDate(d.getUTCDate() - 1)
+    }
+    return n
+  }, [attempts])
+
+  const start = (t: string) => {
+    const qs = bank[t].questions
+    const next = qs.find((q) => !solvedIds.has(q.id)) ?? qs[Math.floor(Math.random() * qs.length)]
+    setTopic(t)
+    setCurrent(next)
+    setPicked(null)
+    document.getElementById('practice-question')?.scrollIntoView({ behavior: 'smooth' })
+  }
+
+  const pick = (i: number) => {
+    if (picked !== null) return
+    setPicked(i)
+    recordAttempt(current.id, i, i === current.answer)
+  }
 
   return (
     <Page title="Practice Arena" subtitle="Targeted problem sets based on the rounds your companies actually run.">
       <div className="grid grid-cols-4 gap-3">
-        <Stat label="Problems solved" value={`${solved}`} sub={`of ${total} assigned`} />
-        <Stat label="Current streak" value="9 days" sub="Personal best: 14" tone="text-[#0d9a5b]" />
-        <Stat label="Avg. solve time" value="18 min" sub="Target: 15 min" />
-        <Stat label="Accuracy" value="76%" sub="+4% this week" tone="text-brand-dark" />
+        <Stat label="Problems solved" value={`${solvedIds.size}`} sub={`of ${allQs.length} in the bank`} />
+        <Stat label="Current streak" value={`${streak} day${streak === 1 ? '' : 's'}`} sub="Practice daily to grow it" tone="text-[#0d9a5b]" />
+        <Stat label="Attempts" value={`${attempts.length}`} sub="All time" />
+        <Stat label="Accuracy" value={`${accuracy}%`} sub="Correct / attempts" tone="text-brand-dark" />
       </div>
 
       <Card title="Problem sets">
         <div className="divide-y divide-line">
-          {sets.map((s) => {
-            const pct = Math.round((s.solved / s.total) * 100)
+          {topics.map((t) => {
+            const qs = bank[t].questions
+            const solved = qs.filter((q) => solvedIds.has(q.id)).length
+            const pct = Math.round((solved / qs.length) * 100)
             return (
-              <div key={s.topic} className="flex items-center gap-3 py-3">
-                <span className="w-[180px] text-[12.5px] font-semibold text-ink">{s.topic}</span>
-                <span className="w-[110px] text-[11.5px] text-ink-mute">{s.level}</span>
+              <div key={t} className="flex items-center gap-3 py-3">
+                <span className="w-[180px] text-[12.5px] font-semibold text-ink">{t}</span>
+                <span className="w-[110px] text-[11.5px] text-ink-mute">{bank[t].level}</span>
                 <span className="h-[7px] flex-1 overflow-hidden rounded-full bg-[#eef0f3]">
-                  <span className="block h-full rounded-full bg-brand" style={{ width: `${pct}%` }} />
+                  <span className="block h-full rounded-full bg-brand transition-[width] duration-500" style={{ width: `${pct}%` }} />
                 </span>
-                <span className="w-[70px] text-right text-[11.5px] font-semibold text-ink-soft">{s.solved}/{s.total}</span>
-                <button className="rounded-md border border-line px-3 py-1.5 text-[11.5px] font-medium text-ink-soft hover:bg-[#f7f8fa]">Practice</button>
+                <span className="w-[70px] text-right text-[11.5px] font-semibold text-ink-soft">{solved}/{qs.length}</span>
+                <button onClick={() => start(t)} className="rounded-md border border-line px-3 py-1.5 text-[11.5px] font-medium text-ink-soft hover:bg-[#f7f8fa]">Practice</button>
               </div>
             )
           })}
         </div>
       </Card>
 
-      <Card title="Question of the day">
-        <p className="text-[12.5px] text-ink-soft">{question.q}</p>
-        <div className="mt-3 space-y-2">
-          {question.options.map((o, i) => {
-            const state = picked === null ? '' : i === question.answer ? 'border-[#c9f0d9] bg-[#ecfdf3] text-[#0d9a5b]' : picked === i ? 'border-[#fbd5d1] bg-[#fef3f2] text-[#d92d20]' : ''
-            return (
-              <button key={o} onClick={() => setPicked(i)} className={`block w-full rounded-[9px] border px-3 py-2 text-left text-[12.5px] transition ${state || 'border-line text-ink-soft hover:bg-[#f7f8fa]'}`}>
-                {o}
-              </button>
-            )
-          })}
-        </div>
-        {picked !== null && (
-          <p className="mt-3 text-[12px] font-medium text-ink-mute">
-            {picked === question.answer ? 'Correct — one pass with a hash map is O(n) time, O(n) space.' : 'Not quite. A hash map of complements solves it in a single O(n) pass.'}
-          </p>
-        )}
-      </Card>
+      <div id="practice-question">
+        <Card
+          title={topic ? `Practice · ${topic}` : 'Question of the day'}
+          action={picked !== null && topic ? <button onClick={() => start(topic)} className="text-[11.5px] font-medium text-brand-dark hover:underline">Next question →</button> : undefined}
+        >
+          <p className="text-[12.5px] text-ink-soft">{current.q}</p>
+          <div className="mt-3 space-y-2">
+            {current.options.map((o, i) => {
+              const state = picked === null ? '' : i === current.answer ? 'border-[#c9f0d9] bg-[#ecfdf3] text-[#0d9a5b]' : picked === i ? 'border-[#fbd5d1] bg-[#fef3f2] text-[#d92d20]' : ''
+              return (
+                <button key={o} onClick={() => pick(i)} className={`block w-full rounded-[9px] border px-3 py-2 text-left text-[12.5px] transition ${state || 'border-line text-ink-soft hover:bg-[#f7f8fa]'}`}>
+                  {o}
+                </button>
+              )
+            })}
+          </div>
+          {picked !== null && (
+            <p className="mt-3 text-[12px] font-medium text-ink-mute">
+              {picked === current.answer ? 'Correct — ' : 'Not quite. '}
+              {current.why}
+            </p>
+          )}
+        </Card>
+      </div>
     </Page>
   )
 }

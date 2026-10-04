@@ -1,5 +1,5 @@
-import { useState } from 'react'
 import { Card, Page, Stat } from '../components/Page'
+import { useApp } from '../lib/store'
 
 const owned = [
   { name: 'AWS Certified Cloud Practitioner', issuer: 'Amazon Web Services', date: 'Jun 2025', id: 'AWS-CP-99213' },
@@ -15,7 +15,7 @@ const recommended = [
 ]
 
 export default function Certifications() {
-  const [enrolled, setEnrolled] = useState<string[]>([])
+  const { enrollments: enrolled, toggleEnrollment } = useApp()
 
   return (
     <Page title="Certifications" subtitle="Credentials you hold and the ones that move your eligibility the most.">
@@ -50,7 +50,7 @@ export default function Certifications() {
               </div>
               <span className="text-[11.5px] text-ink-faint">~{c.weeks} weeks</span>
               <button
-                onClick={() => setEnrolled((e) => (e.includes(c.name) ? e.filter((x) => x !== c.name) : [...e, c.name]))}
+                onClick={() => toggleEnrollment(c.name)}
                 className={`w-[92px] rounded-[9px] border py-[7px] text-[12px] font-semibold ${
                   enrolled.includes(c.name) ? 'border-[#fbe3bd] bg-[#fff8ec] text-[#d97706]' : 'border-[#d5cbff] text-brand-dark hover:bg-[#faf8ff]'
                 }`}

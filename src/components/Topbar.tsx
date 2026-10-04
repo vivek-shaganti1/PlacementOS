@@ -4,13 +4,18 @@ import { companies } from '../data/companies'
 import Avatar from './Avatar'
 import CompanyLogo from './CompanyLogo'
 import { IconBell, IconChevronDown, IconMenu, IconSearch } from './Icons'
-import { student } from '../data/student'
+import { useAuth, useProfile } from '../lib/auth'
+import { useApp } from '../lib/store'
 
 export default function Topbar({ onToggleSidebar }: { onToggleSidebar: () => void }) {
   const [q, setQ] = useState('')
   const [openMenu, setOpenMenu] = useState(false)
   const [openBell, setOpenBell] = useState(false)
   const navigate = useNavigate()
+  const profile = useProfile()
+  const { signOut } = useAuth()
+  const { notifications, markRead } = useApp()
+  const unread = notifications.filter((n) => !n.read).length
   const wrap = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -83,24 +88,39 @@ export default function Topbar({ onToggleSidebar }: { onToggleSidebar: () => voi
           className="relative grid h-9 w-9 place-items-center rounded-lg text-ink-soft hover:bg-[#f3f4f6]"
         >
           <IconBell className="h-[19px] w-[19px]" />
-          <span className="absolute -right-0.5 -top-0.5 grid h-[17px] min-w-[17px] place-items-center rounded-full bg-[#f04438] px-1 text-[10px] font-bold text-white ring-2 ring-white">
-            5
-          </span>
+          {unread > 0 && (
+            <span className="absolute -right-0.5 -top-0.5 grid h-[17px] min-w-[17px] place-items-center rounded-full bg-[#f04438] px-1 text-[10px] font-bold text-white ring-2 ring-white">
+              {unread}
+            </span>
+          )}
         </button>
         {openBell && (
           <div className="absolute right-0 top-11 w-[320px] overflow-hidden rounded-xl2 border border-line bg-white shadow-pop">
-            <p className="border-b border-line px-4 py-2.5 text-[13px] font-semibold">Notifications</p>
-            {[
-              'Google SDE drive opens in 3 days',
-              'Your resume score improved to 82',
-              'Microsoft shortlist released',
-              'New mock interview slot available',
-              '2 alumni replied to your message',
-            ].map((n) => (
-              <div key={n} className="border-b border-line px-4 py-2.5 text-[12.5px] text-ink-soft last:border-0">
-                {n}
-              </div>
-            ))}
+            <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
+              <p className="text-[13px] font-semibold">Notifications</p>
+              {unread > 0 && (
+                <button onClick={() => markRead()} className="text-[11.5px] font-medium text-brand-dark hover:underline">
+                  Mark all read
+                </button>
+              )}
+            </div>
+            <div className="scroll-thin max-h-[360px] overflow-y-auto">
+              {notifications.length === 0 && <p className="px-4 py-5 text-center text-[12.5px] text-ink-faint">You're all caught up.</p>}
+              {notifications.map((n) => (
+                <button
+                  key={n.id}
+                  onClick={() => {
+                    if (!n.read) markRead(n.id)
+                    setOpenBell(false)
+                    if (n.link) navigate(n.link)
+                  }}
+                  className={`flex w-full items-start gap-2 border-b border-line px-4 py-2.5 text-left text-[12.5px] last:border-0 hover:bg-[#f7f8fa] ${n.read ? 'text-ink-faint' : 'text-ink-soft'}`}
+                >
+                  <span className={`mt-[6px] h-1.5 w-1.5 shrink-0 rounded-full ${n.read ? 'bg-transparent' : 'bg-brand'}`} />
+                  {n.text}
+                </button>
+              ))}
+            </div>
           </div>
         )}
       </div>
@@ -110,10 +130,10 @@ export default function Topbar({ onToggleSidebar }: { onToggleSidebar: () => voi
           onClick={() => { setOpenMenu((v) => !v); setOpenBell(false) }}
           className="flex items-center gap-2.5 rounded-lg py-1 pl-1 pr-1.5 hover:bg-[#f3f4f6]"
         >
-          <Avatar src={student.avatar} name={student.name} size={34} />
+          <Avatar src={profile.avatar_url ?? undefined} name={profile.full_name || profile.email} size={34} />
           <div className="text-left leading-tight">
-            <p className="text-[13px] font-semibold text-ink">{student.name}</p>
-            <p className="text-[11px] text-ink-faint">{student.meta}</p>
+            <p className="text-[13px] font-semibold text-ink">{profile.full_name || profile.email}</p>
+            <p className="text-[11px] text-ink-faint">{profile.meta}</p>
           </div>
           <IconChevronDown className="h-4 w-4 text-ink-faint" />
         </button>
@@ -133,6 +153,12 @@ export default function Topbar({ onToggleSidebar }: { onToggleSidebar: () => voi
                 {label}
               </button>
             ))}
+            <button
+              onClick={() => { setOpenMenu(false); signOut() }}
+              className="mt-1 block w-full border-t border-line px-4 py-2 text-left text-[13px] text-[#d92d20] hover:bg-[#fef3f2]"
+            >
+              Sign out
+            </button>
           </div>
         )}
       </div>

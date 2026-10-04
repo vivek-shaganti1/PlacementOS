@@ -1,6 +1,8 @@
 import { useState } from 'react'
 import { Card, Page } from '../components/Page'
-import { student } from '../data/student'
+import { useAuth, useProfile } from '../lib/auth'
+import { useApp } from '../lib/store'
+import { errMsg, supabase, type Profile } from '../lib/supabase'
 
 const toggles = [
   ['Drive announcements', 'Email me when a new company opens registration.'],
@@ -10,15 +12,44 @@ const toggles = [
 ] as const
 
 export default function Settings() {
-  const [on, setOn] = useState<Record<string, boolean>>({ 'Drive announcements': true, 'Eligibility changes': true, 'Alumni replies': false, 'Weekly digest': true })
-  const [visibility, setVisibility] = useState('college')
-  const [msg, setMsg] = useState('')
+  const p = useProfile()
+  const { session, updateProfile, signOut } = useAuth()
+  const { showToast } = useApp()
+  const [on, setOn] = useState<Record<string, boolean>>(p.notification_prefs)
+  const [visibility, setVisibility] = useState<Profile['visibility']>(p.visibility)
+  const [busy, setBusy] = useState(false)
+  const [pw, setPw] = useState({ next: '', confirm: '' })
+
+  const savePrefs = async () => {
+    setBusy(true)
+    try {
+      await updateProfile({ notification_prefs: on, visibility })
+      showToast('Preferences saved.')
+    } catch (e) {
+      showToast(`Could not save: ${errMsg(e)}`)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const changePassword = async () => {
+    if (pw.next.length < 8) return showToast('Use at least 8 characters for your password.')
+    if (pw.next !== pw.confirm) return showToast('Passwords do not match.')
+    setBusy(true)
+    const { error } = await supabase.auth.updateUser({ password: pw.next })
+    setBusy(false)
+    if (error) return showToast(`Could not change password: ${error.message}`)
+    setPw({ next: '', confirm: '' })
+    showToast('Password updated.')
+  }
+
+  const dirty = JSON.stringify(on) !== JSON.stringify(p.notification_prefs) || visibility !== p.visibility
 
   return (
     <Page title="Settings" subtitle="Account, notification and privacy preferences.">
       <Card title="Account">
         <div className="grid grid-cols-2 gap-4 text-[12.5px]">
-          {[['Name', student.name], ['Email', student.email], ['Branch', student.branch], ['Batch', student.batch]].map(([k, v]) => (
+          {[['Name', p.full_name], ['Sign-in email', session?.user.email ?? ''], ['Branch', p.branch], ['Batch', p.batch]].map(([k, v]) => (
             <div key={k}>
               <p className="text-[11.5px] text-ink-mute">{k}</p>
               <p className="mt-0.5 font-medium text-ink">{v}</p>
@@ -36,6 +67,9 @@ export default function Settings() {
                 <p className="text-[11.5px] text-ink-mute">{desc}</p>
               </div>
               <button
+                role="switch"
+                aria-checked={!!on[label]}
+                aria-label={label}
                 onClick={() => setOn((o) => ({ ...o, [label]: !o[label] }))}
                 className={`relative h-[22px] w-[40px] rounded-full transition ${on[label] ? 'bg-brand' : 'bg-[#dfe2e7]'}`}
               >
@@ -48,7 +82,7 @@ export default function Settings() {
 
       <Card title="Profile visibility">
         <div className="space-y-2">
-          {[['college', 'Visible to my college placement cell and alumni'], ['recruiters', 'Visible to verified recruiters as well'], ['private', 'Private — only I can see my profile']].map(([v, label]) => (
+          {([['college', 'Visible to my college placement cell and alumni'], ['recruiters', 'Visible to verified recruiters as well'], ['private', 'Private — only I can see my profile']] as const).map(([v, label]) => (
             <label key={v} className="flex cursor-pointer items-center gap-2.5 rounded-[9px] px-2 py-2 hover:bg-[#f7f8fa]">
               <input type="radio" name="vis" checked={visibility === v} onChange={() => setVisibility(v)} className="h-4 w-4 accent-[#6d4aff]" />
               <span className="text-[12.5px] text-ink-soft">{label}</span>
@@ -56,12 +90,37 @@ export default function Settings() {
           ))}
         </div>
         <button
-          onClick={() => { setMsg('Preferences saved.'); setTimeout(() => setMsg(''), 2000) }}
-          className="mt-3 rounded-[9px] bg-brand px-4 py-2 text-[12.5px] font-semibold text-white hover:bg-brand-dark"
+          onClick={savePrefs}
+          disabled={busy || !dirty}
+          className="mt-3 rounded-[9px] bg-brand px-4 py-2 text-[12.5px] font-semibold text-white hover:bg-brand-dark disabled:opacity-50"
         >
           Save preferences
         </button>
-        {msg && <span className="ml-3 text-[12px] font-medium text-[#0d9a5b]">{msg}</span>}
+      </Card>
+
+      <Card title="Security">
+        <div className="grid max-w-[520px] grid-cols-2 gap-3">
+          {(['next', 'confirm'] as const).map((k) => (
+            <label key={k} className="block">
+              <span className="text-[11.5px] font-medium text-ink-mute">{k === 'next' ? 'New password' : 'Confirm password'}</span>
+              <input
+                type="password"
+                autoComplete="new-password"
+                value={pw[k]}
+                onChange={(e) => setPw({ ...pw, [k]: e.target.value })}
+                className="mt-1 h-[36px] w-full rounded-[9px] border border-line bg-white px-3 text-[12.5px] outline-none focus:border-[#d5cbff]"
+              />
+            </label>
+          ))}
+        </div>
+        <div className="mt-3 flex gap-2">
+          <button onClick={changePassword} disabled={busy || !pw.next} className="rounded-[9px] border border-[#d5cbff] px-4 py-2 text-[12.5px] font-semibold text-brand-dark hover:bg-[#faf8ff] disabled:opacity-50">
+            Change password
+          </button>
+          <button onClick={signOut} className="ml-auto rounded-[9px] border border-[#fbd5d1] px-4 py-2 text-[12.5px] font-semibold text-[#d92d20] hover:bg-[#fef3f2]">
+            Sign out
+          </button>
+        </div>
       </Card>
     </Page>
   )

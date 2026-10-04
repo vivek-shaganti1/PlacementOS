@@ -33,7 +33,7 @@ export default function Help() {
       <Card title="Still stuck?">
         <div className="flex items-center gap-3">
           <p className="flex-1 text-[12.5px] text-ink-mute">
-            Reach the placement cell at <b className="text-ink">placements@college.edu</b>, or ask the AI assistant anything about your profile.
+            Reach the placement cell at <a href="mailto:placements@college.edu" className="font-semibold text-ink hover:underline">placements@college.edu</a>, or ask the AI assistant anything about your profile.
           </p>
           <button onClick={() => openAssistant()} className="rounded-[9px] border border-[#d5cbff] bg-white px-4 py-2 text-[12.5px] font-semibold text-brand-dark hover:bg-[#faf8ff]">
             Ask AI Assistant

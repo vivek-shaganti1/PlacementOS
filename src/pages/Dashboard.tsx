@@ -1,22 +1,24 @@
 import { useNavigate } from 'react-router-dom'
 import { byBucket, companies } from '../data/companies'
-import { student } from '../data/student'
+import { useProfile } from '../lib/auth'
 import CompanyLogo from '../components/CompanyLogo'
 import { Card, Meter, Page, Stat } from '../components/Page'
 import { useApp } from '../lib/store'
 
 export default function Dashboard() {
   const navigate = useNavigate()
-  const { applied, saved } = useApp()
+  const { applied, saved, roadmapDone } = useApp()
+  const student = useProfile()
   const eligible = byBucket('eligible')
+  const readiness = Math.round(student.skills.reduce((a, s) => a + s.level, 0) / Math.max(1, student.skills.length))
 
   return (
-    <Page title={`Welcome back, ${student.name.split(' ')[0]}`} subtitle="Here is where your placement readiness stands today." wide>
+    <Page title={`Welcome back, ${(student.full_name || 'there').split(' ')[0]}`} subtitle="Here is where your placement readiness stands today." wide>
       <div className="grid grid-cols-4 gap-3">
         <Stat label="Eligible Companies" value={`${eligible.length}`} sub={`out of ${companies.length} tracked`} tone="text-[#0d9a5b]" />
         <Stat label="Applications" value={`${applied.length}`} sub="submitted this season" />
         <Stat label="Saved Companies" value={`${saved.length}`} sub="in your shortlist" />
-        <Stat label="Readiness Score" value="82" sub="+6 in the last 30 days" tone="text-brand-dark" />
+        <Stat label="Readiness Score" value={`${readiness}`} sub={`Avg. skill level · ${roadmapDone.length} roadmap tasks done`} tone="text-brand-dark" />
       </div>
 
       <div className="grid grid-cols-[1.4fr_1fr] gap-4">

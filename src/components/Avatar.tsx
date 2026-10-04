@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 export default function Avatar({
   src,
@@ -12,6 +12,7 @@ export default function Avatar({
   className?: string
 }) {
   const [failed, setFailed] = useState(false)
+  useEffect(() => setFailed(false), [src])
   const initials = name
     .split(/\s+/)
     .slice(0, 2)
