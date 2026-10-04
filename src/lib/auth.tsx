@@ -1,5 +1,6 @@
 import type { Session } from '@supabase/supabase-js'
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { assembleProfile, COLLECTIONS, RELATED, type RelatedRows } from './profileShape'
 import { supabase, type Profile, type ProfilePatch } from './supabase'
 
 type AuthCtx = {
@@ -42,17 +43,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setProfile(null)
       return
     }
-    const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle()
-    if (error) {
-      setProfileError(error.message)
+    const [base, ...rel] = await Promise.all([
+      supabase.from('profiles').select('*').eq('id', userId).maybeSingle(),
+      ...Object.entries(RELATED).map(([table, q]) => {
+        const [col, dir] = q.order.split('.')
+        let query = supabase.from(table).select(q.select).order(col, { ascending: dir !== 'desc' })
+        if ('limit' in q) query = query.limit(q.limit)
+        return query
+      }),
+    ])
+    const err = base.error ?? rel.find((x) => x.error)?.error
+    if (err) {
+      setProfileError(err.message)
       return
     }
-    if (!data) {
+    if (!base.data) {
       setProfileError('Your profile could not be found. Try signing out and in again.')
       return
     }
     setProfileError(null)
-    setProfile({ ...data, cgpa: Number(data.cgpa), class_x: Number(data.class_x), class_xii: Number(data.class_xii) } as Profile)
+    const rows = Object.fromEntries(Object.keys(RELATED).map((t, i) => [t, rel[i].data ?? []])) as RelatedRows
+    setProfile(assembleProfile(base.data, rows))
   }, [userId])
 
   useEffect(() => {
@@ -62,11 +73,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const updateProfile = useCallback(
     async (patch: ProfilePatch) => {
       if (!userId) throw new Error('Not signed in')
-      const { data, error } = await supabase.from('profiles').update(patch).eq('id', userId).select('*').single()
-      if (error) throw error
-      setProfile({ ...data, cgpa: Number(data.cgpa), class_x: Number(data.class_x), class_xii: Number(data.class_xii) } as Profile)
+      const scalar: Record<string, unknown> = {}
+      const jobs: PromiseLike<{ error: { message: string } | null }>[] = []
+      for (const [key, value] of Object.entries(patch)) {
+        if ((COLLECTIONS as readonly string[]).includes(key)) jobs.push(supabase.rpc('replace_rows', { target: key, items: value ?? [] }))
+        else if (key === 'resume_analysis' && value === null) jobs.push(supabase.from('resume_analyses').delete().eq('user_id', userId))
+        else if (key === 'jd_match' && value === null) jobs.push(supabase.from('jd_matches').delete().eq('user_id', userId))
+        else if (key !== 'integrations' && key !== 'resume_analysis' && key !== 'jd_match') scalar[key] = value
+      }
+      if (Object.keys(scalar).length) jobs.push(supabase.from('profiles').update(scalar).eq('id', userId))
+      const results = await Promise.all(jobs)
+      const failed = results.find((r) => r.error)
+      if (failed?.error) throw new Error(failed.error.message)
+      await refreshProfile()
     },
-    [userId],
+    [userId, refreshProfile],
   )
 
   const value = useMemo<AuthCtx>(

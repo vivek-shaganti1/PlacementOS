@@ -4,18 +4,19 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
+        sans: ['Geist', 'Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
+        display: ['"Instrument Serif"', 'ui-serif', 'Georgia', 'serif'],
       },
       colors: {
-        canvas: '#f6f7f9',
-        ink: { DEFAULT: '#111827', soft: '#4b5563', mute: '#6b7280', faint: '#9ca3af' },
-        line: '#e9ebef',
-        brand: { DEFAULT: '#6d4aff', dark: '#5a35f0', tint: '#f3f0ff' },
+        canvas: 'transparent',
+        ink: { DEFAULT: '#14112a', soft: '#45405e', mute: '#6b6784', faint: '#9a97ad' },
+        line: 'rgba(120, 110, 170, 0.16)',
+        brand: { DEFAULT: '#6d4aff', dark: '#5233e8', tint: 'rgba(109, 74, 255, 0.10)' },
       },
       boxShadow: {
-        card: '0 1px 2px rgba(16,24,40,.04), 0 1px 3px rgba(16,24,40,.06)',
-        panel: '-8px 0 24px rgba(16,24,40,.06)',
-        pop: '0 8px 24px rgba(16,24,40,.10)',
+        card: 'var(--shadow-1)',
+        panel: 'var(--shadow-3)',
+        pop: 'var(--shadow-2)',
       },
       borderRadius: { xl2: '14px' },
     },

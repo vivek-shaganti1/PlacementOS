@@ -1,4 +1,5 @@
 // Shared helpers for the /api edge functions. Files starting with "_" are not deployed as routes.
+import { assembleProfile, RELATED, type RelatedRows } from '../src/lib/profileShape'
 declare const process: { env: Record<string, string | undefined> }
 
 export const env = (k: string) => process.env[k]
@@ -50,6 +51,33 @@ export async function loadProfile(token: string): Promise<Record<string, any>> {
   const [profile] = (await (await rest(token, 'profiles?select=*&limit=1')).json()) as Record<string, any>[]
   if (!profile) throw new HttpError(401, 'Not signed in')
   return profile
+}
+
+/** Loads the caller's profile together with every related table, assembled like the browser does. */
+export async function loadStudent(token: string) {
+  const base = await loadProfile(token)
+  const entries = Object.entries(RELATED)
+  const rows = await Promise.all(
+    entries.map(async ([table, q]) => {
+      const [col, dir = 'asc'] = q.order.split('.')
+      const limit = 'limit' in q ? `&limit=${q.limit}` : ''
+      return (await rest(token, `${table}?select=${q.select}&order=${col}.${dir}${limit}`)).json()
+    }),
+  )
+  return assembleProfile(base, Object.fromEntries(entries.map(([t], i) => [t, rows[i]])) as RelatedRows) as Record<string, any> & { id: string }
+}
+
+/** Inserts or upserts rows (array or single object) as the caller. */
+export async function insertRows(token: string, table: string, rows: unknown, upsertOn?: string) {
+  await rest(token, `${table}${upsertOn ? `?on_conflict=${upsertOn}` : ''}`, {
+    method: 'POST',
+    body: JSON.stringify(rows),
+    headers: { prefer: `return=minimal${upsertOn ? ',resolution=merge-duplicates' : ''}` },
+  })
+}
+
+export async function deleteRows(token: string, table: string, filter: string) {
+  await rest(token, `${table}?${filter}`, { method: 'DELETE', headers: { prefer: 'return=minimal' } })
 }
 
 export async function saveProfile(token: string, id: string, patch: Record<string, unknown>) {

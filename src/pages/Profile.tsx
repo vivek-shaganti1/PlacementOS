@@ -203,9 +203,13 @@ export default function Profile() {
         <Card title="Projects">
           <ul className="space-y-2">
             {p.projects.map((proj, i) => (
-              <li key={proj + i} className="group flex gap-2 text-[12.5px] text-ink-soft">
+              <li key={proj.title + i} className="group flex gap-2 text-[12.5px] text-ink-soft">
                 <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />
-                <span className="flex-1">{proj}</span>
+                <span className="flex-1">
+                  <span className="font-semibold text-ink">{proj.url ? <a href={proj.url} target="_blank" rel="noreferrer" className="hover:underline">{proj.title}</a> : proj.title}</span>
+                  {proj.tech && <span className="text-ink-faint"> · {proj.tech}</span>}
+                  {proj.description && <span className="block text-[11.5px] text-ink-mute">{proj.description}</span>}
+                </span>
                 <button
                   onClick={() => save({ projects: p.projects.filter((_, j) => j !== i) }, 'Project removed.')}
                   className="text-[11px] text-ink-faint opacity-0 hover:text-[#d92d20] group-hover:opacity-100"
@@ -221,7 +225,9 @@ export default function Profile() {
             onSubmit={async (e) => {
               e.preventDefault()
               if (!newProject.trim()) return
-              if (await save({ projects: [...p.projects, newProject.trim()] }, 'Project added.')) setNewProject('')
+              const m = newProject.trim().match(/^(.*?)\s*(?:\((.*)\))?$/)
+              const project = { title: (m?.[1] || newProject).trim(), tech: (m?.[2] ?? '').trim(), description: '', url: null, source: 'manual' as const }
+              if (await save({ projects: [...p.projects, project] }, 'Project added.')) setNewProject('')
             }}
           >
             <input value={newProject} onChange={(e) => setNewProject(e.target.value)} placeholder="Project name (tech stack)" className={`${input} mt-0 flex-1`} />

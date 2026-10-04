@@ -2,7 +2,7 @@
 // POST { action: 'analyze', text, file_name }  -> parses the extracted resume text, scores it, saves to profile
 // POST { action: 'match', jd }                 -> matches the saved resume against a job description
 import { SKILLS } from '../src/lib/eligibility'
-import { bearer, groq, handle, HttpError, json, loadProfile, parseJson, saveProfile } from './_lib'
+import { bearer, deleteRows, groq, handle, HttpError, insertRows, json, loadProfile, parseJson, saveProfile } from './_lib'
 
 export const config = { runtime: 'edge' }
 
@@ -208,7 +208,11 @@ export default handle(async (req) => {
     const text = String(body.text ?? '').replace(/\u0000/g, '').trim().slice(0, 40000)
     if (text.length < 200) throw new HttpError(422, 'Could not read enough text from this file. If it is a scanned image, export it as a text-based PDF.')
     const analysis = await analyze(text, body.file_name ?? null, profile.target_roles || 'Software Engineer')
-    await saveProfile(token, profile.id, { resume_text: text, resume_analysis: analysis, jd_match: null })
+    const { analyzed_at, ...row } = analysis
+    void analyzed_at
+    await insertRows(token, 'resume_analyses', { ...row, user_id: profile.id })
+    await deleteRows(token, 'jd_matches', `user_id=eq.${profile.id}`)
+    await saveProfile(token, profile.id, { resume_text: text })
     return json({ analysis })
   }
 
@@ -217,7 +221,9 @@ export default handle(async (req) => {
     if (jd.length < 80) throw new HttpError(422, 'Paste the full job description (at least a few lines).')
     if (!profile.resume_text) throw new HttpError(422, 'Upload and analyze your resume first.')
     const result = await match(profile.resume_text, jd)
-    await saveProfile(token, profile.id, { jd_match: result })
+    const { analyzed_at, ...row } = result
+    void analyzed_at
+    await insertRows(token, 'jd_matches', { ...row, jd_text: jd.slice(0, 20000), user_id: profile.id })
     return json({ match: result })
   }
 

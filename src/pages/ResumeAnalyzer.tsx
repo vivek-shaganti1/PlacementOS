@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Card, Meter, Page, Stat } from '../components/Page'
+import { Card, Meter, Page, Ring, Stat } from '../components/Page'
 import { callApi } from '../lib/api'
 import { useAuth, useProfile } from '../lib/auth'
 import { extractResumeText } from '../lib/resumeText'
@@ -109,10 +109,10 @@ export default function ResumeAnalyzer() {
 
   const importToProfile = async () => {
     if (!a) return
-    const haveProjects = new Set(p.projects.map((x) => x.toLowerCase()))
+    const haveProjects = new Set(p.projects.map((x) => x.title.toLowerCase()))
     const newProjects = a.extracted.projects
-      .map((x) => (x.tech ? `${x.name} (${x.tech})` : x.name))
-      .filter((x) => ![...haveProjects].some((h) => h.startsWith(x.split(' (')[0].toLowerCase())))
+      .filter((x) => !haveProjects.has(x.name.toLowerCase()))
+      .map((x) => ({ title: x.name, tech: x.tech, description: x.description, url: null, source: 'resume' as const }))
     const haveOrgs = new Set(p.internships.map((i) => i.org.toLowerCase()))
     const newInterns = a.extracted.internships.filter((i) => !haveOrgs.has(i.org.toLowerCase()))
     const haveCerts = new Set(p.certifications.map((c) => c.name.toLowerCase()))
@@ -172,8 +172,11 @@ export default function ResumeAnalyzer() {
       {a && (
         <>
           <Card title="Summary" action={<span className="text-[11px] text-ink-faint">Analyzed {ago(a.analyzed_at)}</span>}>
-            <p className="text-[12.5px] leading-[1.65] text-ink-soft">{a.summary}</p>
-            <div className="mt-3 grid grid-cols-5 gap-2">
+            <div className="flex items-center gap-6">
+              <Ring value={a.overall} size={120} label="out of 100" color={tone(a.overall)} />
+              <p className="flex-1 text-[13px] leading-[1.7] text-ink-soft">{a.summary}</p>
+            </div>
+            <div className="mt-4 grid grid-cols-5 gap-2">
               <Stat label="Words" value={`${a.stats.words}`} />
               <Stat label="Bullet points" value={`${a.stats.bullets}`} />
               <Stat label="With metrics" value={`${a.stats.quantified}`} />

@@ -1,8 +1,10 @@
+import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useCompanies } from '../lib/companies'
 import Avatar from './Avatar'
 import CompanyLogo from './CompanyLogo'
+import { Logo } from './Logo'
 import { IconBell, IconChevronDown, IconMenu, IconSearch } from './Icons'
 import { useAuth, useProfile } from '../lib/auth'
 import { useApp } from '../lib/store'
@@ -18,6 +20,23 @@ export default function Topbar({ onToggleSidebar }: { onToggleSidebar: () => voi
   const { notifications, markRead } = useApp()
   const unread = notifications.filter((n) => !n.read).length
   const wrap = useRef<HTMLDivElement>(null)
+  const search = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        search.current?.focus()
+      }
+      if (e.key === 'Escape') {
+        setQ('')
+        setOpenBell(false)
+        setOpenMenu(false)
+      }
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   useEffect(() => {
     const close = (e: MouseEvent) => {
@@ -35,21 +54,15 @@ export default function Topbar({ onToggleSidebar }: { onToggleSidebar: () => voi
     : []
 
   return (
-    <header ref={wrap} className="relative z-30 flex h-[62px] shrink-0 items-center gap-4 border-b border-line bg-white px-5">
-      <div className="flex w-[196px] shrink-0 items-center gap-2.5">
-        <span className="grid h-[34px] w-[34px] place-items-center rounded-[10px] bg-brand text-[17px] font-bold text-white shadow-[0_2px_8px_rgba(109,74,255,.35)]">
-          P
-        </span>
-        <div className="leading-tight">
-          <p className="text-[17px] font-bold tracking-[-.02em] text-brand-dark">PlacementIQ</p>
-          <p className="text-[10.5px] font-medium text-ink-faint">Enterprise</p>
-        </div>
-      </div>
+    <header ref={wrap} className="glass relative z-30 mx-3 mt-3 flex h-[62px] shrink-0 items-center gap-4 rounded-[20px] px-4">
+      <button onClick={() => navigate('/dashboard')} className="w-[206px] shrink-0 text-left" aria-label="PlacementIQ home">
+        <Logo size={34} />
+      </button>
 
       <button
         onClick={onToggleSidebar}
         aria-label="Toggle sidebar"
-        className="grid h-8 w-8 place-items-center rounded-lg text-ink-soft hover:bg-[#f3f4f6]"
+        className="grid h-9 w-9 place-items-center rounded-[11px] text-ink-soft transition hover:bg-white/80 active:scale-95"
       >
         <IconMenu className="h-[19px] w-[19px]" />
       </button>
@@ -57,13 +70,22 @@ export default function Topbar({ onToggleSidebar }: { onToggleSidebar: () => voi
       <div className="relative mx-auto w-full max-w-[512px]">
         <IconSearch className="pointer-events-none absolute left-3.5 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-ink-faint" />
         <input
+          ref={search}
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Search companies, roles, skills..."
-          className="h-[38px] w-full rounded-full border border-line bg-[#f7f8fa] pl-10 pr-4 text-[13px] text-ink outline-none transition placeholder:text-ink-faint focus:border-[#d5cbff] focus:bg-white focus:ring-4 focus:ring-brand/10"
+          placeholder="Search companies, roles…"
+          aria-label="Search companies"
+          className="h-[40px] w-full rounded-full border border-white/80 bg-white/60 pl-10 pr-14 text-[13px] text-ink outline-none transition placeholder:text-ink-faint focus:bg-white focus:ring-4 focus:ring-brand/10"
         />
+        <kbd className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-md border border-line bg-white/80 px-1.5 py-0.5 text-[10.5px] font-medium text-ink-faint">⌘K</kbd>
+        <AnimatePresence>
         {results.length > 0 && (
-          <div className="absolute left-0 right-0 top-[46px] overflow-hidden rounded-xl2 border border-line bg-white py-1.5 shadow-pop">
+          <motion.div
+            initial={{ opacity: 0, y: -6, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -4, scale: 0.98 }}
+            transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+            className="glass-strong absolute left-0 right-0 top-[48px] overflow-hidden rounded-[16px] py-1.5">
             {results.map((c) => (
               <button
                 key={c.id}
@@ -71,7 +93,7 @@ export default function Topbar({ onToggleSidebar }: { onToggleSidebar: () => voi
                   setQ('')
                   navigate(`/eligibility?company=${c.id}`)
                 }}
-                className="flex w-full items-center gap-3 px-3.5 py-2 text-left hover:bg-[#f7f8fa]"
+                className="flex w-full items-center gap-3 px-3.5 py-2 text-left hover:bg-brand-tint"
               >
                 <CompanyLogo company={c} size={20} />
                 <span className="text-[13px] font-medium text-ink">{c.name}</span>
@@ -79,14 +101,16 @@ export default function Topbar({ onToggleSidebar }: { onToggleSidebar: () => voi
                 <span className="ml-auto text-[12px] font-semibold text-ink-mute">{c.match}%</span>
               </button>
             ))}
-          </div>
+          </motion.div>
         )}
+        </AnimatePresence>
       </div>
 
       <div className="relative">
         <button
           onClick={() => { setOpenBell((v) => !v); setOpenMenu(false) }}
-          className="relative grid h-9 w-9 place-items-center rounded-lg text-ink-soft hover:bg-[#f3f4f6]"
+          aria-label="Notifications"
+          className="relative grid h-10 w-10 place-items-center rounded-[12px] text-ink-soft transition hover:bg-white/80 active:scale-95"
         >
           <IconBell className="h-[19px] w-[19px]" />
           {unread > 0 && (
@@ -95,8 +119,15 @@ export default function Topbar({ onToggleSidebar }: { onToggleSidebar: () => voi
             </span>
           )}
         </button>
+        <AnimatePresence>
         {openBell && (
-          <div className="absolute right-0 top-11 w-[320px] overflow-hidden rounded-xl2 border border-line bg-white shadow-pop">
+          <motion.div
+            initial={{ opacity: 0, y: -8, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.97 }}
+            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            style={{ transformOrigin: 'top right' }}
+            className="glass-strong absolute right-0 top-12 w-[340px] overflow-hidden rounded-[18px]">
             <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
               <p className="text-[13px] font-semibold">Notifications</p>
               {unread > 0 && (
@@ -115,21 +146,22 @@ export default function Topbar({ onToggleSidebar }: { onToggleSidebar: () => voi
                     setOpenBell(false)
                     if (n.link) navigate(n.link)
                   }}
-                  className={`flex w-full items-start gap-2 border-b border-line px-4 py-2.5 text-left text-[12.5px] last:border-0 hover:bg-[#f7f8fa] ${n.read ? 'text-ink-faint' : 'text-ink-soft'}`}
+                  className={`flex w-full items-start gap-2 border-b border-line px-4 py-2.5 text-left text-[12.5px] last:border-0 hover:bg-brand-tint ${n.read ? 'text-ink-faint' : 'text-ink-soft'}`}
                 >
                   <span className={`mt-[6px] h-1.5 w-1.5 shrink-0 rounded-full ${n.read ? 'bg-transparent' : 'bg-brand'}`} />
                   {n.text}
                 </button>
               ))}
             </div>
-          </div>
+          </motion.div>
         )}
+        </AnimatePresence>
       </div>
 
       <div className="relative">
         <button
           onClick={() => { setOpenMenu((v) => !v); setOpenBell(false) }}
-          className="flex items-center gap-2.5 rounded-lg py-1 pl-1 pr-1.5 hover:bg-[#f3f4f6]"
+          className="flex items-center gap-2.5 rounded-[14px] py-1 pl-1 pr-2 transition hover:bg-white/80"
         >
           <Avatar src={profile.avatar_url ?? undefined} name={profile.full_name || profile.email} size={34} />
           <div className="text-left leading-tight">
@@ -138,8 +170,15 @@ export default function Topbar({ onToggleSidebar }: { onToggleSidebar: () => voi
           </div>
           <IconChevronDown className="h-4 w-4 text-ink-faint" />
         </button>
+        <AnimatePresence>
         {openMenu && (
-          <div className="absolute right-0 top-12 w-48 overflow-hidden rounded-xl2 border border-line bg-white py-1.5 shadow-pop">
+          <motion.div
+            initial={{ opacity: 0, y: -8, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.97 }}
+            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            style={{ transformOrigin: 'top right' }}
+            className="glass-strong absolute right-0 top-[54px] w-52 overflow-hidden rounded-[18px] py-1.5">
             {[
               ['My Profile', '/profile'],
               ['Applications', '/applications'],
@@ -149,7 +188,7 @@ export default function Topbar({ onToggleSidebar }: { onToggleSidebar: () => voi
               <button
                 key={to}
                 onClick={() => { setOpenMenu(false); navigate(to) }}
-                className="block w-full px-4 py-2 text-left text-[13px] text-ink-soft hover:bg-[#f7f8fa]"
+                className="block w-full px-4 py-2 text-left text-[13px] text-ink-soft hover:bg-brand-tint"
               >
                 {label}
               </button>
@@ -160,8 +199,9 @@ export default function Topbar({ onToggleSidebar }: { onToggleSidebar: () => voi
             >
               Sign out
             </button>
-          </div>
+          </motion.div>
         )}
+        </AnimatePresence>
       </div>
     </header>
   )

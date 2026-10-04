@@ -226,11 +226,11 @@ export function GithubProjects({ p }: { p: Profile }) {
   const { showToast } = useApp()
   const gh = p.integrations?.github
   if (!gh?.top_repos.length) return null
-  const has = (name: string) => p.projects.some((x) => x.toLowerCase().startsWith(name.toLowerCase()))
+  const has = (name: string) => p.projects.some((x) => x.title.toLowerCase() === name.toLowerCase())
   const add = async (r: (typeof gh.top_repos)[number]) => {
     const tech = [r.language, ...r.topics.slice(0, 4)].filter(Boolean).join(', ')
     try {
-      await updateProfile({ projects: [...p.projects, tech ? `${r.name} (${tech})` : r.name] })
+      await updateProfile({ projects: [...p.projects, { title: r.name, tech, description: r.description ?? '', url: r.url, source: 'github' }] })
       showToast(`${r.name} added to your projects.`)
     } catch (e) {
       showToast(errMsg(e))

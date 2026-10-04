@@ -1,5 +1,5 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": { "lib": ["ES2022", "DOM"] },
-  "include": ["api", "src/data", "src/lib/eligibility.ts"]
+  "include": ["api", "src/data", "src/lib/eligibility.ts", "src/lib/profileShape.ts", "src/lib/supabase.ts", "src/vite-env.d.ts"]
 }

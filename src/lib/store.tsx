@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { callApi } from './api'
+import { evaluateAll, readinessOf } from './eligibility'
 import { useAuth } from './auth'
 import { errMsg, supabase, type Profile } from './supabase'
 
@@ -117,6 +118,35 @@ export function AppProvider({ children }: { children: ReactNode }) {
       alive = false
     }
   }, [uid, showToast])
+
+  // One progress snapshot per day (latest values win) powers the history charts on Analytics.
+  useEffect(() => {
+    if (!profile) return
+    const t = window.setTimeout(() => {
+      const all = evaluateAll(profile)
+      const count = (b: string) => all.filter((c) => c.bucket === b).length
+      const i = profile.integrations ?? {}
+      supabase
+        .from('progress_snapshots')
+        .upsert(
+          {
+            user_id: uid,
+            day: new Date().toISOString().slice(0, 10),
+            readiness: readinessOf(all),
+            eligible: count('eligible'),
+            nearly: count('nearly'),
+            can_become: count('canBecome'),
+            not_eligible: count('notEligible'),
+            avg_skill: Math.round(profile.skills.reduce((a, s) => a + s.level, 0) / Math.max(1, profile.skills.length)),
+            problems_solved: (i.leetcode?.solved ?? 0) + (i.codeforces?.solved ?? 0) + (i.codechef?.solved ?? 0),
+            resume_score: profile.resume_analysis?.overall ?? null,
+          },
+          { onConflict: 'user_id,day' },
+        )
+        .then(({ error }) => error && console.warn('snapshot', error.message))
+    }, 1500)
+    return () => window.clearTimeout(t)
+  }, [profile, uid])
 
   // Generic optimistic toggle for (user_id, key) membership tables.
   const toggleIn = useCallback(

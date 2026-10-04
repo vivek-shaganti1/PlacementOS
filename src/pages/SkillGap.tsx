@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { bucketMeta } from '../data/companies'
+import { SkillRadar } from '../components/charts'
 import CompanyLogo from '../components/CompanyLogo'
 import { Card, Meter, Page } from '../components/Page'
 import { useProfile } from '../lib/auth'
 import { useCompanies } from '../lib/companies'
-import { categoryLabel, SKILLS } from '../lib/eligibility'
+import { categoryLabel, SKILL_SHORT, SKILLS } from '../lib/eligibility'
 import { useApp } from '../lib/store'
 
 const tone = (v: number) => (v >= 75 ? '#12b76a' : v >= 60 ? '#f79009' : '#f04438')
@@ -59,6 +60,15 @@ export default function SkillGap() {
           </div>
         </Card>
       </div>
+
+      <Card title={`Skill shape: you vs. ${target.name}`}>
+        <SkillRadar
+          aName="You"
+          bName={`${target.name} requires`}
+          height={330}
+          data={SKILLS.map((n) => ({ skill: SKILL_SHORT[n], a: level(n), b: req[n] }))}
+        />
+      </Card>
 
       <Card title="Academic & experience requirements">
         <div className="grid grid-cols-3 gap-2">

@@ -15,6 +15,7 @@ export const supabase = createClient(url || 'http://localhost', key || 'missing-
 
 export type Skill = { name: string; level: number }
 export type Internship = { org: string; role: string; period: string }
+export type Project = { title: string; tech: string; description: string; url: string | null; source: 'manual' | 'resume' | 'github' }
 
 export type Profile = {
   id: string
@@ -31,7 +32,7 @@ export type Profile = {
   class_xii: number
   avatar_url: string | null
   skills: Skill[]
-  projects: string[]
+  projects: Project[]
   internships: Internship[]
   notification_prefs: Record<string, boolean>
   visibility: 'college' | 'recruiters' | 'private'

@@ -1,3 +1,4 @@
+import { motion } from 'motion/react'
 import { useEffect, useState } from 'react'
 import type { Company } from '../data/types'
 import Avatar from './Avatar'
@@ -53,7 +54,13 @@ export default function CompanyPanel({ company, onClose }: { company: Company; o
   const overall = company.match
 
   return (
-    <section className="scroll-thin relative flex w-[592px] shrink-0 flex-col overflow-y-auto border-l border-line bg-white">
+    <motion.section
+      key={company.id}
+      initial={{ opacity: 0, x: 28 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ type: 'spring', stiffness: 320, damping: 32 }}
+      className="glass-strong scroll-thin relative my-3 mr-3 flex w-[592px] shrink-0 flex-col overflow-y-auto rounded-[24px]"
+    >
       <button
         onClick={onClose}
         aria-label="Close panel"
@@ -99,7 +106,7 @@ export default function CompanyPanel({ company, onClose }: { company: Company; o
         </div>
       </div>
 
-      <div className="sticky top-0 z-10 flex gap-6 border-b border-line bg-white px-6">
+      <div className="sticky top-0 z-10 flex gap-6 border-b border-line bg-white/85 px-6 backdrop-blur-xl">
         {TABS.map((t) => {
           const label = t === 'Alumni' ? `Alumni (${company.alumni.length})` : t
           const active = tab === t
@@ -112,7 +119,7 @@ export default function CompanyPanel({ company, onClose }: { company: Company; o
               }`}
             >
               {label}
-              {active && <span className="absolute inset-x-0 -bottom-px h-[2px] rounded-full bg-brand" />}
+              {active && <motion.span layoutId="panel-tab" className="absolute inset-x-0 -bottom-px h-[2px] rounded-full bg-brand" transition={{ type: 'spring', stiffness: 500, damping: 38 }} />}
             </button>
           )
         })}
@@ -336,6 +343,6 @@ export default function CompanyPanel({ company, onClose }: { company: Company; o
           </div>
         </div>
       </div>
-    </section>
+    </motion.section>
   )
 }

@@ -15,6 +15,17 @@ export const SKILLS = [
   'Aptitude & Reasoning',
 ] as const
 
+export const SKILL_SHORT: Record<string, string> = {
+  'Data Structures & Algorithms': 'DSA',
+  'System Design': 'System Design',
+  'React / Frontend': 'Frontend',
+  'Node.js / Backend': 'Backend',
+  'Databases (SQL + NoSQL)': 'Databases',
+  'Machine Learning': 'ML',
+  'Cloud & DevOps': 'Cloud',
+  'Aptitude & Reasoning': 'Aptitude',
+}
+
 export type StudentLike = {
   cgpa: number
   backlogs: number
@@ -135,3 +146,11 @@ export function evaluate(base: CompanyBase, p: StudentLike): Company {
 }
 
 export const evaluateAll = (p: StudentLike): Company[] => companyCatalog.map((c) => evaluate(c, p)).sort((a, b) => b.match - a.match)
+
+/** Product-track companies most students are aiming for; readiness is measured against these. */
+export const TARGET_CATEGORIES: Category[] = ['top', 'product', 'startup', 'fintech']
+
+export function readinessOf(companies: Company[]) {
+  const target = companies.filter((c) => TARGET_CATEGORIES.includes(c.category))
+  return Math.round(target.reduce((a, c) => a + c.match, 0) / Math.max(1, target.length))
+}

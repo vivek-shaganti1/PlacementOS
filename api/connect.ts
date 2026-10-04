@@ -1,6 +1,6 @@
 // Connects a coding / code-hosting account: fetches public stats and caches them on the profile.
 // POST { platform: 'github' | 'leetcode' | 'codeforces' | 'codechef', username: string | null }
-import { env, handle, HttpError, json, bearer, loadProfile, saveProfile } from './_lib'
+import { bearer, deleteRows, env, handle, HttpError, insertRows, json, loadProfile, saveProfile } from './_lib'
 
 export const config = { runtime: 'edge' }
 
@@ -44,7 +44,18 @@ async function github(username: string) {
       updated_at: r.pushed_at as string,
     }))
 
+  const all = own.slice(0, 100).map((r) => ({
+    name: r.name as string,
+    description: ((r.description as string | null) ?? null)?.slice(0, 500) ?? null,
+    language: (r.language as string | null) ?? null,
+    stars: (r.stargazers_count as number) ?? 0,
+    url: r.html_url as string,
+    topics: ((r.topics ?? []) as string[]).slice(0, 20),
+    pushed_at: (r.pushed_at as string) ?? null,
+  }))
+
   return {
+    all_repos: all,
     username: user.login,
     name: user.name ?? null,
     avatar_url: user.avatar_url,
@@ -140,19 +151,40 @@ export default handle(async (req) => {
   const p = platform as Platform
 
   const profile = await loadProfile(token)
-  const integrations = { ...(profile.integrations ?? {}) }
 
   if (!username) {
-    delete integrations[p]
-    await saveProfile(token, profile.id, { [`${p}_username`]: null, integrations })
+    await deleteRows(token, 'coding_profiles', `user_id=eq.${profile.id}&platform=eq.${p}`)
+    if (p === 'github') await deleteRows(token, 'github_repos', `user_id=eq.${profile.id}`)
+    await saveProfile(token, profile.id, { [`${p}_username`]: null })
     return json({ ok: true, stats: null })
   }
 
   const handleName = String(username).trim().replace(/^@/, '').replace(/^https?:\/\/[^/]+\/(u\/|users\/|profile\/)?/i, '').replace(/\/+$/, '')
   if (!/^[A-Za-z0-9._-]{1,40}$/.test(handleName)) throw new HttpError(400, 'That does not look like a valid username.')
 
-  const stats = await fetchers[p](handleName)
-  integrations[p] = stats
-  await saveProfile(token, profile.id, { [`${p}_username`]: stats.username, integrations })
+  const fetched = await fetchers[p](handleName)
+  const { all_repos, top_repos, ...stats } = fetched as typeof fetched & { all_repos?: unknown[]; top_repos?: unknown[] }
+  void top_repos
+  const s = stats as Record<string, any>
+  await insertRows(
+    token,
+    'coding_profiles',
+    {
+      user_id: profile.id,
+      platform: p,
+      username: s.username,
+      solved: p === 'github' ? s.original_repos : s.solved,
+      rating: p === 'leetcode' ? s.contest_rating : p === 'github' ? null : s.rating,
+      max_rating: s.max_rating ?? null,
+      stats,
+      synced_at: s.synced_at,
+    },
+    'user_id,platform',
+  )
+  if (p === 'github') {
+    await deleteRows(token, 'github_repos', `user_id=eq.${profile.id}`)
+    if (all_repos?.length) await insertRows(token, 'github_repos', all_repos.map((r) => ({ ...(r as object), user_id: profile.id })))
+  }
+  await saveProfile(token, profile.id, { [`${p}_username`]: s.username })
   return json({ ok: true, stats })
 })

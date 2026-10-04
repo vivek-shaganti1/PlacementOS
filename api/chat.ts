@@ -1,7 +1,7 @@
 // AI Career Assistant backed by Groq. The key never reaches the browser; callers must be signed in,
 // and the student's own profile (read under RLS) grounds every answer.
 import { evaluateAll, type StudentLike } from '../src/lib/eligibility'
-import { bearer, groq, handle, HttpError, json, loadProfile } from './_lib'
+import { bearer, groq, handle, HttpError, json, loadStudent } from './_lib'
 
 export const config = { runtime: 'edge' }
 
@@ -55,7 +55,7 @@ export default handle(async (req) => {
     .map((m) => ({ role: m.role, text: m.text.slice(0, 2000) }))
   if (!messages.length || messages[messages.length - 1].role !== 'user') throw new HttpError(400, 'No question provided')
 
-  const profile = await loadProfile(token)
+  const profile = await loadStudent(token)
   const content = await groq(
     [
       { role: 'system', content: systemPrompt(profile) },
