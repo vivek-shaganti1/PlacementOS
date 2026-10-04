@@ -55,6 +55,8 @@ export type Profile = {
   resume_analysis: ResumeAnalysis | null
   jd_match: JdMatch | null
   onboarded_at: string | null
+  org_id: string | null
+  roll_number: string | null
 }
 
 export type GithubStats = {
@@ -121,3 +123,14 @@ export type ProfilePatch = Partial<Omit<Profile, 'id'>>
 
 export const errMsg = (e: unknown) =>
   e && typeof e === 'object' && 'message' in e ? String((e as { message: unknown }).message) : 'Something went wrong.'
+
+export type Organization = {
+  id: string
+  name: string
+  short_name: string
+  official_code: string | null
+  city: string
+  email_domains: string[]
+  admin_emails: string[]
+  created_at: string
+}

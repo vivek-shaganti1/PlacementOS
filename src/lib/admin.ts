@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react'
 import { completeness } from '../components/ProfileExtras'
+import { useAuth } from './auth'
 import { evaluateAll, readinessOf } from './eligibility'
 import { assembleProfile, RELATED, type RelatedRows } from './profileShape'
-import { supabase, type Profile } from './supabase'
+import { supabase, type Organization, type Profile } from './supabase'
 
 export type StudentRow = {
   profile: Profile
@@ -73,4 +74,26 @@ export function useStudents() {
   }, [reload])
 
   return { rows, loading, error, reload }
+}
+
+/** Organizations the caller can see: all for the super admin, their own for org admins and students. */
+export function useOrgs() {
+  const [orgs, setOrgs] = useState<Organization[]>([])
+  const [loading, setLoading] = useState(true)
+  const reload = useCallback(async () => {
+    const { data } = await supabase.from('organizations').select('*').order('name')
+    setOrgs((data ?? []) as Organization[])
+    setLoading(false)
+  }, [])
+  useEffect(() => {
+    reload()
+  }, [reload])
+  return { orgs, loading, reload }
+}
+
+/** Organizations the caller may administer: every organization for the super admin, otherwise their own. */
+export function useAdminOrgs() {
+  const { isSuperAdmin, adminOrgIds } = useAuth()
+  const { orgs, loading, reload } = useOrgs()
+  return { orgs: isSuperAdmin ? orgs : orgs.filter((o) => adminOrgIds.includes(o.id)), loading, reload }
 }

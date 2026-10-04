@@ -178,6 +178,7 @@ export type JobPosting = {
   deadline: string | null
   status: 'draft' | 'open' | 'closed'
   created_at: string
+  org_id?: string | null
 }
 
 // Common branch spellings, so "CSE" on a job matches "Computer Science & Engineering" on a profile.

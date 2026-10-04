@@ -33,7 +33,9 @@ const Onboarding = lazy(() => import('./pages/Onboarding'))
 const AdminOverview = lazy(() => import('./pages/Admin').then((m) => ({ default: m.AdminOverview })))
 const AdminStudents = lazy(() => import('./pages/Admin').then((m) => ({ default: m.AdminStudents })))
 const AdminJobs = lazy(() => import('./pages/Admin').then((m) => ({ default: m.AdminJobs })))
-const AdminTeam = lazy(() => import('./pages/Admin').then((m) => ({ default: m.AdminTeam })))
+const AdminTeam = lazy(() => import('./pages/AdminOrg').then((m) => ({ default: m.AdminTeam })))
+const AdminRoster = lazy(() => import('./pages/AdminOrg').then((m) => ({ default: m.AdminRoster })))
+const SuperOrgs = lazy(() => import('./pages/AdminOrg').then((m) => ({ default: m.SuperOrgs })))
 const ResumeAnalyzer = lazy(() => import('./pages/ResumeAnalyzer'))
 const Landing = lazy(() => import('./pages/Landing'))
 const Legal = lazy(() => import('./pages/Legal'))
@@ -94,6 +96,8 @@ function Shell() {
                     <Route path="/admin/students" element={<AdminStudents />} />
                     <Route path="/admin/jobs" element={<AdminJobs />} />
                     <Route path="/admin/team" element={<AdminTeam />} />
+                    <Route path="/admin/roster" element={<AdminRoster />} />
+                    <Route path="/super/orgs" element={<SuperOrgs />} />
                     <Route path="*" element={<Navigate to="/dashboard" replace />} />
                   </Routes>
                 </Suspense>

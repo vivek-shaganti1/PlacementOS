@@ -1,15 +1,15 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { useMemo, useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import Avatar from '../components/Avatar'
 import { BarList, Columns, EmptyChart, SERIES } from '../components/charts'
 import { Card, Meter, Page, Ring, RowsSkeleton, Skeleton, Stat } from '../components/Page'
-import { useStudents, type StudentRow } from '../lib/admin'
+import { useAdminOrgs, useStudents, type StudentRow } from '../lib/admin'
 import { useAuth } from '../lib/auth'
 import { evaluateJob, SKILL_SHORT, SKILLS, type JobPosting } from '../lib/eligibility'
 import { ctcText, isOpen, STATUS_META, useJobs, type JobApplication, type JobStatus } from '../lib/jobs'
 import { useApp } from '../lib/store'
-import { errMsg, supabase } from '../lib/supabase'
+import { supabase } from '../lib/supabase'
 
 const tone = (v: number) => (v >= 75 ? '#0A7A5C' : v >= 55 ? '#B47B12' : '#A63A2A')
 
@@ -87,7 +87,7 @@ export function AdminOverview() {
 }
 
 /* ================================================================ students */
-function StudentDrawer({ row, applications, jobs, onClose }: { row: StudentRow; applications: JobApplication[]; jobs: JobPosting[]; onClose: () => void }) {
+function StudentDrawer({ row, applications, jobs, orgName, onClose }: { row: StudentRow; applications: JobApplication[]; jobs: JobPosting[]; orgName?: string; onClose: () => void }) {
   const p = row.profile
   const { showToast } = useApp()
   const i = p.integrations ?? {}
@@ -116,8 +116,9 @@ function StudentDrawer({ row, applications, jobs, onClose }: { row: StudentRow; 
           <Avatar src={p.avatar_url ?? undefined} name={p.full_name || p.email} size={56} />
           <div className="min-w-0 flex-1">
             <p className="text-[19px] font-semibold tracking-[-0.02em] text-ink">{p.full_name || 'n/a'}</p>
-            <p className="text-[12px] text-ink-mute">{p.branch} · Batch {p.batch} · {p.college}</p>
-            <p className="text-[12px] text-ink-mute">{p.email} · {p.phone}</p>
+            <p className="text-[12px] text-ink-mute">{p.branch} · Batch {p.batch} · {orgName ?? p.college}</p>
+            <p className="text-[12px] text-ink-mute">Roll number: <span className="figure text-ink">{p.roll_number || 'not set'}</span></p>
+            <p className="text-[12px] text-ink-mute">{[p.email, p.phone].filter(Boolean).join(' · ')}</p>
             <div className="mt-2 flex flex-wrap gap-2 text-[11.5px] font-semibold">
               {p.linkedin_url && <a href={p.linkedin_url} target="_blank" rel="noreferrer" className="text-brand-dark hover:underline">LinkedIn</a>}
               {p.github_username && <a href={`https://github.com/${p.github_username}`} target="_blank" rel="noreferrer" className="text-brand-dark hover:underline">GitHub</a>}
@@ -142,22 +143,55 @@ function StudentDrawer({ row, applications, jobs, onClose }: { row: StudentRow; 
           {p.skills.slice(0, 8).map((s) => <Meter key={s.name} label={SKILL_SHORT[s.name] ?? s.name} value={s.level} tone={tone(s.level)} />)}
         </div>
 
-        <p className="mt-5 text-[12px] font-semibold text-ink">Coding & resume</p>
-        <div className="mt-2 grid grid-cols-1 gap-2 text-[12px] sm:grid-cols-2">
-          {[
-            ['Resume score', row.resume ?? 'n/a'],
-            ['LeetCode', i.leetcode ? `${i.leetcode.solved} solved${i.leetcode.contest_rating ? ` · ${i.leetcode.contest_rating}` : ''}` : 'n/a'],
-            ['Codeforces', i.codeforces ? `${i.codeforces.rating ?? 'unrated'} · ${i.codeforces.solved} solved` : 'n/a'],
-            ['CodeChef', i.codechef ? `${i.codechef.rating ?? 'unrated'} · ${i.codechef.solved} solved` : 'n/a'],
-            ['GitHub', i.github ? `${i.github.original_repos} repos · ${i.github.languages.slice(0, 3).map((l) => l.name).join(', ')}` : 'n/a'],
-            ['Profile strength', `${row.strength}%`],
-          ].map(([k, v]) => (
-            <div key={k as string} className="rounded-[3px] border border-rule bg-surface-2 px-3 py-2">
-              <p className="text-[10.5px] text-ink-mute">{k}</p>
-              <p className="font-semibold text-ink">{v}</p>
+        <p className="mt-5 text-[12px] font-semibold text-ink">Coding profiles</p>
+        <table className="mt-2 w-full text-left text-[12px]">
+          <tbody>
+            {[
+              ['GitHub', p.github_username, p.github_username && `https://github.com/${p.github_username}`, i.github ? `${i.github.original_repos} original repos · ${i.github.stars} stars · ${i.github.followers} followers` : 'Not connected'],
+              ['LeetCode', p.leetcode_username, p.leetcode_username && `https://leetcode.com/u/${p.leetcode_username}`, i.leetcode ? `${i.leetcode.solved} solved (Easy ${i.leetcode.easy} · Medium ${i.leetcode.medium} · Hard ${i.leetcode.hard})${i.leetcode.contest_rating ? ` · contest ${i.leetcode.contest_rating} over ${i.leetcode.contests}` : ''}` : 'Not connected'],
+              ['Codeforces', p.codeforces_username, p.codeforces_username && `https://codeforces.com/profile/${p.codeforces_username}`, i.codeforces ? `${i.codeforces.rating ?? 'unrated'}${i.codeforces.rank ? ` (${i.codeforces.rank})` : ''} · peak ${i.codeforces.max_rating ?? 'n/a'}${i.codeforces.solved != null ? ` · ${i.codeforces.solved} solved` : ''}` : 'Not connected'],
+              ['CodeChef', p.codechef_username, p.codechef_username && `https://www.codechef.com/users/${p.codechef_username}`, i.codechef ? `${i.codechef.rating ?? 'unrated'}${i.codechef.stars ? ` · ${i.codechef.stars} star` : ''}${i.codechef.solved != null ? ` · ${i.codechef.solved} solved` : ''}` : 'Not connected'],
+              ['HackerRank', p.hackerrank_username, p.hackerrank_username && `https://www.hackerrank.com/profile/${p.hackerrank_username}`, p.hackerrank_username ? 'Profile link only' : 'Not added'],
+            ].map(([k, user, url, detail]) => (
+              <tr key={k as string} className="border-b border-rule align-top">
+                <td className="w-[92px] py-2 font-semibold text-ink">{k}</td>
+                <td className="py-2 text-ink-soft">
+                  {user ? <a href={url as string} target="_blank" rel="noreferrer" className="text-brand underline">@{user}</a> : null}
+                  <span className="block text-ink-mute">{detail}</span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        {i.github?.top_repos.length ? (
+          <>
+            <p className="mt-5 text-[12px] font-semibold text-ink">GitHub repositories ({i.github.top_repos.length})</p>
+            <div className="mt-1.5 divide-y divide-line">
+              {i.github.top_repos.map((r) => (
+                <div key={r.name} className="py-2 text-[12px]">
+                  <div className="flex items-baseline gap-2">
+                    <a href={r.url} target="_blank" rel="noreferrer" className="font-semibold text-brand underline">{r.name}</a>
+                    <span className="text-ink-faint">{[r.language, r.stars ? `${r.stars} stars` : ''].filter(Boolean).join(' · ')}</span>
+                  </div>
+                  {r.description && <p className="text-ink-mute">{r.description}</p>}
+                  {r.topics.length > 0 && <p className="text-[11px] text-ink-faint">{r.topics.slice(0, 6).join(', ')}</p>}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
+          </>
+        ) : null}
+
+        <p className="mt-5 text-[12px] font-semibold text-ink">Resume</p>
+        {p.resume_analysis ? (
+          <div className="mt-1.5 text-[12px] text-ink-soft">
+            <p>Score <span className="figure text-ink">{p.resume_analysis.overall}</span> · {p.resume_analysis.stats.words} words · {p.resume_analysis.stats.quantified} of {p.resume_analysis.stats.bullets} bullets quantified</p>
+            <p className="mt-1 text-ink-mute">{p.resume_analysis.summary}</p>
+          </div>
+        ) : (
+          <p className="mt-1.5 text-[12px] text-ink-faint">{p.resume_path ? 'Uploaded, not analyzed yet.' : 'No resume uploaded.'}</p>
+        )}
+        <p className="mt-2 text-[12px] text-ink-mute">Profile strength {row.strength}% · readiness {row.readiness} · {row.eligible} companies eligible</p>
 
         <p className="mt-5 text-[12px] font-semibold text-ink">Projects ({p.projects.length})</p>
         <ul className="mt-1.5 space-y-1 text-[12px] text-ink-soft">
@@ -167,6 +201,16 @@ function StudentDrawer({ row, applications, jobs, onClose }: { row: StudentRow; 
         <ul className="mt-1.5 space-y-1 text-[12px] text-ink-soft">
           {p.internships.map((x) => <li key={x.org + x.role}>• {x.role} · {x.org} <span className="text-ink-faint">{x.period}</span></li>)}
           {!p.internships.length && <li className="text-ink-faint">None listed.</li>}
+        </ul>
+        <p className="mt-4 text-[12px] font-semibold text-ink">Certifications ({p.certifications.length})</p>
+        <ul className="mt-1.5 space-y-1 text-[12px] text-ink-soft">
+          {p.certifications.map((c) => <li key={c.name}>{c.credential_url ? <a href={c.credential_url} target="_blank" rel="noreferrer" className="underline">{c.name}</a> : c.name}<span className="text-ink-faint"> {[c.issuer, c.date].filter(Boolean).join(' · ')}</span></li>)}
+          {!p.certifications.length && <li className="text-ink-faint">None listed.</li>}
+        </ul>
+        <p className="mt-4 text-[12px] font-semibold text-ink">Achievements ({p.achievements.length})</p>
+        <ul className="mt-1.5 space-y-1 text-[12px] text-ink-soft">
+          {p.achievements.map((a) => <li key={a.title}>{a.title}<span className="text-ink-faint"> {[a.detail, a.date].filter(Boolean).join(' · ')}</span></li>)}
+          {!p.achievements.length && <li className="text-ink-faint">None listed.</li>}
         </ul>
 
         <p className="mt-4 text-[12px] font-semibold text-ink">Applications ({apps.length})</p>
@@ -187,8 +231,12 @@ function StudentDrawer({ row, applications, jobs, onClose }: { row: StudentRow; 
 }
 
 export function AdminStudents() {
-  const { isAdmin } = useAuth()
+  const { isAdmin, isSuperAdmin } = useAuth()
   const { rows, loading, error } = useStudents()
+  const { orgs } = useAdminOrgs()
+  const [params] = useSearchParams()
+  const [org, setOrg] = useState(params.get('org') ?? 'all')
+  const orgName = (id: string | null) => orgs.find((o) => o.id === id)?.short_name || orgs.find((o) => o.id === id)?.name || 'No college'
   const { jobs, applications } = useJobs()
   const [q, setQ] = useState('')
   const [branch, setBranch] = useState('all')
@@ -200,15 +248,16 @@ export function AdminStudents() {
   const shown = useMemo(() => {
     const val = (r: StudentRow) => (sort === 'cgpa' ? r.profile.cgpa : sort === 'resume' ? r.resume ?? -1 : r[sort])
     return rows
-      .filter((r) => (r.profile.full_name + r.profile.email + r.profile.college).toLowerCase().includes(q.toLowerCase()))
+      .filter((r) => (r.profile.full_name + r.profile.email + r.profile.college + (r.profile.roll_number ?? '')).toLowerCase().includes(q.toLowerCase()))
       .filter((r) => (branch === 'all' || r.profile.branch === branch) && (batch === 'all' || r.profile.batch === batch))
+      .filter((r) => org === 'all' || (org === 'none' ? !r.profile.org_id : r.profile.org_id === org))
       .sort((a, b) => val(b) - val(a))
-  }, [rows, q, branch, batch, sort])
+  }, [rows, q, branch, batch, sort, org])
   if (!isAdmin) return <Denied />
 
   const exportCsv = () => {
-    const head = ['Rank', 'Name', 'Email', 'Phone', 'Branch', 'Batch', 'CGPA', 'Backlogs', 'Readiness', 'Resume', 'DSA', 'Problems solved', 'Profile strength', 'Score']
-    const lines = shown.map((r) => [r.rank, r.profile.full_name, r.profile.email, r.profile.phone, r.profile.branch, r.profile.batch, r.profile.cgpa, r.profile.backlogs, r.readiness, r.resume ?? '', r.dsa, r.solved, r.strength, r.score])
+    const head = ['Rank', 'Name', 'Roll number', 'College', 'Email', 'Phone', 'Branch', 'Batch', 'CGPA', 'Backlogs', 'Readiness', 'Resume', 'DSA', 'Problems solved', 'Profile strength', 'Score']
+    const lines = shown.map((r) => [r.rank, r.profile.full_name, r.profile.roll_number ?? '', orgName(r.profile.org_id), r.profile.email, r.profile.phone, r.profile.branch, r.profile.batch, r.profile.cgpa, r.profile.backlogs, r.readiness, r.resume ?? '', r.dsa, r.solved, r.strength, r.score])
     const csv = [head, ...lines].map((l) => l.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n')
     const a = document.createElement('a')
     a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
@@ -220,7 +269,14 @@ export function AdminStudents() {
     <Page title="Students" subtitle="Ranked by a composite placement score: 35% readiness, 20% resume, 20% DSA, 15% profile strength, 10% CGPA." wide actions={<button onClick={exportCsv} className="btn-glass">Export CSV</button>}>
       <Card>
         <div className="flex flex-wrap gap-2">
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, email, college" className="field w-full sm:w-[260px]" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, email, roll number" className="field w-full sm:w-[260px]" />
+          {orgs.length > 1 && (
+            <select value={org} onChange={(e) => setOrg(e.target.value)} className="field w-full sm:w-auto" aria-label="College">
+              <option value="all">All colleges</option>
+              {orgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+              {isSuperAdmin && <option value="none">No college</option>}
+            </select>
+          )}
           <select value={branch} onChange={(e) => setBranch(e.target.value)} className="field w-full sm:w-auto" aria-label="Branch">
             <option value="all">All branches</option>
             {branches.map((b) => <option key={b}>{b}</option>)}
@@ -258,7 +314,7 @@ export function AdminStudents() {
           <table className="w-full text-left text-[12.5px]">
             <thead>
               <tr className="border-b border-line text-[11px] font-semibold text-ink-mute">
-                {['#', 'Student', 'Branch', 'Batch', 'CGPA', 'Readiness', 'Resume', 'DSA', 'Solved', 'Profile', 'Score'].map((h) => <th key={h} className="px-2 py-2">{h}</th>)}
+                {['#', 'Student', 'Roll no.', ...(isSuperAdmin ? ['College'] : []), 'Branch', 'Batch', 'CGPA', 'Readiness', 'Resume', 'DSA', 'Solved', 'Profile', 'Score'].map((h) => <th key={h} className="px-2 py-2">{h}</th>)}
               </tr>
             </thead>
             <tbody>
@@ -274,6 +330,8 @@ export function AdminStudents() {
                       </span>
                     </span>
                   </td>
+                  <td className="figure px-2 py-2.5 text-ink-soft">{r.profile.roll_number || 'n/a'}</td>
+                  {isSuperAdmin && <td className="px-2 py-2.5 text-ink-soft">{orgName(r.profile.org_id)}</td>}
                   <td className="px-2 py-2.5 text-ink-soft">{r.profile.branch || 'n/a'}</td>
                   <td className="px-2 py-2.5 text-ink-soft">{r.profile.batch || 'n/a'}</td>
                   <td className="px-2 py-2.5 tabular-nums">{r.profile.cgpa || 'n/a'}</td>
@@ -290,7 +348,7 @@ export function AdminStudents() {
           {!shown.length && (loading ? <RowsSkeleton rows={8} /> : <p className="py-8 text-center text-[12px] text-ink-faint">No students match.</p>)}
         </div>
       </Card>
-      <AnimatePresence>{open && <StudentDrawer row={open} jobs={jobs} applications={applications} onClose={() => setOpen(null)} />}</AnimatePresence>
+      <AnimatePresence>{open && <StudentDrawer row={open} jobs={jobs} applications={applications} orgName={orgs.find((o) => o.id === open.profile.org_id)?.name} onClose={() => setOpen(null)} />}</AnimatePresence>
     </Page>
   )
 }
@@ -305,6 +363,11 @@ const emptyJob = {
 
 function JobForm({ initial, onDone }: { initial?: JobPosting; onDone: () => void }) {
   const { session } = useAuth()
+  const { orgs } = useAdminOrgs()
+  const [orgId, setOrgId] = useState<string>(initial?.org_id ?? '')
+  useEffect(() => {
+    if (!orgId && orgs.length) setOrgId(orgs[0].id)
+  }, [orgs, orgId])
   const { showToast } = useApp()
   const [f, setF] = useState(() =>
     initial
@@ -324,6 +387,7 @@ function JobForm({ initial, onDone }: { initial?: JobPosting; onDone: () => void
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
+    if (!orgId) return showToast('Choose the college this drive is for.')
     if (!f.company.trim() || !f.role.trim()) return showToast('Company and role are required.')
     if (f.description.trim().length < 80) return showToast('Paste the full job description (at least a few lines). Students are matched against it.')
     setBusy(true)
@@ -334,6 +398,7 @@ function JobForm({ initial, onDone }: { initial?: JobPosting; onDone: () => void
       min_class_xii: Number(f.min_class_xii) || 0, min_internships: Number(f.min_internships) || 0, min_projects: Number(f.min_projects) || 0,
       branches: list(f.branches), batches: list(f.batches), deadline: f.deadline || null, status: f.status,
       skill_requirements: Object.fromEntries(Object.entries(f.skills).filter(([, v]) => v > 0)),
+      org_id: orgId,
     }
     const { error } = initial
       ? await supabase.from('job_postings').update(row).eq('id', initial.id)
@@ -353,6 +418,14 @@ function JobForm({ initial, onDone }: { initial?: JobPosting; onDone: () => void
 
   return (
     <form onSubmit={submit} className="space-y-4">
+      {orgs.length > 1 && (
+        <label className="block max-w-[420px]">
+          <span className="text-[11.5px] font-medium text-ink-mute">College</span>
+          <select className="field mt-1" value={orgId} onChange={(e) => setOrgId(e.target.value)}>
+            {orgs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}
+          </select>
+        </label>
+      )}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {input('company', 'Company')}
         {input('role', 'Role')}
@@ -426,7 +499,7 @@ export function AdminJobs() {
         })
         .sort((x, y) => (y.ev?.match ?? 0) + (y.a.ai_fit ?? 0) * 0.5 - ((x.ev?.match ?? 0) + (x.a.ai_fit ?? 0) * 0.5))
     : []
-  const eligibleNotApplied = selected ? rows.filter((r) => !applications.some((a) => a.job_id === selected.id && a.user_id === r.profile.id) && evaluateJob(selected, r.profile).eligibleToApply).length : 0
+  const eligibleNotApplied = selected ? rows.filter((r) => r.profile.org_id === selected.org_id).filter((r) => !applications.some((a) => a.job_id === selected.id && a.user_id === r.profile.id) && evaluateJob(selected, r.profile).eligibleToApply).length : 0
 
   const setStatus = async (a: JobApplication, status: JobStatus) => {
     const { error } = await supabase.from('job_applications').update({ status }).eq('job_id', a.job_id).eq('user_id', a.user_id)
@@ -527,49 +600,6 @@ export function AdminJobs() {
           )}
         </div>
       )}
-    </Page>
-  )
-}
-
-/* ================================================================ admins */
-export function AdminTeam() {
-  const { isAdmin, session } = useAuth()
-  const { showToast } = useApp()
-  const { rows, reload } = useStudents()
-  const [email, setEmail] = useState('')
-  if (!isAdmin) return <Denied />
-  const admins = rows.filter((r) => r.isAdmin)
-  const change = async (target: string, make: boolean) => {
-    const { error } = make
-      ? await supabase.rpc('set_admin', { target_email: target, make_admin: true })
-      : await supabase.rpc('remove_admin', { target })
-    if (error) return showToast(errMsg(error))
-    showToast(make ? `${target} is now an admin.` : 'Admin access removed.')
-    setEmail('')
-    reload()
-  }
-  return (
-    <Page title="Admins" subtitle="Placement-cell members who can post drives, see every student and update application status.">
-      <Card title="Add an admin">
-        <form onSubmit={(e) => { e.preventDefault(); if (email.trim()) change(email.trim(), true) }} className="flex flex-col gap-2 sm:flex-row">
-          <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Their PlacementIQ sign-in email" className="field" type="email" />
-          <button className="btn-primary shrink-0">Grant admin</button>
-        </form>
-        <p className="mt-2 text-[11.5px] text-ink-faint">They must have signed up first. The database enforces admin access.</p>
-      </Card>
-      <Card title={`Current admins (${admins.length})`}>
-        <div className="divide-y divide-line">
-          {admins.map((r) => (
-            <div key={r.profile.id} className="flex items-center gap-3 py-2.5">
-              <Avatar src={r.profile.avatar_url ?? undefined} name={r.profile.full_name || r.profile.email} size={30} />
-              <span className="min-w-0 flex-1 text-[13px] font-semibold text-ink">{r.profile.full_name || r.profile.email}<span className="block truncate font-normal text-ink-faint sm:ml-2 sm:inline">{r.profile.email}</span></span>
-              {r.profile.id !== session?.user.id && (
-                <button onClick={() => change(r.profile.id, false)} className="text-[11.5px] font-medium text-[#9C3526] hover:underline">Remove</button>
-              )}
-            </div>
-          ))}
-        </div>
-      </Card>
     </Page>
   )
 }

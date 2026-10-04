@@ -9,6 +9,8 @@ type AuthCtx = {
   recovering: boolean
   profile: Profile | null
   isAdmin: boolean
+  isSuperAdmin: boolean
+  adminOrgIds: string[]
   profileError: string | null
   refreshProfile: () => Promise<void>
   updateProfile: (patch: ProfilePatch) => Promise<void>
@@ -24,7 +26,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [recovering, setRecovering] = useState(false)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [profileError, setProfileError] = useState<string | null>(null)
-  const [isAdmin, setIsAdmin] = useState(false)
+  const [roles, setRoles] = useState<{ role: string; org_id: string | null }[]>([])
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
@@ -47,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     const [base, role, ...rel] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', userId).maybeSingle(),
-      supabase.from('user_roles').select('role').eq('user_id', userId).maybeSingle(),
+      supabase.from('user_roles').select('role,org_id').eq('user_id', userId),
       ...Object.entries(RELATED).map(([table, q]) => {
         const [col, dir] = q.order.split('.')
         let query = supabase.from(table).select(q.select).order(col, { ascending: dir !== 'desc' })
@@ -65,7 +67,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return
     }
     setProfileError(null)
-    setIsAdmin(role.data?.role === 'admin')
+    setRoles((role.data ?? []) as { role: string; org_id: string | null }[])
     const rows = Object.fromEntries(Object.keys(RELATED).map((t, i) => [t, rel[i].data ?? []])) as RelatedRows
     setProfile(assembleProfile(base.data, rows))
   }, [userId])
@@ -94,6 +96,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [userId, refreshProfile],
   )
 
+  const isSuperAdmin = roles.some((r) => r.role === 'super_admin')
+  const adminOrgIds = useMemo(() => roles.filter((r) => r.role === 'org_admin' && r.org_id).map((r) => r.org_id as string), [roles])
+  const isAdmin = isSuperAdmin || adminOrgIds.length > 0
+
   const value = useMemo<AuthCtx>(
     () => ({
       session,
@@ -101,6 +107,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       recovering,
       profile,
       isAdmin,
+      isSuperAdmin,
+      adminOrgIds,
       profileError,
       refreshProfile,
       updateProfile,
@@ -110,7 +118,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       clearRecovery: () => setRecovering(false),
     }),
-    [session, loading, recovering, profile, isAdmin, profileError, refreshProfile, updateProfile],
+    [session, loading, recovering, profile, isAdmin, isSuperAdmin, adminOrgIds, profileError, refreshProfile, updateProfile],
   )
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>

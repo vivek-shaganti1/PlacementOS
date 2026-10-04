@@ -21,12 +21,20 @@ const groups: Group[] = [
 
 const adminGroup: Group = {
   label: 'Placement cell',
-  items: [{ to: '/admin', label: 'Overview' }, { to: '/admin/students', label: 'Students' }, { to: '/admin/jobs', label: 'Job postings' }, { to: '/admin/team', label: 'Admins' }],
+  items: [
+    { to: '/admin', label: 'Overview' },
+    { to: '/admin/students', label: 'Students' },
+    { to: '/admin/roster', label: 'Roster' },
+    { to: '/admin/jobs', label: 'Job postings' },
+    { to: '/admin/team', label: 'Admins' },
+  ],
 }
 
+const superGroup: Group = { label: 'Platform', items: [{ to: '/super/orgs', label: 'Organizations' }] }
+
 export default function Sidebar({ open, onChat, mobile, onClose }: { open: boolean; onChat: () => void; mobile?: boolean; onClose?: () => void }) {
-  const { isAdmin } = useAuth()
-  const visible = isAdmin ? [adminGroup, ...groups] : groups
+  const { isAdmin, isSuperAdmin } = useAuth()
+  const visible = [...(isSuperAdmin ? [superGroup] : []), ...(isAdmin ? [adminGroup] : []), ...groups]
 
   const panel = (
     <div className={`flex flex-col border-rule bg-surface ${mobile ? 'h-full w-[min(300px,86vw)] border' : 'h-full w-[232px] border-r'}`}>
