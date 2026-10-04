@@ -106,7 +106,7 @@ export default function CompanyPanel({ company, onClose, overlay }: { company: C
         </div>
       </div>
 
-      <div className="sticky top-0 z-10 flex shrink-0 gap-5 overflow-x-auto whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden border-b border-line bg-surface-2 px-4 backdrop-blur-xl sm:gap-6 sm:px-6">
+      <div className="sticky top-0 z-10 flex shrink-0 gap-5 overflow-x-auto whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden border-b border-line bg-surface px-4 sm:gap-6 sm:px-6">
         {TABS.map((t) => {
           const label = t === 'Alumni' ? `Alumni (${company.alumni.length})` : t
           const active = tab === t
