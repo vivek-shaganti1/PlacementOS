@@ -93,6 +93,11 @@ export function AdminRoster() {
 
   const submit = async (people: ReturnType<typeof parseRoster>, send: boolean) => {
     if (!people.length || !orgId) return
+    const domains = org?.email_domains ?? []
+    const outside = domains.length ? people.filter((p) => !domains.includes(p.email.split('@')[1])) : []
+    if (outside.length) return showToast(`Only ${domains.map((d) => '@' + d).join(', ')} emails can be added. Check: ${outside.slice(0, 3).map((p) => p.email).join(', ')}`)
+    if (org?.seat_limit != null && rows.length + people.filter((p) => !rows.some((r) => r.email === p.email)).length > org.seat_limit)
+      return showToast(`This adds more students than your ${org.seat_limit} seats. Contact the platform admin to raise the limit.`)
     setBusy(true)
     try {
       const { results } = await callApi<{ results: InviteResult[] }>('admin', { action: 'invite', org_id: orgId, role: 'student', people, send })
@@ -109,7 +114,7 @@ export function AdminRoster() {
   }
 
   const remove = async (r: RosterRow) => {
-    if (!window.confirm(`Remove ${r.email} from the roster? Their account, if any, is not deleted.`)) return
+    if (!window.confirm(`Remove ${r.email} from the roster? They lose access to PlacementIQ; their account is not deleted.`)) return
     const { error } = await supabase.from('org_students').delete().eq('id', r.id)
     if (error) return showToast(error.message)
     load()
@@ -119,12 +124,12 @@ export function AdminRoster() {
   const joined = rows.filter((r) => r.user_id).length
 
   return (
-    <Page title="Student roster" subtitle="Official student records for your college. Students who sign up with a listed email are linked to their record automatically." wide actions={picker}>
+    <Page title="Student roster" subtitle="Only students on this list can use PlacementIQ. Add their college email; they get an invite and are linked to your college when they sign in." wide actions={picker}>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="On roster" value={`${rows.length}`} />
         <Stat label="Joined PlacementIQ" value={`${joined}`} />
         <Stat label="Invited, not joined" value={`${rows.filter((r) => r.invited_at && !r.user_id).length}`} />
-        <Stat label="Email domains" value={`${org?.email_domains.length ?? 0}`} sub={org?.email_domains.join(', ') || 'None set'} />
+        <Stat label="Seats" value={`${rows.length} / ${org?.seat_limit ?? '∞'}`} sub={org?.email_domains.length ? `Only ${org.email_domains.map((d) => '@' + d).join(', ')} emails` : 'Any email allowed'} />
       </div>
 
       <Card title="Add one student">
@@ -284,58 +289,115 @@ export function AdminTeam() {
 }
 
 /* ================================================================ super admin: organizations */
-const blankOrg = { name: '', short_name: '', official_code: '', city: '', email_domains: '', admin_emails: '' }
+type Usage = {
+  org_id: string; rostered: number; joined: number; onboarded: number; active_7d: number; active_30d: number; last_active: string | null
+  storage_bytes: number; resumes: number; resume_analyses: number; jd_matches: number; ai_messages: number; coding_profiles: number
+  drives: number; applications: number; admins: number
+}
+
+const blankOrg = {
+  name: '', short_name: '', official_code: '', city: '', admin_emails: '', email_domains: '',
+  plan: 'trial', seat_limit: '', price_per_seat: '0', billing_cycle: 'yearly', renews_on: '', notes: '',
+}
+
+const bytes = (n: number) => (n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(1)} KB` : n < 1073741824 ? `${(n / 1048576).toFixed(1)} MB` : `${(n / 1073741824).toFixed(2)} GB`)
+const inr = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`
+const ago = (iso: string | null) => {
+  if (!iso) return 'never'
+  const m = Math.round((Date.now() - new Date(iso).getTime()) / 60000)
+  return m < 1 ? "just now" : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.round(m / 60)} h ago` : `${Math.round(m / 1440)} d ago`
+}
+/** Billable seats: the seat limit when set, otherwise the students actually on the roster. */
+const seatsOf = (o: Organization, u?: Usage) => o.seat_limit ?? u?.rostered ?? 0
+const yearly = (o: Organization, u?: Usage) => seatsOf(o, u) * Number(o.price_per_seat) * (o.billing_cycle === 'monthly' ? 12 : 1)
 
 export function SuperOrgs() {
   const { isSuperAdmin } = useAuth()
   const { showToast } = useApp()
   const navigate = useNavigate()
   const { orgs, loading, reload } = useAdminOrgs()
-  const [counts, setCounts] = useState<Record<string, { students: number; roster: number; jobs: number }>>({})
+  const [usage, setUsage] = useState<Record<string, Usage>>({})
   const [editing, setEditing] = useState<Organization | null>(null)
   const [f, setF] = useState(blankOrg)
   const [busy, setBusy] = useState(false)
+  const [results, setResults] = useState<InviteResult[]>([])
 
+  const loadUsage = useCallback(async () => {
+    const { data, error } = await supabase.rpc('org_usage')
+    if (error) return showToast(errMsg(error))
+    setUsage(Object.fromEntries(((data ?? []) as Usage[]).map((u) => [u.org_id, u])))
+  }, [showToast])
   useEffect(() => {
-    if (!orgs.length) return
-    Promise.all([
-      supabase.from('profiles').select('org_id'),
-      supabase.from('org_students').select('org_id'),
-      supabase.from('job_postings').select('org_id'),
-    ]).then(([p, r, j]) => {
-      const c: Record<string, { students: number; roster: number; jobs: number }> = {}
-      for (const o of orgs) c[o.id] = { students: 0, roster: 0, jobs: 0 }
-      for (const x of p.data ?? []) if (x.org_id && c[x.org_id]) c[x.org_id].students++
-      for (const x of r.data ?? []) if (c[x.org_id]) c[x.org_id].roster++
-      for (const x of j.data ?? []) if (x.org_id && c[x.org_id]) c[x.org_id].jobs++
-      setCounts(c)
-    })
-  }, [orgs])
+    if (isSuperAdmin) loadUsage()
+  }, [isSuperAdmin, loadUsage, orgs])
+
+  const totals = useMemo(() => {
+    const us = Object.values(usage)
+    return {
+      students: us.reduce((a, u) => a + u.joined, 0),
+      rostered: us.reduce((a, u) => a + u.rostered, 0),
+      active: us.reduce((a, u) => a + u.active_30d, 0),
+      storage: us.reduce((a, u) => a + u.storage_bytes, 0),
+      revenue: orgs.reduce((a, o) => a + yearly(o, usage[o.id]), 0),
+    }
+  }, [usage, orgs])
 
   const startEdit = (o: Organization | null) => {
     setEditing(o)
-    setF(o ? { name: o.name, short_name: o.short_name, official_code: o.official_code ?? '', city: o.city, email_domains: o.email_domains.join(', '), admin_emails: o.admin_emails.join(', ') } : blankOrg)
+    setResults([])
+    setF(
+      o
+        ? {
+            name: o.name, short_name: o.short_name, official_code: o.official_code ?? '', city: o.city, admin_emails: o.admin_emails.join(', '),
+            email_domains: o.email_domains.join(', '), plan: o.plan, seat_limit: o.seat_limit == null ? '' : String(o.seat_limit),
+            price_per_seat: String(o.price_per_seat), billing_cycle: o.billing_cycle, renews_on: o.renews_on ?? '', notes: o.notes,
+          }
+        : blankOrg,
+    )
+    if (o) window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const save = async (e: FormEvent) => {
     e.preventDefault()
-    const list = (v: string) => v.split(/[,\s]+/).map((x) => x.trim()).filter(Boolean)
-    const domains = list(f.email_domains).map((d) => d.replace(/^@/, '').toLowerCase())
-    if (f.name.trim().length < 2) return showToast('Enter the organization name.')
-    if (!domains.length) return showToast('Add at least one official email domain, for example anurag.edu.in.')
+    const list = (v: string) => v.split(/[,\s]+/).map((x) => x.trim().toLowerCase()).filter(Boolean)
+    const admins = list(f.admin_emails)
+    const domains = list(f.email_domains).map((d) => d.replace(/^@/, ''))
+    if (f.name.trim().length < 2) return showToast('Enter the college name.')
+    if (!admins.length) return showToast('Add at least one admin login email for the college, for example admin1@gmail.com.')
+    if (admins.some((x) => !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x))) return showToast('Admin emails must be valid email addresses.')
     if (domains.some((d) => !/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(d))) return showToast('Email domains must look like college.edu.in')
-    const row = { name: f.name.trim(), short_name: f.short_name.trim(), official_code: f.official_code.trim() || null, city: f.city.trim(), email_domains: domains, admin_emails: list(f.admin_emails).map((x) => x.toLowerCase()) }
+    const row = {
+      name: f.name.trim(), short_name: f.short_name.trim(), official_code: f.official_code.trim() || null, city: f.city.trim(),
+      admin_emails: admins, email_domains: domains, plan: f.plan, seat_limit: f.seat_limit === '' ? null : Math.max(0, Number(f.seat_limit)),
+      price_per_seat: Math.max(0, Number(f.price_per_seat) || 0), billing_cycle: f.billing_cycle, renews_on: f.renews_on || null, notes: f.notes.trim(),
+    }
     setBusy(true)
-    const { error } = editing ? await supabase.from('organizations').update(row).eq('id', editing.id) : await supabase.from('organizations').insert(row)
+    const res = editing
+      ? await supabase.from('organizations').update(row).eq('id', editing.id).select('id').single()
+      : await supabase.from('organizations').insert(row).select('id').single()
+    if (res.error) {
+      setBusy(false)
+      return showToast(res.error.message.includes('official_code') ? 'Another college already uses that official code.' : res.error.message)
+    }
+    // Send login invites to admin emails that are new for this college.
+    const fresh = admins.filter((x) => !editing?.admin_emails.includes(x))
+    if (fresh.length) {
+      try {
+        const { results } = await callApi<{ results: InviteResult[] }>('admin', { action: 'invite', org_id: res.data.id, role: 'org_admin', people: fresh.map((email) => ({ email })) })
+        setResults(results)
+      } catch (err) {
+        showToast(`College saved, but invites failed: ${errMsg(err)}`)
+      }
+    }
     setBusy(false)
-    if (error) return showToast(error.message.includes('official_code') ? 'Another organization already uses that official code.' : error.message)
-    showToast(editing ? 'Organization updated.' : 'Organization created. Matching accounts were attached automatically.')
-    startEdit(null)
+    showToast(editing ? 'College updated.' : 'College created. Its admins can now sign in and add student emails.')
+    setEditing(null)
+    setF(blankOrg)
     reload()
   }
 
   const remove = async (o: Organization) => {
-    if (!window.confirm(`Delete ${o.name}? Its roster, drives and admin roles are removed. Student accounts stay but are detached.`)) return
+    if (!window.confirm(`Delete ${o.name}? Its roster, drives and admin roles are removed, and its students lose access.`)) return
     const { error } = await supabase.from('organizations').delete().eq('id', o.id)
     if (error) return showToast(error.message)
     reload()
@@ -343,62 +405,126 @@ export function SuperOrgs() {
 
   if (!isSuperAdmin) return <Denied what="Organizations" />
 
+  const input = (k: keyof typeof blankOrg, label: string, ph: string, type = 'text') => (
+    <label key={k} className="block">
+      <span className="text-[11.5px] font-medium text-ink-mute">{label}</span>
+      <input type={type} value={f[k]} onChange={(e) => setF({ ...f, [k]: e.target.value })} placeholder={ph} className="field mt-1" />
+    </label>
+  )
+
   return (
-    <Page title="Organizations" subtitle="Colleges on PlacementIQ. Students are attached by their official email domain; each college's admins see only their own students." wide>
-      <Card title={editing ? `Edit ${editing.name}` : 'Add an organization'}>
-        <form onSubmit={save} className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {([
-            ['name', 'Name', 'Anurag University'],
-            ['short_name', 'Short name', 'Anurag'],
-            ['official_code', 'Official college code', 'e.g. AICTE or university code'],
-            ['city', 'City', 'Hyderabad'],
-            ['email_domains', 'Official email domains', 'anurag.edu.in'],
-            ['admin_emails', 'Admin emails', 'admin@anurag.edu.in'],
-          ] as const).map(([k, label, ph]) => (
-            <label key={k} className="block">
-              <span className="text-[11.5px] font-medium text-ink-mute">{label}</span>
-              <input value={f[k]} onChange={(e) => setF({ ...f, [k]: e.target.value })} placeholder={ph} className="field mt-1" />
+    <Page title="Organizations" subtitle="Every college on PlacementIQ: their admins, students, usage, storage and billing. Colleges add their own students' emails to give them access." wide>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+        <Stat label="Colleges" value={String(orgs.length)} sub={`${orgs.filter((o) => o.plan !== 'trial').length} paying`} />
+        <Stat label="Students joined" value={String(totals.students)} sub={`${totals.rostered} on rosters`} />
+        <Stat label="Active, 30 days" value={String(totals.active)} sub="signed in recently" />
+        <Stat label="Storage used" value={bytes(totals.storage)} sub="resumes and photos" />
+        <Stat label="Contract value" value={inr(totals.revenue)} sub="per year" />
+      </div>
+
+      <Card title={editing ? `Edit ${editing.name}` : 'Add a college'}>
+        <form onSubmit={save} className="space-y-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {input('name', 'College name', 'Anurag University')}
+            {input('short_name', 'Short name', 'Anurag')}
+            {input('official_code', 'Official college code', 'e.g. AICTE or university code')}
+            {input('city', 'City', 'Hyderabad')}
+          </div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {input('admin_emails', 'Admin login emails (placement cell)', 'admin1@gmail.com, admin2@gmail.com')}
+            {input('email_domains', 'Student email domain (optional, checks roster emails)', 'anurag.edu.in')}
+          </div>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+            <label className="block">
+              <span className="text-[11.5px] font-medium text-ink-mute">Plan</span>
+              <select value={f.plan} onChange={(e) => setF({ ...f, plan: e.target.value })} className="field mt-1">
+                {['trial', 'basic', 'pro', 'enterprise'].map((x) => <option key={x} value={x}>{x[0].toUpperCase() + x.slice(1)}</option>)}
+              </select>
             </label>
-          ))}
-          <div className="flex gap-2 sm:col-span-2 lg:col-span-3">
-            <button disabled={busy} className="btn-primary">{editing ? 'Save changes' : 'Create organization'}</button>
+            {input('seat_limit', 'Student seats', 'unlimited', 'number')}
+            {input('price_per_seat', 'Price per seat (₹)', '0', 'number')}
+            <label className="block">
+              <span className="text-[11.5px] font-medium text-ink-mute">Billing</span>
+              <select value={f.billing_cycle} onChange={(e) => setF({ ...f, billing_cycle: e.target.value })} className="field mt-1">
+                <option value="yearly">Yearly</option>
+                <option value="monthly">Monthly</option>
+              </select>
+            </label>
+            {input('renews_on', 'Renews on', '', 'date')}
+          </div>
+          {input('notes', 'Notes', 'Contact person, payment terms…')}
+          <div className="flex gap-2">
+            <button disabled={busy} className="btn-primary">{busy ? 'Saving…' : editing ? 'Save changes' : 'Create college and invite admins'}</button>
             {editing && <button type="button" onClick={() => startEdit(null)} className="btn-glass">Cancel</button>}
           </div>
         </form>
-        <p className="mt-3 text-[12px] text-ink-mute">Separate multiple domains or emails with commas. Admin emails become placement-cell admins when they sign up; send invites from the Admins page.</p>
+        <p className="mt-3 text-[12px] text-ink-mute">
+          Admins sign in with these emails and only see their own college. Students get access only after the college adds their email on its Roster page.
+        </p>
+        <ResultList results={results} />
       </Card>
 
-      <Card title={`All organizations (${orgs.length})`}>
+      <Card title={`Colleges (${orgs.length})`}>
         {loading ? (
           <RowsSkeleton rows={3} />
+        ) : orgs.length === 0 ? (
+          <p className="py-6 text-center text-[13px] text-ink-faint">No colleges yet. Add the first one above.</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px] text-left text-[12.5px]">
+            <table className="w-full min-w-[1080px] text-left text-[12.5px]">
               <thead>
                 <tr className="border-b border-line text-[11px] font-semibold text-ink-mute">
-                  {['Organization', 'Code', 'Domains', 'Students', 'Roster', 'Drives', 'Admins', ''].map((h) => <th key={h} className="px-2 py-2">{h}</th>)}
+                  {['College', 'Admins', 'Students', 'Usage', 'Last active', 'Storage', 'Plan and pricing', ''].map((h) => <th key={h} className="px-2 py-2">{h}</th>)}
                 </tr>
               </thead>
               <tbody>
-                {orgs.map((o) => (
-                  <tr key={o.id} className="border-b border-line/70 align-top">
-                    <td className="px-2 py-2.5">
-                      <span className="block font-semibold text-ink">{o.name}</span>
-                      <span className="text-[11.5px] text-ink-mute">{o.city || 'n/a'}</span>
-                    </td>
-                    <td className="tabular-nums px-2 py-2.5">{o.official_code || 'n/a'}</td>
-                    <td className="px-2 py-2.5 text-ink-soft">{o.email_domains.join(', ') || 'n/a'}</td>
-                    <td className="tabular-nums px-2 py-2.5">{counts[o.id]?.students ?? '...'}</td>
-                    <td className="tabular-nums px-2 py-2.5">{counts[o.id]?.roster ?? '...'}</td>
-                    <td className="tabular-nums px-2 py-2.5">{counts[o.id]?.jobs ?? '...'}</td>
-                    <td className="px-2 py-2.5 text-ink-soft">{o.admin_emails.join(', ') || 'none'}</td>
-                    <td className="whitespace-nowrap px-2 py-2.5 text-right text-[12px]">
-                      <button onClick={() => navigate(`/admin/students?org=${o.id}`)} className="mr-3 font-semibold text-brand underline">Students</button>
-                      <button onClick={() => startEdit(o)} className="mr-3 text-ink-soft underline">Edit</button>
-                      <button onClick={() => remove(o)} className="text-[#d92d20] underline">Delete</button>
-                    </td>
-                  </tr>
-                ))}
+                {orgs.map((o) => {
+                  const u = usage[o.id]
+                  const full = o.seat_limit != null && (u?.rostered ?? 0) >= o.seat_limit
+                  return (
+                    <tr key={o.id} className="border-b border-line/70 align-top">
+                      <td className="px-2 py-2.5">
+                        <span className="block font-semibold text-ink">{o.name}</span>
+                        <span className="block text-[11.5px] text-ink-mute">{[o.official_code, o.city].filter(Boolean).join(' · ') || 'No code set'}</span>
+                      </td>
+                      <td className="px-2 py-2.5 text-ink-soft">
+                        {o.admin_emails.map((x) => <span key={x} className="block">{x}</span>)}
+                        <span className="text-[11px] text-ink-faint">{u ? `${u.admins} signed in` : ''}</span>
+                      </td>
+                      <td className="tabular-nums px-2 py-2.5">
+                        <span className="block font-semibold text-ink">{u?.joined ?? '…'} joined</span>
+                        <span className={`block text-[11.5px] ${full ? 'text-[#d92d20]' : 'text-ink-mute'}`}>{u?.rostered ?? '…'} / {o.seat_limit ?? '∞'} seats</span>
+                        <span className="block text-[11.5px] text-ink-mute">{u?.onboarded ?? '…'} onboarded</span>
+                      </td>
+                      <td className="tabular-nums px-2 py-2.5 text-[11.5px] text-ink-soft">
+                        {u ? (
+                          <>
+                            <span className="block">{u.active_7d} active this week · {u.active_30d} this month</span>
+                            <span className="block">{u.resume_analyses} resume scans · {u.jd_matches} JD matches</span>
+                            <span className="block">{u.ai_messages} AI messages · {u.coding_profiles} coding profiles</span>
+                            <span className="block">{u.drives} drives · {u.applications} applications</span>
+                          </>
+                        ) : '…'}
+                      </td>
+                      <td className="px-2 py-2.5 text-ink-soft">{u ? ago(u.last_active) : '…'}</td>
+                      <td className="tabular-nums px-2 py-2.5 text-ink-soft">
+                        {u ? bytes(u.storage_bytes) : '…'}
+                        {u && <span className="block text-[11px] text-ink-faint">{u.resumes} resumes</span>}
+                      </td>
+                      <td className="px-2 py-2.5">
+                        <span className="block font-semibold capitalize text-ink">{o.plan}</span>
+                        <span className="block text-[11.5px] text-ink-mute">{inr(Number(o.price_per_seat))} / seat / {o.billing_cycle === 'monthly' ? 'month' : 'year'}</span>
+                        <span className="block text-[11.5px] text-ink-mute">{inr(yearly(o, u))} per year</span>
+                        {o.renews_on && <span className="block text-[11px] text-ink-faint">Renews {o.renews_on}</span>}
+                      </td>
+                      <td className="whitespace-nowrap px-2 py-2.5 text-right text-[12px]">
+                        <button onClick={() => navigate(`/admin/students?org=${o.id}`)} className="mr-3 font-semibold text-brand underline">Students</button>
+                        <button onClick={() => startEdit(o)} className="mr-3 text-ink-soft underline">Edit</button>
+                        <button onClick={() => remove(o)} className="text-[#d92d20] underline">Delete</button>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>

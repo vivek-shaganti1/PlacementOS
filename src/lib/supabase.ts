@@ -132,5 +132,11 @@ export type Organization = {
   city: string
   email_domains: string[]
   admin_emails: string[]
+  plan: 'trial' | 'basic' | 'pro' | 'enterprise'
+  seat_limit: number | null
+  price_per_seat: number
+  billing_cycle: 'monthly' | 'yearly'
+  renews_on: string | null
+  notes: string
   created_at: string
 }

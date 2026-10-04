@@ -215,6 +215,25 @@ function Gate() {
       <Splash />
     )
 
+  // Students get in only after their college adds their email to its roster.
+  if (role === 'student' && !profile.org_id)
+    return (
+      <Centered>
+        <div className="card max-w-[460px] p-7 text-left">
+          <LogoMark size={40} />
+          <p className="mt-4 text-[17px] font-semibold text-ink">Waiting for your college</p>
+          <p className="mt-2 leading-relaxed">
+            <b className="text-ink">{session.user.email}</b> has not been added by a college yet. Ask your placement cell to add this email on their
+            PlacementIQ roster, then sign in again.
+          </p>
+          <div className="mt-5 flex gap-2">
+            <button onClick={() => window.location.reload()} className="btn-primary">Check again</button>
+            <button onClick={signOut} className="btn-glass">Sign out</button>
+          </div>
+        </div>
+      </Centered>
+    )
+
   // Only student accounts go through onboarding; admin accounts have no student profile to fill.
   if (role === 'student' && !profile.onboarded_at)
     return (

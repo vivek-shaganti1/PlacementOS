@@ -61,13 +61,14 @@ Animations respect `prefers-reduced-motion`. The logo is an SVG component in `sr
 
 There are three separate kinds of account, decided by the database (`user_roles`), never by the client:
 
-- **Platform admin** (`super_admin`): sees only the platform pages. Creates colleges (organizations) with their official
-  code, email domains and placement-cell admin emails, and manages other platform admins. Platform admin emails are listed
-  in `private.platform_admin_emails`; listed emails get the role when they sign up.
+- **Platform admin** (`super_admin`, e.g. superadmin@sparkv.si): sees only the platform pages. Creates colleges with their
+  official code, admin login emails (any address, e.g. admin1@gmail.com), plan, seats and price per seat, and sees each
+  college's students, activity, storage, AI usage and contract value (`public.org_usage()`). Platform admin emails are
+  listed in `private.platform_admin_emails`; listed emails get the role when they sign up.
 - **Placement cell** (`org_admin` of one college): sees only that college's students (profiles, resumes, repos,
   LeetCode/Codeforces/CodeChef stats), its roster, its drives and its admins.
-- **Student**: everyone else. Joins a college automatically by email domain or roster entry and sees only their own data
-  and their college's drives.
+- **Student**: gets access only when their college adds their email to its roster (e.g. 23eg105f59@anurag.edu.in).
+  Removing them from the roster removes access. Unlisted accounts see a "waiting for your college" screen.
 
 ## Supabase dashboard settings
 
