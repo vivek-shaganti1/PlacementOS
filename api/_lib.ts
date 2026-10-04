@@ -86,29 +86,52 @@ export async function saveProfile(token: string, id: string, patch: Record<strin
 
 type ChatMessage = { role: 'system' | 'user' | 'assistant'; content: string }
 
+/** Models tried in order. Each Groq model has its own per-minute token budget, so falling back on 429 multiplies capacity. */
+export const MODELS = [GROQ_MODEL, ...(env('GROQ_FALLBACK_MODELS') ?? 'openai/gpt-oss-20b,qwen/qwen3.8-27b').split(',').map((m) => m.trim())].filter(
+  (m, i, all) => m && all.indexOf(m) === i,
+)
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
+
 export async function groq(messages: ChatMessage[], opts: { json?: boolean; maxTokens?: number; temperature?: number } = {}) {
   const key = env('GROQ_API_KEY')
   if (!key) throw new HttpError(503, 'The AI is not configured (GROQ_API_KEY missing).')
-  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
-    body: JSON.stringify({
-      model: GROQ_MODEL,
-      temperature: opts.temperature ?? 0.4,
-      max_tokens: opts.maxTokens ?? 1200,
-      ...(GROQ_MODEL.startsWith('openai/gpt-oss') ? { reasoning_effort: 'low' } : {}),
-      ...(opts.json ? { response_format: { type: 'json_object' } } : {}),
-      messages,
-    }),
-  })
-  if (!res.ok) {
-    console.error('Groq error', res.status, (await res.text()).slice(0, 500))
-    throw new HttpError(502, res.status === 429 ? 'The AI is busy right now. Try again in a moment.' : 'The AI service returned an error.')
+  let lastStatus = 0
+  for (const model of MODELS) {
+    for (let attempt = 0; attempt < 2; attempt++) {
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
+        body: JSON.stringify({
+          model,
+          temperature: opts.temperature ?? 0.4,
+          max_tokens: opts.maxTokens ?? 1000,
+          ...(model.startsWith('openai/gpt-oss') ? { reasoning_effort: 'low' } : {}),
+          ...(opts.json ? { response_format: { type: 'json_object' } } : {}),
+          messages,
+        }),
+      })
+      if (res.ok) {
+        const data = (await res.json()) as { choices?: { message?: { content?: string } }[] }
+        // Some models wrap reasoning in <think> tags; never show that to users.
+        const content = data.choices?.[0]?.message?.content?.replace(/<think>[\s\S]*?<\/think>/g, '').trim()
+        if (content) return content
+        lastStatus = 502
+        break
+      }
+      lastStatus = res.status
+      const detail = (await res.text()).slice(0, 300)
+      console.error('Groq error', model, res.status, detail)
+      // Rate limited: wait briefly if the reset is imminent, otherwise move to the next model.
+      const wait = Number(res.headers.get('retry-after') ?? '0')
+      if (res.status === 429 && attempt === 0 && wait > 0 && wait <= 3) {
+        await sleep(wait * 1000)
+        continue
+      }
+      break
+    }
   }
-  const data = (await res.json()) as { choices?: { message?: { content?: string } }[] }
-  const content = data.choices?.[0]?.message?.content?.trim()
-  if (!content) throw new HttpError(502, 'The AI returned an empty answer.')
-  return content
+  throw new HttpError(502, lastStatus === 429 ? 'The AI is at its usage limit right now. Try again in a minute.' : 'The AI service returned an error.')
 }
 
 export function parseJson<T>(text: string): T {

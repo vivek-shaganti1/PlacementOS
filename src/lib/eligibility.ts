@@ -85,8 +85,8 @@ export function requirementsFor(c: Pick<CompanyBase, 'name'>): { category: Categ
 
 const levelOf = (p: StudentLike, name: string) => p.skills.find((s) => s.name === name)?.level ?? 0
 
-export function evaluate(base: CompanyBase, p: StudentLike): Company {
-  const { category, requirements: r } = requirementsFor(base)
+export function evaluate(base: CompanyBase, p: StudentLike, override?: { category: Category; requirements: Requirements }): Company {
+  const { category, requirements: r } = override ?? requirementsFor(base)
   const projects = Math.max(p.projects.length, Math.min(6, p.integrations?.github?.original_repos ?? 0))
   const internships = p.internships.length
 
@@ -153,4 +153,72 @@ export const TARGET_CATEGORIES: Category[] = ['top', 'product', 'startup', 'fint
 export function readinessOf(companies: Company[]) {
   const target = companies.filter((c) => TARGET_CATEGORIES.includes(c.category))
   return Math.round(target.reduce((a, c) => a + c.match, 0) / Math.max(1, target.length))
+}
+
+/* ---------------------------------------------------------------- college job postings */
+
+export type JobPosting = {
+  id: string
+  company: string
+  role: string
+  location: string
+  job_type: string
+  ctc_min: number | null
+  ctc_max: number | null
+  description: string
+  min_cgpa: number
+  max_backlogs: number
+  min_class_x: number
+  min_class_xii: number
+  min_internships: number
+  min_projects: number
+  branches: string[]
+  batches: string[]
+  skill_requirements: Record<string, number>
+  deadline: string | null
+  status: 'draft' | 'open' | 'closed'
+  created_at: string
+}
+
+// Common branch spellings, so "CSE" on a job matches "Computer Science & Engineering" on a profile.
+const BRANCH_ALIASES: [string, RegExp][] = [
+  ['CSE', /\b(cse|computer science|cs)\b/i],
+  ['IT', /\b(it|information technology)\b/i],
+  ['AIML', /\b(aiml|ai ?& ?ml|ai ?\/ ?ml|artificial intelligence|machine learning)\b/i],
+  ['DS', /\b(ds|data science)\b/i],
+  ['ECE', /\b(ece|electronics( and| &)? communication)\b/i],
+  ['EEE', /\b(eee|electrical)\b/i],
+  ['MECH', /\b(mech|mechanical)\b/i],
+  ['CIVIL', /\b(civil)\b/i],
+]
+const branchCodes = (s: string) => {
+  const codes = BRANCH_ALIASES.filter(([, re]) => re.test(s)).map(([c]) => c)
+  return codes.length ? codes : [s.trim().toUpperCase()]
+}
+export const branchMatches = (jobBranches: string[], branch: string) =>
+  !jobBranches.length || (!!branch && jobBranches.some((b) => branchCodes(b).some((c) => branchCodes(branch).includes(c))))
+
+/** Scores a student against one posted job. Branch and batch are hard requirements. */
+export function evaluateJob(job: JobPosting, p: StudentLike & { branch?: string; batch?: string }) {
+  const base: CompanyBase = {
+    id: job.id, name: job.company, role: job.role, brand: '#6d4aff', ctcAvg: Number(job.ctc_max ?? job.ctc_min ?? 0),
+    ctcMin: Number(job.ctc_min ?? 0), ctcMax: Number(job.ctc_max ?? 0), location: job.location, jobType: job.job_type,
+    tenure: '', batches: job.batches.join(', '), about: '', careers: '', process: [], stats: [], alumni: [],
+  }
+  const requirements: Requirements = {
+    minCgpa: Number(job.min_cgpa), maxBacklogs: job.max_backlogs, minClassX: Number(job.min_class_x), minClassXII: Number(job.min_class_xii),
+    minInternships: job.min_internships, minProjects: job.min_projects,
+    skills: Object.fromEntries(SKILLS.map((s) => [s, Number(job.skill_requirements?.[s] ?? 0)])),
+  }
+  const result = evaluate(base, p, { category: requirementsFor(base).category, requirements })
+  const branchOk = branchMatches(job.branches, p.branch ?? '')
+  const batchOk = !job.batches.length || job.batches.includes(String(p.batch ?? ''))
+  const criteria = [
+    ...(job.branches.length ? [{ label: 'Eligible branches', required: job.branches.join(', '), yours: p.branch || 'Not set', met: branchOk }] : []),
+    ...(job.batches.length ? [{ label: 'Batch', required: job.batches.join(', '), yours: p.batch || 'Not set', met: batchOk }] : []),
+    ...result.criteria.filter((c) => !(c.required === '0%' || c.required === '0 / 10' || (c.label === 'Projects' && job.min_projects === 0))),
+  ]
+  const academicCutoffs = ['Minimum CGPA', 'Active Backlogs', 'Class X Percentage', 'Class XII Percentage']
+  const hardFail = !branchOk || !batchOk || criteria.some((c) => academicCutoffs.includes(c.label) && !c.met)
+  return { ...result, criteria, bucket: hardFail ? ('notEligible' as const) : result.bucket, eligibleToApply: !hardFail }
 }

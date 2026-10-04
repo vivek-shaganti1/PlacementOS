@@ -10,7 +10,10 @@ type Msg = { role: 'user' | 'bot'; text: string }
 const bucketName: Record<string, string> = { eligible: 'Eligible', nearly: 'Nearly Eligible', canBecome: 'Can Become Eligible', notEligible: 'Not Eligible' }
 
 function systemPrompt(p: Record<string, any>) {
-  const companies = evaluateAll(p as StudentLike)
+  // Keep the prompt small (Groq budgets tokens per minute): the 12 best matches plus the 12 closest stretch targets.
+  const all = evaluateAll(p as StudentLike)
+  const stretch = all.filter((c) => c.bucket !== 'eligible').slice(0, 12)
+  const companies = [...all.filter((c) => c.bucket === 'eligible').slice(0, 12), ...stretch]
   const catalog = companies
     .map((c) => `${c.name} | ${bucketName[c.bucket]} ${c.match}% | CTC ₹${c.ctcAvg} LPA | gaps: ${c.gaps.slice(0, 3).map((g) => `${g.skill} ${g.have}->${g.need}`).join(', ') || 'none'}`)
     .join('\n')
@@ -40,7 +43,7 @@ Achievements: ${JSON.stringify((p.achievements ?? []).map((a: any) => a.title))}
 Coding profiles: ${coding.length ? coding.join(' | ') : 'none connected'}
 Resume: ${ra ? `score ${ra.overall}/100. ${ra.summary} Improvements: ${(ra.improvements ?? []).join('; ')}` : 'not analyzed yet'}
 
-COMPANIES (computed from this profile: name | stack and match | CTC | top gaps)
+COMPANIES — ${all.filter((c) => c.bucket === 'eligible').length} eligible of ${all.length} tracked; showing the strongest matches and the closest stretch targets (name | stack and match | CTC | top gaps)
 ${catalog}`
 }
 
@@ -51,8 +54,8 @@ export default handle(async (req) => {
   const body = (await req.json().catch(() => ({}))) as { messages?: Msg[] }
   const messages = (body.messages ?? [])
     .filter((m) => (m.role === 'user' || m.role === 'bot') && typeof m.text === 'string' && m.text.trim())
-    .slice(-20)
-    .map((m) => ({ role: m.role, text: m.text.slice(0, 2000) }))
+    .slice(-10)
+    .map((m) => ({ role: m.role, text: m.text.slice(0, 1500) }))
   if (!messages.length || messages[messages.length - 1].role !== 'user') throw new HttpError(400, 'No question provided')
 
   const profile = await loadStudent(token)
@@ -61,7 +64,7 @@ export default handle(async (req) => {
       { role: 'system', content: systemPrompt(profile) },
       ...messages.map((m) => ({ role: m.role === 'bot' ? ('assistant' as const) : ('user' as const), content: m.text })),
     ],
-    { maxTokens: 1200, temperature: 0.5 },
+    { maxTokens: 900, temperature: 0.5 },
   )
   // The chat UI shows plain text, so strip markdown emphasis and headings.
   const reply = content.replace(/\*\*(.+?)\*\*/g, '$1').replace(/^#{1,6}\s+/gm, '').trim()

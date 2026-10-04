@@ -7,7 +7,8 @@ import { completeness } from '../components/ProfileExtras'
 import { bucketMeta } from '../data/companies'
 import { useProfile } from '../lib/auth'
 import { useCompanies } from '../lib/companies'
-import { readinessOf } from '../lib/eligibility'
+import { evaluateJob, readinessOf } from '../lib/eligibility'
+import { ctcText, isOpen, STATUS_META, useJobs } from '../lib/jobs'
 import { shortDate, useHistory } from '../lib/history'
 import { useApp } from '../lib/store'
 
@@ -26,6 +27,12 @@ export default function Dashboard() {
   const prev = snapshots.length > 1 ? snapshots[snapshots.length - 2].readiness : null
   const weakest = [...student.skills].sort((a, b) => a.level - b.level).slice(0, 2)
   const first = (student.full_name || 'there').split(' ')[0]
+  const { jobs, applications } = useJobs()
+  const drives = jobs
+    .filter(isOpen)
+    .map((j) => ({ job: j, ev: evaluateJob(j, student), app: applications.find((a) => a.job_id === j.id && a.user_id === student.id) }))
+    .sort((a, b) => Number(b.ev.eligibleToApply) - Number(a.ev.eligibleToApply) || b.ev.match - a.ev.match)
+    .slice(0, 4)
 
   return (
     <Page title={`Welcome back, ${first}`} subtitle="Your placement readiness, computed live from your profile, resume and coding activity." wide>
@@ -56,11 +63,33 @@ export default function Dashboard() {
 
         <div className="grid grid-cols-2 gap-3">
           <Stat label="Eligible companies" value={`${counts[0].n}`} sub={`of ${companies.length} tracked`} tone="text-[#0d9a5b]" />
-          <Stat label="Applications" value={`${applied.length}`} sub={`${saved.length} shortlisted`} />
+          <Stat label="Applications" value={`${applications.filter((a) => a.user_id === student.id).length + applied.length}`} sub={`Campus drives + tracked · ${saved.length} shortlisted`} />
           <Stat label="Profile strength" value={`${strength}%`} sub="Completeness & verification" tone="text-brand-dark" />
           <Stat label="Roadmap tasks" value={`${roadmapDone.length}`} sub="completed so far" />
         </div>
       </div>
+
+      {drives.length > 0 && (
+        <Card title="Campus drives for you" action={<button onClick={() => navigate('/jobs')} className="text-[11.5px] font-semibold text-brand-dark hover:underline">All campus jobs →</button>}>
+          <div className="grid grid-cols-4 gap-3">
+            {drives.map(({ job, ev, app }) => (
+              <button key={job.id} onClick={() => navigate(`/jobs?job=${job.id}`)} className="rounded-[16px] border border-white/80 bg-white/70 p-3.5 text-left transition hover:-translate-y-0.5 hover:bg-white hover:shadow-[var(--shadow-2)]">
+                <p className="truncate text-[13.5px] font-semibold text-ink">{job.company}</p>
+                <p className="truncate text-[11.5px] text-ink-mute">{job.role}</p>
+                <p className="mt-1 text-[11px] text-ink-faint">{ctcText(job)}</p>
+                <p className="mt-2 flex items-center gap-2">
+                  <span className={`text-[14px] font-semibold ${bucketMeta[ev.bucket].text}`}>{ev.match}%</span>
+                  {app ? (
+                    <span className={`rounded-md border px-1.5 py-0.5 text-[10.5px] font-semibold ${STATUS_META[app.status].cls}`}>{STATUS_META[app.status].label}</span>
+                  ) : (
+                    <span className={`text-[11px] font-medium ${ev.eligibleToApply ? 'text-[#0d9a5b]' : 'text-[#d92d20]'}`}>{ev.eligibleToApply ? 'You can apply' : 'Not eligible'}</span>
+                  )}
+                </p>
+              </button>
+            ))}
+          </div>
+        </Card>
+      )}
 
       <div className="grid grid-cols-[1fr_1.6fr] gap-4">
         <Card title="Your stacks" action={<button onClick={() => navigate('/eligibility')} className="text-[11.5px] font-semibold text-brand-dark hover:underline">Open stacks →</button>}>

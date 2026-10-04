@@ -26,6 +26,8 @@ and Row Level Security on each one limits a student to their own rows.
 | `saved_companies`, `applications` | Shortlist and application pipeline (with stage) |
 | `progress_snapshots` | One row per day (readiness, stacks, skills, problems solved, resume score) for history charts |
 | `chat_messages`, `notifications` | Assistant history and in-app notifications |
+| `job_postings`, `job_applications` | Drives posted by the placement cell, and student applications with a status pipeline |
+| `user_roles` | Placement-cell admins (enforced in RLS through `private.is_admin()`) |
 | storage `resumes` (private), `avatars` (public) | Files under `<user id>/…` |
 
 The older jsonb columns on `profiles` (`skills`, `projects`, …) are deprecated and no longer read by the app.
@@ -37,9 +39,18 @@ The older jsonb columns on `profiles` (`skills`, `projects`, …) are deprecated
 | `POST /api/chat` | AI Career Assistant (Groq), grounded in the caller's profile and computed eligibility |
 | `POST /api/resume` | `analyze` a resume's extracted text, or `match` it against a job description |
 | `POST /api/connect` | Sync or disconnect GitHub, LeetCode, Codeforces or CodeChef |
+| `GET /api/health` | Which server settings are configured (booleans only); `?ping=1` also checks the Groq key |
 
 Each function requires a Supabase access token and reads/writes as that user, so RLS applies.
-Server-only environment variables: `GROQ_API_KEY`, `GROQ_MODEL` (default `openai/gpt-oss-120b`), optional `GITHUB_TOKEN`.
+Server-only environment variables: `GROQ_API_KEY`, `GROQ_MODEL` (default `openai/gpt-oss-120b`),
+`GROQ_FALLBACK_MODELS` (default `openai/gpt-oss-20b,qwen/qwen3.8-27b`, used when the primary model is rate limited), optional `GITHUB_TOKEN`.
+
+## Roles and flows
+
+- **Students** complete a 5-step onboarding (details, academics, resume, accounts, skills) before using the app.
+- **Admins** (placement cell) get an extra sidebar section: overview, ranked students (CSV export), job postings with
+  ranked applicants and status updates (students are notified automatically), and admin management.
+  Make someone an admin from Admin → Admins, or in SQL: `insert into public.user_roles (user_id, role) values ('<uuid>', 'admin');`
 
 ## Design
 

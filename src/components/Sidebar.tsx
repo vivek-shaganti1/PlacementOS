@@ -1,4 +1,5 @@
 import { motion } from 'motion/react'
+import { useAuth } from '../lib/auth'
 import { NavLink } from 'react-router-dom'
 import {
   IconAward, IconChart, IconCheckSquare, IconDashboard, IconDrives, IconFile, IconFileText,
@@ -35,7 +36,8 @@ const groups = [
   {
     label: 'Apply',
     items: [
-      { to: '/drives', label: 'Company Drives', Icon: IconDrives },
+      { to: '/jobs', label: 'Campus Jobs', Icon: IconDrives },
+      { to: '/drives', label: 'Company Insights', Icon: IconStacks },
       { to: '/applications', label: 'Applications', Icon: IconFile },
       { to: '/alumni', label: 'Alumni Network', Icon: IconUsers },
     ],
@@ -49,7 +51,19 @@ const groups = [
   },
 ]
 
+const adminGroup = {
+  label: 'Placement cell',
+  items: [
+    { to: '/admin', label: 'Admin overview', Icon: IconChart },
+    { to: '/admin/students', label: 'Students', Icon: IconUsers },
+    { to: '/admin/jobs', label: 'Job postings', Icon: IconFile },
+    { to: '/admin/team', label: 'Admins', Icon: IconSettings },
+  ],
+}
+
 export default function Sidebar({ open, onChat }: { open: boolean; onChat: () => void }) {
+  const { isAdmin } = useAuth()
+  const visible = isAdmin ? [adminGroup, ...groups] : groups
   return (
     <motion.aside
       initial={false}
@@ -59,11 +73,11 @@ export default function Sidebar({ open, onChat }: { open: boolean; onChat: () =>
     >
       <div className="glass m-3 mr-0 flex h-[calc(100%-24px)] w-[228px] flex-col rounded-[22px]">
         <nav className="scroll-thin flex-1 overflow-y-auto px-2.5 pb-2 pt-3" aria-label="Main">
-          {groups.map((g) => (
+          {visible.map((g) => (
             <div key={g.label} className="mb-2">
               <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-faint">{g.label}</p>
               {g.items.map(({ to, label, Icon }) => (
-                <NavLink key={to} to={to} className="relative mb-[2px] block rounded-[12px]">
+                <NavLink key={to} to={to} end={to === '/admin'} className="relative mb-[2px] block rounded-[12px]">
                   {({ isActive }) => (
                     <>
                       {isActive && (

@@ -22,7 +22,7 @@ export default function Drives() {
   }, [companies, q, filter, sort])
 
   return (
-    <Page title="Company Drives" subtitle={`${rows.length} drives match your current filters.`} wide>
+    <Page title="Company Insights" subtitle={`${rows.length} tracked companies scored against your profile. For drives posted by your college, see Campus Jobs.`} wide>
       <Card>
         <div className="flex flex-wrap items-center gap-2">
           <input

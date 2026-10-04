@@ -2,7 +2,7 @@
 // POST { action: 'analyze', text, file_name }  -> parses the extracted resume text, scores it, saves to profile
 // POST { action: 'match', jd }                 -> matches the saved resume against a job description
 import { SKILLS } from '../src/lib/eligibility'
-import { bearer, deleteRows, groq, handle, HttpError, insertRows, json, loadProfile, parseJson, saveProfile } from './_lib'
+import { bearer, deleteRows, groq, handle, HttpError, insertRows, json, loadProfile, parseJson, rest, saveProfile } from './_lib'
 
 export const config = { runtime: 'edge' }
 
@@ -125,7 +125,7 @@ RESUME:
 """
 ${text.slice(0, 14000)}
 """`
-  const ai = parseJson<AiAnalysis>(await groq([{ role: 'user', content: prompt }], { json: true, maxTokens: 3000, temperature: 0.2 }))
+  const ai = parseJson<AiAnalysis>(await groq([{ role: 'user', content: prompt }], { json: true, maxTokens: 2200, temperature: 0.2 }))
 
   const checks = m.checks.map((c) => ({ ...c, tip: String(ai.tips?.[c.label] ?? '').slice(0, 300) }))
   const avg = checks.reduce((a, c) => a + c.score, 0) / checks.length
@@ -184,7 +184,7 @@ RESUME:
 """
 ${resume.slice(0, 12000)}
 """`
-  const ai = parseJson<Record<string, unknown>>(await groq([{ role: 'user', content: prompt }], { json: true, maxTokens: 2200, temperature: 0.2 }))
+  const ai = parseJson<Record<string, unknown>>(await groq([{ role: 'user', content: prompt }], { json: true, maxTokens: 1500, temperature: 0.2 }))
   return {
     score: Math.round(jdTech.length ? 0.4 * overlap * 100 + 0.6 * clampScore(ai.fit) : clampScore(ai.fit)),
     verdict: String(ai.verdict ?? '').slice(0, 500),
@@ -201,7 +201,7 @@ ${resume.slice(0, 12000)}
 export default handle(async (req) => {
   if (req.method !== 'POST') throw new HttpError(405, 'Method not allowed')
   const token = bearer(req)
-  const body = (await req.json().catch(() => ({}))) as { action?: string; text?: string; file_name?: string; jd?: string }
+  const body = (await req.json().catch(() => ({}))) as { action?: string; text?: string; file_name?: string; jd?: string; job_id?: string }
   const profile = await loadProfile(token)
 
   if (body.action === 'analyze') {
@@ -217,13 +217,22 @@ export default handle(async (req) => {
   }
 
   if (body.action === 'match') {
-    const jd = String(body.jd ?? '').trim()
+    let jd = String(body.jd ?? '').trim()
+    let jobId: string | null = null
+    if (body.job_id) {
+      if (!/^[0-9a-f-]{36}$/i.test(body.job_id)) throw new HttpError(400, 'Invalid job')
+      const [job] = (await (await rest(token, `job_postings?id=eq.${body.job_id}&select=id,company,role,description,location`)).json()) as Record<string, string>[]
+      if (!job) throw new HttpError(404, 'Job not found')
+      jobId = job.id
+      jd = `${job.company} — ${job.role} (${job.location})\n\n${job.description}`.trim()
+    }
     if (jd.length < 80) throw new HttpError(422, 'Paste the full job description (at least a few lines).')
     if (!profile.resume_text) throw new HttpError(422, 'Upload and analyze your resume first.')
     const result = await match(profile.resume_text, jd)
     const { analyzed_at, ...row } = result
     void analyzed_at
-    await insertRows(token, 'jd_matches', { ...row, jd_text: jd.slice(0, 20000), user_id: profile.id })
+    await insertRows(token, 'jd_matches', { ...row, jd_text: jd.slice(0, 20000), user_id: profile.id, job_id: jobId })
+    if (jobId) await rest(token, `job_applications?job_id=eq.${jobId}&user_id=eq.${profile.id}`, { method: 'PATCH', body: JSON.stringify({ ai_fit: result.score }), headers: { prefer: 'return=minimal' } })
     return json({ match: result })
   }
 

@@ -27,6 +27,12 @@ import Help from './pages/Help'
 const Analytics = lazy(() => import('./pages/Analytics'))
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const SkillGap = lazy(() => import('./pages/SkillGap'))
+const Jobs = lazy(() => import('./pages/Jobs'))
+const Onboarding = lazy(() => import('./pages/Onboarding'))
+const AdminOverview = lazy(() => import('./pages/Admin').then((m) => ({ default: m.AdminOverview })))
+const AdminStudents = lazy(() => import('./pages/Admin').then((m) => ({ default: m.AdminStudents })))
+const AdminJobs = lazy(() => import('./pages/Admin').then((m) => ({ default: m.AdminJobs })))
+const AdminTeam = lazy(() => import('./pages/Admin').then((m) => ({ default: m.AdminTeam })))
 const ResumeAnalyzer = lazy(() => import('./pages/ResumeAnalyzer'))
 const Landing = lazy(() => import('./pages/Landing'))
 
@@ -82,6 +88,11 @@ function Shell() {
                     <Route path="/certifications" element={<Certifications />} />
                     <Route path="/settings" element={<Settings />} />
                     <Route path="/help" element={<Help />} />
+                    <Route path="/jobs" element={<Jobs />} />
+                    <Route path="/admin" element={<AdminOverview />} />
+                    <Route path="/admin/students" element={<AdminStudents />} />
+                    <Route path="/admin/jobs" element={<AdminJobs />} />
+                    <Route path="/admin/team" element={<AdminTeam />} />
                     <Route path="*" element={<Navigate to="/dashboard" replace />} />
                   </Routes>
                 </Suspense>
@@ -160,6 +171,13 @@ function Gate() {
       </Centered>
     ) : (
       <Splash />
+    )
+
+  if (!profile.onboarded_at)
+    return (
+      <Suspense fallback={<Splash />}>
+        <Onboarding />
+      </Suspense>
     )
 
   return (

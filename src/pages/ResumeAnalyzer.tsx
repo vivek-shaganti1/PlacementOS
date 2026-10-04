@@ -3,6 +3,7 @@ import { Card, Meter, Page, Ring, Stat } from '../components/Page'
 import { callApi } from '../lib/api'
 import { useAuth, useProfile } from '../lib/auth'
 import { extractResumeText } from '../lib/resumeText'
+import { resumeImports, uploadAndAnalyzeResume } from '../lib/resumeFlow'
 import { useApp } from '../lib/store'
 import { errMsg, supabase, type JdMatch, type ResumeAnalysis } from '../lib/supabase'
 
@@ -33,18 +34,9 @@ export default function ResumeAnalyzer() {
 
   const upload = async (file: File | undefined) => {
     if (!file || !session) return
-    if (file.size > 5 * 1024 * 1024) return showToast('Resume must be under 5 MB.')
-    if (!/\.(pdf|docx)$/i.test(file.name)) return showToast('Upload a PDF or DOCX file.')
     try {
-      setStep('Uploading…')
-      const safe = file.name.replace(/[^\w.\-]+/g, '_')
-      const path = `${session.user.id}/${Date.now()}-${safe}`
-      const { error } = await supabase.storage.from('resumes').upload(path, file, { contentType: file.type || 'application/pdf' })
-      if (error) throw error
-      const old = p.resume_path
-      await updateProfile({ resume_path: path, resume_name: file.name, resume_uploaded_at: new Date().toISOString() })
-      if (old) supabase.storage.from('resumes').remove([old])
-      await analyzeFile(file, file.name)
+      await uploadAndAnalyzeResume(file, session.user.id, p, updateProfile, setStep)
+      await refreshProfile()
       showToast('Resume analyzed.')
     } catch (e) {
       showToast(errMsg(e))
@@ -108,23 +100,11 @@ export default function ResumeAnalyzer() {
   }
 
   const importToProfile = async () => {
-    if (!a) return
-    const haveProjects = new Set(p.projects.map((x) => x.title.toLowerCase()))
-    const newProjects = a.extracted.projects
-      .filter((x) => !haveProjects.has(x.name.toLowerCase()))
-      .map((x) => ({ title: x.name, tech: x.tech, description: x.description, url: null, source: 'resume' as const }))
-    const haveOrgs = new Set(p.internships.map((i) => i.org.toLowerCase()))
-    const newInterns = a.extracted.internships.filter((i) => !haveOrgs.has(i.org.toLowerCase()))
-    const haveCerts = new Set(p.certifications.map((c) => c.name.toLowerCase()))
-    const newCerts = a.extracted.certifications.filter((c) => !haveCerts.has(c.toLowerCase())).map((name) => ({ name, issuer: '', date: '' }))
-    if (!newProjects.length && !newInterns.length && !newCerts.length) return showToast('Your profile already has everything from this resume.')
+    const patch = resumeImports(p)
+    if (!patch) return showToast('Your profile already has everything from this resume.')
     try {
-      await updateProfile({
-        projects: [...p.projects, ...newProjects],
-        internships: [...p.internships, ...newInterns],
-        certifications: [...p.certifications, ...newCerts],
-      })
-      showToast(`Imported ${newProjects.length} projects, ${newInterns.length} internships, ${newCerts.length} certifications.`)
+      await updateProfile(patch)
+      showToast('Imported projects, internships and certifications from your resume.')
     } catch (e) {
       showToast(errMsg(e))
     }

@@ -54,6 +54,7 @@ export type Profile = {
   resume_text: string | null
   resume_analysis: ResumeAnalysis | null
   jd_match: JdMatch | null
+  onboarded_at: string | null
 }
 
 export type GithubStats = {
