@@ -46,7 +46,8 @@ export function useStudents() {
     }
     const admins = new Set((roles.data ?? []).map((r) => r.user_id))
     const byUser = (i: number, uid: string) => ((related[i].data ?? []) as unknown as Record<string, any>[]).filter((r) => r.user_id === uid)
-    const built = (profiles.data ?? []).map((base) => {
+    // Only students who belong to a college are ranked; admin accounts are never students.
+    const built = (profiles.data ?? []).filter((base) => base.org_id && !admins.has(base.id)).map((base) => {
       const rel = Object.fromEntries(tables.map(([t], i) => [t, byUser(i, base.id)])) as RelatedRows
       const profile = assembleProfile(base, rel)
       const companies = evaluateAll(profile)

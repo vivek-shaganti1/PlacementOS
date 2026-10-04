@@ -1,0 +1,22 @@
+{
+  "name": "placementiq-film",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "capture": "node capture.mjs",
+    "studio": "remotion studio src/index.ts",
+    "render": "remotion render src/index.ts PlacementIQFilm out/placementiq-film.mp4"
+  },
+  "dependencies": {
+    "@remotion/cli": "^4.0.532",
+    "@remotion/google-fonts": "^4.0.532",
+    "playwright": "^1.57.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "remotion": "^4.0.532"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "typescript": "^5.6.3"
+  }
+}
