@@ -17,7 +17,7 @@ export default function Applications() {
 
   return (
     <Page title="Applications" subtitle="Everything you have applied to and shortlisted." wide>
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Applied" value={`${rows.length}`} />
         <Stat label="In progress" value={`${rows.length - offers}`} tone="text-[#d97706]" />
         <Stat label="Offers" value={`${offers}`} tone="text-[#0d9a5b]" />
@@ -36,13 +36,13 @@ export default function Applications() {
             {rows.map((c) => {
               const stage = stageOf[c.id] ?? 0
               return (
-                <div key={c.id} className="flex items-center gap-3 py-3">
+                <div key={c.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-3">
                   <CompanyLogo company={c} size={24} />
-                  <div className="w-[170px]">
+                  <div className="min-w-0 flex-1 sm:w-[170px] sm:flex-none">
                     <p className="text-[12.5px] font-semibold text-ink">{c.name}</p>
                     <p className="text-[11px] text-ink-mute">{c.role}</p>
                   </div>
-                  <div className="flex flex-1 items-center gap-1.5">
+                  <div className="order-last flex w-full items-center gap-1.5 sm:order-none sm:w-auto sm:flex-1">
                     {stages.map((s, si) => (
                       <span key={s} className="flex flex-1 flex-col items-center gap-1">
                         <span className={`h-[5px] w-full rounded-full ${si <= stage ? 'bg-brand' : 'bg-[#eef0f3]'}`} />

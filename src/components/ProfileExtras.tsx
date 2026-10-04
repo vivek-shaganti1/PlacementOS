@@ -131,8 +131,8 @@ export function ConnectedAccounts({ p }: { p: Profile }) {
             const username = p[`${key}_username`]
             const synced = p.integrations?.[key]?.synced_at
             return (
-              <div key={key} className="flex items-center gap-3 py-3">
-                <span className="w-[92px] text-[12.5px] font-semibold text-ink">{label}</span>
+              <div key={key} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-3">
+                <span className="w-full text-[12.5px] font-semibold text-ink sm:w-[92px]">{label}</span>
                 {username ? (
                   <>
                     <div className="min-w-0 flex-1">
@@ -162,7 +162,7 @@ export function ConnectedAccounts({ p }: { p: Profile }) {
           })}
         </div>
 
-        <div className="mt-2 grid grid-cols-3 gap-2 border-t border-line pt-3">
+        <div className="mt-2 grid grid-cols-1 gap-2 border-t border-line pt-3 sm:grid-cols-3">
           {([['linkedin_url', 'LinkedIn URL', 'linkedin.com/in/you'], ['portfolio_url', 'Portfolio / website', 'yourname.dev'], ['hackerrank_username', 'HackerRank username', 'username']] as const).map(([k, label, ph]) => (
             <label key={k} className="block">
               <span className="text-[11px] font-medium text-ink-mute">{label}</span>
@@ -201,18 +201,18 @@ export function VerifiedSkills({ p }: { p: Profile }) {
   return (
     <Card title="Verified skill levels" action={<button onClick={apply} className="rounded-md bg-brand px-3 py-1.5 text-[11.5px] font-semibold text-white hover:bg-brand-dark">Use verified levels</button>}>
       <div className="divide-y divide-line">
-        <div className="grid grid-cols-[1.4fr_70px_70px_2fr] gap-2 pb-2 text-[11px] font-semibold text-ink-mute">
-          <span>Skill</span><span>Current</span><span>Verified</span><span>Evidence</span>
+        <div className="grid grid-cols-[1.4fr_60px_60px] gap-2 pb-2 text-[11px] font-semibold text-ink-mute sm:grid-cols-[1.4fr_70px_70px_2fr]">
+          <span>Skill</span><span>Current</span><span>Verified</span><span className="hidden sm:inline">Evidence</span>
         </div>
         {names.map((n) => {
           const cur = p.skills.find((s) => s.name === n)?.level ?? 0
           const v = evidence[n]!
           return (
-            <div key={n} className="grid grid-cols-[1.4fr_70px_70px_2fr] items-center gap-2 py-2 text-[12px]">
+            <div key={n} className="grid grid-cols-[1.4fr_60px_60px] items-center gap-2 py-2 text-[12px] sm:grid-cols-[1.4fr_70px_70px_2fr]">
               <span className="font-medium text-ink">{n}</span>
               <span className="text-ink-mute">{cur}%</span>
               <span className={`font-semibold ${v.level >= cur ? 'text-[#0d9a5b]' : 'text-[#d97706]'}`}>{v.level}%</span>
-              <span className="truncate text-[11px] text-ink-faint" title={v.sources.join(' · ')}>{v.sources.join(' · ')}</span>
+              <span className="col-span-3 truncate text-[11px] text-ink-faint sm:col-span-1" title={v.sources.join(' · ')}>{v.sources.join(' · ')}</span>
             </div>
           )
         })}
@@ -238,7 +238,7 @@ export function GithubProjects({ p }: { p: Profile }) {
   }
   return (
     <Card title={`GitHub projects (${gh.original_repos} original repos)`}>
-      <div className="grid grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {gh.top_repos.map((r) => (
           <div key={r.name} className="rounded-[11px] border border-line p-3">
             <div className="flex items-center gap-2">
@@ -288,7 +288,7 @@ export function Achievements({ p }: { p: Profile }) {
         {p.achievements.length === 0 && <p className="py-2 text-[12px] text-ink-faint">Add hackathon wins, contest ranks, club roles, publications…</p>}
       </div>
       <form
-        className="mt-3 grid grid-cols-[1.2fr_1.6fr_0.8fr_auto] gap-2"
+        className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-[1.2fr_1.6fr_0.8fr_auto]"
         onSubmit={async (e) => {
           e.preventDefault()
           if (!d.title.trim()) return showToast('Title is required.')

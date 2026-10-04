@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { bucketMeta, bucketOrder } from '../data/companies'
 import { useCompanies } from '../lib/companies'
+import { useMediaQuery } from '../lib/useMediaQuery'
 import type { Bucket, Company } from '../data/types'
 import CompanyLogo from '../components/CompanyLogo'
 import CompanyPanel from '../components/CompanyPanel'
@@ -18,7 +19,9 @@ export default function EligibilityStacks() {
   const lists = Object.fromEntries(bucketOrder.map((b) => [b, byBucket(b)])) as Record<Bucket, Company[]>
   const total = companies.length
 
-  const [selectedId, setSelectedId] = useState<string | null>(params.get('company') ?? companies[0]?.id ?? null)
+  // Side-by-side panel needs a wide screen; below that it opens as an overlay only when a company is chosen.
+  const isWide = useMediaQuery('(min-width: 1280px)')
+  const [selectedId, setSelectedId] = useState<string | null>(params.get('company') ?? (isWide ? companies[0]?.id ?? null : null))
   const selected = byId(selectedId) ?? null
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
 
@@ -41,7 +44,7 @@ export default function EligibilityStacks() {
 
   return (
     <div className="flex min-h-0 flex-1 overflow-hidden">
-      <div className="scroll-thin min-w-0 flex-1 overflow-y-auto px-6 py-6">
+      <div className="scroll-thin min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-3 py-5 sm:px-6 sm:py-6">
         <div className="mx-auto max-w-[676px]">
           <div className="flex items-center gap-2">
             <h1 className="text-[21px] font-bold tracking-[-.02em] text-ink">Company Eligibility Stacks</h1>
@@ -65,7 +68,7 @@ export default function EligibilityStacks() {
             ))}
           </div>
 
-          <div className="card mt-3 grid grid-cols-4 gap-2 px-3.5 py-3">
+          <div className="card mt-3 grid grid-cols-2 gap-2 px-3.5 py-3 sm:grid-cols-4">
             {bucketOrder.map((b) => {
               const m = bucketMeta[b]
               return (
@@ -73,7 +76,7 @@ export default function EligibilityStacks() {
                   <span className={`mt-[3px] h-[13px] w-[13px] shrink-0 rounded-full border-[3px] border-white ring-2 ${m.ring} ${m.dot}`} />
                   <div className="leading-tight">
                     <p className={`text-[11.5px] font-semibold ${m.text}`}>{m.title}</p>
-                    <p className="mt-[2px] whitespace-nowrap text-[10px] text-ink-faint">{m.hint}</p>
+                    <p className="mt-[2px] text-[10px] text-ink-faint sm:whitespace-nowrap">{m.hint}</p>
                   </div>
                 </div>
               )
@@ -82,7 +85,7 @@ export default function EligibilityStacks() {
 
           <div className="card mt-4 p-4">
             <p className="text-[14px] font-semibold text-ink">Overall Eligibility Summary</p>
-            <div className="mt-3 grid grid-cols-5 gap-3">
+            <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
               <div className="rounded-[11px] border border-line bg-[#fafbfc] px-3 py-3">
                 <p className="text-[11px] font-medium text-ink-mute">Total Companies</p>
                 <p className="mt-1 text-[21px] font-bold text-ink">{total}</p>
@@ -107,7 +110,7 @@ export default function EligibilityStacks() {
 
           <div className="card mt-4 p-4">
             <p className="text-[14px] font-semibold text-brand-dark">Your Top Opportunity</p>
-            <div className="mt-3 grid grid-cols-[1fr_1fr] gap-4">
+            <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
               <button
                 onClick={() => select(top)}
                 className="rounded-xl2 border border-line bg-white px-4 py-4 text-left transition hover:border-[#d9dce2] hover:shadow-card"
@@ -160,7 +163,7 @@ export default function EligibilityStacks() {
         </div>
       </div>
 
-      {selected && <CompanyPanel company={selected} onClose={() => setSelectedId(null)} />}
+      {selected && <CompanyPanel company={selected} overlay={!isWide} onClose={() => setSelectedId(null)} />}
     </div>
   )
 }

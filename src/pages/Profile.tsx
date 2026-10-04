@@ -110,7 +110,7 @@ export default function Profile() {
   return (
     <Page title="My Profile" subtitle="Your profile drives every eligibility calculation on PlacementIQ.">
       <Card>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-wrap items-center gap-4">
           <div className="flex flex-col items-center gap-1.5">
             <Avatar src={p.avatar_url ?? undefined} name={p.full_name || p.email} size={64} />
             <label className="cursor-pointer text-[11px] font-medium text-brand-dark hover:underline">
@@ -118,14 +118,14 @@ export default function Profile() {
               <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="hidden" disabled={uploading} onChange={(e) => uploadAvatar(e.target.files?.[0])} />
             </label>
           </div>
-          <div className="flex-1">
+          <div className="min-w-[180px] flex-1">
             <p className="text-[17px] font-bold text-ink">{p.full_name}</p>
             <p className="text-[12.5px] text-ink-mute">{p.branch} · Batch {p.batch}</p>
             <p className="text-[11.5px] text-ink-faint">{p.college}</p>
           </div>
-          <div className="grid grid-cols-3 gap-3 text-center">
+          <div className="grid w-full grid-cols-3 gap-2 text-center sm:w-auto sm:gap-3">
             {[['CGPA', String(p.cgpa)], ['Backlogs', String(p.backlogs)], ['Class XII', `${p.class_xii}%`]].map(([k, v]) => (
-              <div key={k} className="rounded-[11px] border border-line bg-[#fafbfc] px-4 py-2.5">
+              <div key={k} className="rounded-[11px] border border-line bg-[#fafbfc] px-2 py-2.5 sm:px-4">
                 <p className="text-[10.5px] text-ink-mute">{k}</p>
                 <p className="text-[16px] font-bold text-ink">{v}</p>
               </div>
@@ -136,11 +136,11 @@ export default function Profile() {
 
       <Completeness p={p} />
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card title="Personal & academic details">
-          <form className="grid grid-cols-2 gap-x-3 gap-y-2.5" onSubmit={submitDetails}>
+          <form className="grid grid-cols-1 gap-x-3 gap-y-2.5 sm:grid-cols-2" onSubmit={submitDetails}>
             {fields.map(([k, label, type]) => (
-              <label key={k} className={`block ${['full_name', 'email', 'college'].includes(k) ? 'col-span-2' : ''}`}>
+              <label key={k} className={`block ${['full_name', 'email', 'college'].includes(k) ? 'sm:col-span-2' : ''}`}>
                 <span className="text-[11.5px] font-medium text-ink-mute">{label}</span>
                 <input
                   type={type}
@@ -151,7 +151,7 @@ export default function Profile() {
                 />
               </label>
             ))}
-            <div className="col-span-2 pt-1">
+            <div className="pt-1 sm:col-span-2">
               <button disabled={busy} className={btnPrimary}>Save changes</button>
             </div>
           </form>
@@ -199,7 +199,7 @@ export default function Profile() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card title="Projects">
           <ul className="space-y-2">
             {p.projects.map((proj, i) => (
@@ -254,7 +254,7 @@ export default function Profile() {
             {p.internships.length === 0 && <p className="py-2 text-[12px] text-ink-faint">No internships yet.</p>}
           </div>
           <form
-            className="mt-3 grid grid-cols-[1fr_1fr_1fr_auto] gap-2"
+            className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_1fr_auto]"
             onSubmit={async (e) => {
               e.preventDefault()
               if (!intern.org.trim() || !intern.role.trim()) return showToast('Organisation and role are required.')

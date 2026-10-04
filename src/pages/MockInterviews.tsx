@@ -37,7 +37,7 @@ export default function MockInterviews() {
 
   return (
     <Page title="Mock Interviews" subtitle="Book a rehearsal with alumni before the real loop.">
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Stat label="Interviews completed" value={`${past.length}`} sub={`${last30} in the last 30 days`} />
         <Stat label="Average score" value={avg === null ? '—' : `${avg.toFixed(1)} / 10`} sub="From your logged feedback" tone="text-[#0d9a5b]" />
         <Stat label="Upcoming" value={`${booked.length}`} sub="Booked sessions" tone="text-brand-dark" />
@@ -46,8 +46,8 @@ export default function MockInterviews() {
       <Card title="Available slots">
         <div className="divide-y divide-line">
           {slots.map((s) => (
-            <div key={s.id} className="flex items-center gap-3 py-3">
-              <div className="flex-1">
+            <div key={s.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-3">
+              <div className="min-w-[180px] flex-1">
                 <p className="text-[12.5px] font-semibold text-ink">{s.type}</p>
                 <p className="text-[11.5px] text-ink-mute">{s.mentor}</p>
               </div>
@@ -71,15 +71,15 @@ export default function MockInterviews() {
             {types.map((t) => <option key={t}>{t}</option>)}
           </select>
           <input type="number" min={0} max={10} step={0.5} value={d.score} onChange={(e) => setD({ ...d, score: e.target.value })} className={`${input} w-[80px]`} aria-label="Score out of 10" />
-          <input value={d.note} onChange={(e) => setD({ ...d, note: e.target.value })} placeholder="What went well / what to fix" className={`${input} min-w-[240px] flex-1`} />
+          <input value={d.note} onChange={(e) => setD({ ...d, note: e.target.value })} placeholder="What went well / what to fix" className={`${input} w-full min-w-0 sm:w-auto sm:min-w-[240px] sm:flex-1`} />
           <button onClick={log} className="rounded-[9px] bg-brand px-4 text-[12.5px] font-semibold text-white hover:bg-brand-dark">Log</button>
         </div>
         <div className="mt-2 divide-y divide-line">
           {past.map((x, i) => (
-            <div key={x.date + i} className="flex items-center gap-3 py-3">
-              <span className="w-[150px] text-[12.5px] font-semibold text-ink">{x.type}</span>
+            <div key={x.date + i} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-3">
+              <span className="min-w-0 flex-1 text-[12.5px] font-semibold text-ink sm:w-[150px] sm:flex-none">{x.type}</span>
               <span className="w-[70px] text-[11.5px] text-ink-faint">{new Date(x.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</span>
-              <span className="flex-1 text-[11.5px] text-ink-mute">{x.note}</span>
+              <span className="order-last w-full text-[11.5px] text-ink-mute sm:order-none sm:w-auto sm:flex-1">{x.note}</span>
               <span className={`text-[13px] font-bold ${x.score >= 7.5 ? 'text-[#0d9a5b]' : 'text-[#d97706]'}`}>{x.score.toFixed(1)}</span>
             </div>
           ))}

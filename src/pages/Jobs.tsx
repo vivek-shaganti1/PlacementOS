@@ -79,7 +79,7 @@ export default function Jobs() {
 
   return (
     <Page title="Campus Jobs" subtitle="Drives posted by your placement cell, scored against your profile. Apply in one click — the cell sees your verified profile." wide>
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Open drives" value={`${scored.filter(({ job }) => isOpen(job)).length}`} />
         <Stat label="You can apply to" value={`${eligibleCount}`} tone="text-[#0d9a5b]" />
         <Stat label="Applications" value={`${mine.size}`} tone="text-brand-dark" />
@@ -91,7 +91,7 @@ export default function Jobs() {
           <p className="py-10 text-center text-[13px] text-ink-mute">No drives posted yet. You'll get a notification the moment your placement cell posts one.</p>
         </Card>
       ) : (
-        <div className="grid grid-cols-[380px_1fr] gap-4">
+        <div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-[340px_minmax(0,1fr)] xl:grid-cols-[380px_minmax(0,1fr)]">
           <Card className="self-start">
             <div className="mb-3 flex gap-1.5">
               {(['all', 'eligible', 'applied'] as const).map((f) => (
@@ -107,7 +107,11 @@ export default function Jobs() {
                 return (
                   <button
                     key={job.id}
-                    onClick={() => setParams({ job: job.id }, { replace: true })}
+                    onClick={() => {
+                      setParams({ job: job.id }, { replace: true })
+                      // Stacked layout: bring the details into view.
+                      if (window.innerWidth < 1024) window.setTimeout(() => document.getElementById('job-detail')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
+                    }}
                     className={`relative w-full rounded-[16px] border p-3.5 text-left transition ${active ? 'border-brand bg-white shadow-[var(--shadow-2)]' : 'border-white/80 bg-white/60 hover:bg-white'}`}
                   >
                     <div className="flex items-start gap-2">
@@ -133,10 +137,10 @@ export default function Jobs() {
           <AnimatePresence mode="wait">
             {selected && (
               <motion.div key={selected.job.id} initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }} className="space-y-4">
-                <div className="card p-6">
-                  <div className="flex items-start gap-5">
+                <div id="job-detail" className="card scroll-mt-4 p-4 sm:p-6">
+                  <div className="flex flex-wrap items-start gap-4 sm:gap-5">
                     <Ring value={selected.ev.match} size={104} stroke={9} label="Profile match" color={selected.ev.eligibleToApply ? '#6d4aff' : '#f04438'} />
-                    <div className="flex-1">
+                    <div className="min-w-[200px] flex-1">
                       <p className="text-[22px] font-semibold tracking-[-0.03em] text-ink">{selected.job.company}</p>
                       <p className="text-[13px] text-ink-mute">{selected.job.role} · {selected.job.job_type} · {selected.job.location || 'Location TBA'}</p>
                       <p className="mt-1 text-[13px] font-semibold text-ink">{ctcText(selected.job)}</p>
@@ -186,7 +190,7 @@ export default function Jobs() {
                 </div>
 
                 <Card title="Eligibility criteria">
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     {selected.ev.criteria.map((c) => (
                       <div key={c.label} className={`rounded-[12px] border px-3 py-2.5 ${c.met ? 'border-[#c9f0d9] bg-[#f6fef9]/80' : 'border-[#fbd5d1] bg-[#fef8f7]/80'}`}>
                         <p className="text-[11px] text-ink-mute">{c.label}</p>

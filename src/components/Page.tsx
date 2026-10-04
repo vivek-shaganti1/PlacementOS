@@ -12,7 +12,7 @@ export const itemVariants: Variants = {
 export const revealProps = {
   initial: 'hidden',
   whileInView: 'show',
-  viewport: { once: true, amount: 0.15 },
+  viewport: { once: true, amount: 'some', margin: '0px 0px -40px 0px' },
   variants: itemVariants,
 } as const
 
@@ -25,7 +25,7 @@ export const trackSpotlight = (e: PointerEvent<HTMLElement>) => {
 
 export function Page({ title, subtitle, children, wide, actions }: { title: string; subtitle?: string; children: ReactNode; wide?: boolean; actions?: ReactNode }) {
   return (
-    <div className="scroll-thin relative flex-1 overflow-y-auto px-3 py-5 sm:px-6 sm:py-7">
+    <div className="scroll-thin relative flex-1 overflow-y-auto overflow-x-hidden px-3 py-5 sm:px-6 sm:py-7">
       <div className={wide ? 'mx-auto max-w-[1180px]' : 'mx-auto max-w-[1000px]'}>
         <motion.div initial="hidden" animate="show" variants={itemVariants} className="flex flex-wrap items-end gap-3 sm:gap-4">
           <div className="flex-1">

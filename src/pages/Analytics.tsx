@@ -47,7 +47,7 @@ export default function Analytics() {
 
   return (
     <Page title="Analytics" subtitle="Everything below is computed from your own data. Daily snapshots build your history as you use PlacementIQ." wide>
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Readiness (product track)" value={`${readinessOf(companies)}`} sub="Avg. match across target tiers" tone="text-brand-dark" />
         <Stat label="Eligible today" value={`${byBucket('eligible').length}`} sub={`${byBucket('nearly').length} more nearly eligible`} tone="text-[#0d9a5b]" />
         <Stat
@@ -76,7 +76,7 @@ export default function Analytics() {
         )}
       </Card>
 
-      <div className="grid grid-cols-[1.15fr_1fr] gap-4">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.15fr_1fr]">
         <Card
           title="Your skills vs. tier requirements"
           action={
@@ -106,7 +106,7 @@ export default function Analytics() {
         <CompanyScatter data={companies.map((c) => ({ name: c.name, match: c.match, ctc: c.ctcAvg, bucket: c.bucket, label: bucketMeta[c.bucket].title }))} />
       </Card>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card title="Average match by company tier">
           <BarList data={byCategory} unit="%" max={100} />
         </Card>
@@ -115,7 +115,7 @@ export default function Analytics() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card title="Resume score history">
           {resumes.length ? (
             <Columns data={resumes.map((r) => ({ label: shortDate(r.created_at), score: r.overall }))} x="label" y="score" name="Resume score" domain={[0, 100]} />
@@ -132,7 +132,7 @@ export default function Analytics() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card title="LeetCode problems by difficulty">
           {lc ? (
             <Columns

@@ -51,7 +51,7 @@ export default function Certifications() {
 
   return (
     <Page title="Certifications" subtitle="Credentials you hold and the ones that move your eligibility the most.">
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Stat label="Certifications held" value={`${p.certifications.length}`} />
         <Stat label="In progress" value={`${enrolled.length}`} tone="text-[#d97706]" />
         <Stat label="Recommended" value={`${recommended.length}`} tone="text-brand-dark" />
@@ -74,7 +74,7 @@ export default function Certifications() {
           {p.certifications.length === 0 && <p className="py-3 text-[12px] text-ink-faint">No certifications yet. Add one below or import them from your resume.</p>}
         </div>
         <form
-          className="mt-3 grid grid-cols-[1.6fr_1fr_0.7fr_1.2fr_auto] gap-2"
+          className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-[1.6fr_1fr_0.7fr_1.2fr_auto]"
           onSubmit={async (e) => {
             e.preventDefault()
             if (!d.name.trim()) return showToast('Certification name is required.')
@@ -94,8 +94,8 @@ export default function Certifications() {
       <Card title="Recommended for your gaps">
         <div className="divide-y divide-line">
           {recommended.map((c) => (
-            <div key={c.name} className="flex items-center gap-3 py-3">
-              <div className="flex-1">
+            <div key={c.name} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-3">
+              <div className="min-w-[200px] flex-1">
                 <a href={c.url} target="_blank" rel="noreferrer" className="text-[12.5px] font-semibold text-ink hover:underline">{c.name}</a>
                 <p className="text-[11.5px] text-ink-mute">
                   {c.skill} is a gap at {c.impact} compan{c.impact === 1 ? 'y' : 'ies'} you are not yet eligible for (you: {level(c.skill)}%).

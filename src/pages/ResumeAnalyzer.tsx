@@ -136,7 +136,7 @@ export default function ResumeAnalyzer() {
           ) : (
             <span className="text-[12.5px] text-ink-faint">No resume uploaded yet. PDF or DOCX, up to 5 MB.</span>
           )}
-          <div className="ml-auto text-right">
+          <div className="text-left sm:ml-auto sm:text-right">
             <p className="text-[11px] text-ink-mute">Overall score</p>
             <p className="text-[26px] font-bold leading-none text-brand-dark">{a ? a.overall : '—'}<span className="text-[13px] text-ink-mute">/100</span></p>
           </div>
@@ -152,11 +152,11 @@ export default function ResumeAnalyzer() {
       {a && (
         <>
           <Card title="Summary" action={<span className="text-[11px] text-ink-faint">Analyzed {ago(a.analyzed_at)}</span>}>
-            <div className="flex items-center gap-6">
+            <div className="flex flex-col items-center gap-4 sm:flex-row sm:gap-6">
               <Ring value={a.overall} size={120} label="out of 100" color={tone(a.overall)} />
               <p className="flex-1 text-[13px] leading-[1.7] text-ink-soft">{a.summary}</p>
             </div>
-            <div className="mt-4 grid grid-cols-5 gap-2">
+            <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
               <Stat label="Words" value={`${a.stats.words}`} />
               <Stat label="Bullet points" value={`${a.stats.bullets}`} />
               <Stat label="With metrics" value={`${a.stats.quantified}`} />
@@ -176,7 +176,7 @@ export default function ResumeAnalyzer() {
             </div>
           </Card>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Card title="Strengths">
               <ul className="space-y-1.5">
                 {a.strengths.map((s) => <li key={s} className="text-[12px] text-ink-soft">✓ {s}</li>)}
@@ -210,7 +210,7 @@ export default function ResumeAnalyzer() {
             <div className="mt-1.5 flex flex-wrap gap-1.5">
               {a.extracted.skills.map((s) => <span key={s} className={`${chip} border-line bg-[#fafbfc] text-ink-soft`}>{s}</span>)}
             </div>
-            <div className="mt-4 grid grid-cols-2 gap-4">
+            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <p className="text-[11.5px] font-semibold text-ink-mute">Projects</p>
                 {a.extracted.projects.map((x) => (
@@ -265,7 +265,7 @@ export default function ResumeAnalyzer() {
               </div>
               <p className="text-[26px] font-bold leading-none" style={{ color: tone(jm.score) }}>{jm.score}<span className="text-[13px] text-ink-mute">% fit</span></p>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <p className="text-[11.5px] font-semibold text-[#0d9a5b]">Matched ({jm.matched_skills.length})</p>
                 <div className="mt-1.5 flex flex-wrap gap-1.5">{jm.matched_skills.map((s) => <span key={s} className={`${chip} border-[#c9f0d9] bg-[#ecfdf3] text-[#0d9a5b]`}>{s}</span>)}</div>

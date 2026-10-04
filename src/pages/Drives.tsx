@@ -29,7 +29,7 @@ export default function Drives() {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search company"
-            className="h-[36px] w-[220px] rounded-[9px] border border-line bg-white px-3 text-[12.5px] outline-none focus:border-[#d5cbff]"
+            className="h-[36px] w-full rounded-[9px] border border-line bg-white px-3 text-[12.5px] outline-none focus:border-[#d5cbff] sm:w-[220px]"
           />
           <button onClick={() => setFilter('all')} className={`rounded-[9px] border px-3 py-[7px] text-[12px] font-medium ${filter === 'all' ? 'border-brand bg-brand-tint text-brand-dark' : 'border-line text-ink-soft hover:bg-[#f7f8fa]'}`}>
             All
@@ -39,7 +39,7 @@ export default function Drives() {
               {bucketMeta[b].title}
             </button>
           ))}
-          <select value={sort} onChange={(e) => setSort(e.target.value as typeof sort)} className="ml-auto h-[36px] rounded-[9px] border border-line bg-white px-2.5 text-[12.5px] outline-none">
+          <select value={sort} onChange={(e) => setSort(e.target.value as typeof sort)} className="h-[36px] sm:ml-auto rounded-[9px] border border-line bg-white px-2.5 text-[12.5px] outline-none">
             <option value="match">Sort: Match</option>
             <option value="ctc">Sort: CTC</option>
             <option value="name">Sort: Name</option>
@@ -52,15 +52,19 @@ export default function Drives() {
             return (
               <div key={c.id} className="flex items-center gap-3 py-2.5">
                 <CompanyLogo company={c} size={24} />
-                <div className="w-[190px]">
-                  <p className="text-[12.5px] font-semibold text-ink">{c.name}</p>
-                  <p className="text-[11px] text-ink-mute">{c.role}</p>
+                <div className="min-w-0 flex-1 md:w-[190px] md:flex-none">
+                  <p className="truncate text-[12.5px] font-semibold text-ink">{c.name}</p>
+                  <p className="truncate text-[11px] text-ink-mute">
+                    {c.role}
+                    <span className="md:hidden"> · ₹{c.ctcAvg.toFixed(1)} LPA</span>
+                  </p>
+                  <p className={`text-[11px] font-semibold md:hidden ${m.text}`}>{m.title}</p>
                 </div>
-                <span className="w-[110px] text-[12px] text-ink-mute">{c.location}</span>
-                <span className="w-[110px] text-[12px] text-ink-soft">₹{c.ctcAvg.toFixed(1)} LPA</span>
-                <span className={`w-[150px] text-[11.5px] font-semibold ${m.text}`}>{m.title}</span>
+                <span className="hidden w-[110px] text-[12px] text-ink-mute lg:inline">{c.location}</span>
+                <span className="hidden w-[110px] text-[12px] text-ink-soft md:inline">₹{c.ctcAvg.toFixed(1)} LPA</span>
+                <span className={`hidden w-[150px] text-[11.5px] font-semibold md:inline ${m.text}`}>{m.title}</span>
                 <span className="w-[50px] text-right text-[12px] font-semibold text-ink">{c.match}%</span>
-                <button onClick={() => navigate(`/eligibility?company=${c.id}`)} className="ml-auto rounded-md border border-line px-3 py-1.5 text-[11.5px] font-medium text-ink-soft hover:bg-[#f7f8fa]">
+                <button onClick={() => navigate(`/eligibility?company=${c.id}`)} className="rounded-md md:ml-auto border border-line px-3 py-1.5 text-[11.5px] font-medium text-ink-soft hover:bg-[#f7f8fa]">
                   View
                 </button>
               </div>

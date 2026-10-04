@@ -133,10 +133,10 @@ export default function Onboarding() {
   return (
     <div className="relative min-h-screen overflow-y-auto">
       <Aurora />
-      <div className="relative z-10 mx-auto max-w-[820px] px-6 py-10">
-        <div className="flex items-center gap-3">
+      <div className="relative z-10 mx-auto max-w-[820px] px-3 py-6 sm:px-6 sm:py-10">
+        <div className="flex flex-wrap items-center gap-3">
           <LogoMark size={40} />
-          <div className="flex-1">
+          <div className="min-w-[200px] flex-1">
             <p className="text-[12px] font-semibold uppercase tracking-[0.16em] text-brand">Set up your profile</p>
             <p className="text-[13px] text-ink-mute">About 3 minutes. Everything you add here is scored against every company and campus drive.</p>
           </div>
@@ -148,24 +148,24 @@ export default function Onboarding() {
           <button onClick={signOut} className="text-[12px] font-medium text-ink-faint hover:underline">Sign out</button>
         </div>
 
-        <div className="mt-8 grid grid-cols-5 gap-2">
+        <div className="mt-6 grid grid-cols-5 gap-1.5 sm:mt-8 sm:gap-2">
           {STEPS.map((s, i) => (
             <div key={s}>
               <span className="block h-1.5 overflow-hidden rounded-full bg-white/60">
                 <motion.span className="block h-full origin-left rounded-full bg-gradient-to-r from-[#6d4aff] to-[#38bdf8]" animate={{ scaleX: i < step ? 1 : i === step ? 0.5 : 0 }} transition={{ duration: 0.5, ease }} />
               </span>
-              <p className={`mt-2 text-[11.5px] font-semibold ${i <= step ? 'text-ink' : 'text-ink-faint'}`}>{i + 1}. {s}</p>
+              <p className={`mt-2 text-[10.5px] font-semibold sm:text-[11.5px] ${i <= step ? 'text-ink' : 'text-ink-faint'}`}><span className="sm:hidden">{i + 1}</span><span className="hidden sm:inline">{i + 1}. {s}</span></p>
             </div>
           ))}
         </div>
 
-        <div className="glass-strong mt-6 rounded-[26px] p-7">
+        <div className="glass-strong mt-5 rounded-[24px] p-4 sm:mt-6 sm:rounded-[26px] sm:p-7">
           <AnimatePresence mode="wait">
             <motion.div key={step} initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }} transition={{ duration: 0.3, ease }}>
               {step === 0 && (
                 <div className="space-y-4">
                   <h2 className="text-[22px] font-semibold tracking-[-0.03em]">Tell us about you</h2>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <Field label="Full name"><input className="field" value={about.full_name} onChange={(e) => setAbout({ ...about, full_name: e.target.value })} /></Field>
                     <Field label="Phone"><input className="field" value={about.phone} onChange={(e) => setAbout({ ...about, phone: e.target.value })} placeholder="+91 …" /></Field>
                     <Field label="College"><input className="field" value={about.college} onChange={(e) => setAbout({ ...about, college: e.target.value })} /></Field>
@@ -175,7 +175,7 @@ export default function Onboarding() {
                     </Field>
                     <Field label="Graduation batch" hint="Year you graduate, e.g. 2027"><input className="field" value={about.batch} onChange={(e) => setAbout({ ...about, batch: e.target.value })} /></Field>
                     <Field label="Year / headline"><input className="field" value={about.meta} onChange={(e) => setAbout({ ...about, meta: e.target.value })} placeholder="CSE - 3rd Year" /></Field>
-                    <div className="col-span-2">
+                    <div className="sm:col-span-2">
                       <Field label="Target role"><input className="field" value={about.target_roles} onChange={(e) => setAbout({ ...about, target_roles: e.target.value })} /></Field>
                     </div>
                   </div>
@@ -186,7 +186,7 @@ export default function Onboarding() {
                 <div className="space-y-4">
                   <h2 className="text-[22px] font-semibold tracking-[-0.03em]">Your academics</h2>
                   <p className="text-[12.5px] text-ink-mute">Recruiters filter on these first. Use the values on your latest marksheet.</p>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <Field label="CGPA (out of 10)"><input className="field" inputMode="decimal" value={acad.cgpa} onChange={(e) => setAcad({ ...acad, cgpa: e.target.value })} /></Field>
                     <Field label="Active backlogs"><input className="field" inputMode="numeric" value={acad.backlogs} onChange={(e) => setAcad({ ...acad, backlogs: e.target.value })} /></Field>
                     <Field label="Class X %"><input className="field" inputMode="decimal" value={acad.class_x} onChange={(e) => setAcad({ ...acad, class_x: e.target.value })} /></Field>
@@ -205,7 +205,7 @@ export default function Onboarding() {
                     <input type="file" className="hidden" accept=".pdf,.docx" onChange={(e) => { uploadResume(e.target.files?.[0]); e.target.value = '' }} />
                   </label>
                   {a && (
-                    <div className="flex items-center gap-5 rounded-[18px] border border-white/80 bg-white/70 p-4">
+                    <div className="flex flex-col items-center gap-4 rounded-[18px] border border-white/80 bg-white/70 p-4 sm:flex-row sm:gap-5">
                       <Ring value={a.overall} size={96} stroke={9} label="Resume score" />
                       <div className="flex-1 text-[12.5px] text-ink-soft">
                         <p>{a.summary}</p>
@@ -225,7 +225,7 @@ export default function Onboarding() {
                 <div className="space-y-4">
                   <h2 className="text-[22px] font-semibold tracking-[-0.03em]">Connect your accounts</h2>
                   <p className="text-[12.5px] text-ink-mute">GitHub gives us your real projects and tech stack; coding platforms give us your DSA level. Public data only.</p>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <Field label="GitHub username (required)"><input className="field" value={links.github} onChange={(e) => setLinks({ ...links, github: e.target.value })} placeholder="your-github" /></Field>
                     <Field label="LinkedIn URL (required)"><input className="field" value={links.linkedin_url} onChange={(e) => setLinks({ ...links, linkedin_url: e.target.value })} placeholder="linkedin.com/in/you" /></Field>
                     <Field label="LeetCode username"><input className="field" value={links.leetcode} onChange={(e) => setLinks({ ...links, leetcode: e.target.value })} /></Field>
@@ -242,7 +242,7 @@ export default function Onboarding() {
                   <p className="text-[12.5px] text-ink-mute">
                     Pre-filled from your resume, GitHub and coding stats where we found evidence. Adjust anything that looks off — be honest, recruiters test these.
                   </p>
-                  <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                  <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
                     {SKILLS.map((s) => (
                       <div key={s}>
                         <Meter label={s} value={levels[s]} tone={levels[s] >= 75 ? '#12b76a' : levels[s] >= 55 ? '#f79009' : '#f04438'} />
@@ -258,7 +258,7 @@ export default function Onboarding() {
 
           {error && <p className="mt-5 rounded-[12px] border border-[#fbd5d1] bg-[#fef3f2]/90 px-3 py-2 text-[12px] text-[#d92d20]">{error}</p>}
 
-          <div className="mt-6 flex items-center gap-3">
+          <div className="mt-6 flex flex-wrap items-center gap-3">
             {step > 0 && (
               <button onClick={() => { setError(''); setStep(step - 1) }} disabled={!!busy} className="btn-glass">
                 Back

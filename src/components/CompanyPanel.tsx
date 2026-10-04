@@ -35,7 +35,7 @@ function Bar({ label, value }: { label: string; value: number }) {
   )
 }
 
-export default function CompanyPanel({ company, onClose }: { company: Company; onClose: () => void }) {
+export default function CompanyPanel({ company, onClose, overlay }: { company: Company; onClose: () => void; overlay?: boolean }) {
   const [tab, setTab] = useState<Tab>('Overview')
   const [showAllAlumni, setShowAllAlumni] = useState(false)
   const { saved, toggleSave, applied, apply, openAssistant } = useApp()
@@ -53,13 +53,14 @@ export default function CompanyPanel({ company, onClose }: { company: Company; o
   const b = company.breakdown
   const overall = company.match
 
-  return (
+  const section = (
     <motion.section
       key={company.id}
       initial={{ opacity: 0, x: 28 }}
       animate={{ opacity: 1, x: 0 }}
       transition={{ type: 'spring', stiffness: 320, damping: 32 }}
-      className="glass-strong scroll-thin relative my-3 mr-3 flex w-[592px] shrink-0 flex-col overflow-y-auto rounded-[24px]"
+      onMouseDown={overlay ? (e) => e.stopPropagation() : undefined}
+      className={`glass-strong scroll-thin relative flex flex-col overflow-y-auto rounded-[24px] ${overlay ? 'h-full w-full max-w-[592px] !bg-[oklch(0.975_0.008_285)]' : 'my-3 mr-3 w-[592px] shrink-0'}`}
     >
       <button
         onClick={onClose}
@@ -69,8 +70,8 @@ export default function CompanyPanel({ company, onClose }: { company: Company; o
         <IconClose className="h-[18px] w-[18px]" />
       </button>
 
-      <div className="px-6 pb-5 pt-8">
-        <div className="flex items-start gap-4">
+      <div className="shrink-0 px-4 pb-5 pt-8 sm:px-6">
+        <div className="flex flex-wrap items-start gap-3 sm:gap-4">
           <span className="grid h-12 w-12 shrink-0 place-items-center">
             <CompanyLogo company={company} size={44} />
           </span>
@@ -81,11 +82,11 @@ export default function CompanyPanel({ company, onClose }: { company: Company; o
               {p.text}
             </span>
           </div>
-          <div className="flex shrink-0 flex-col gap-2 pt-6">
+          <div className="flex w-full shrink-0 flex-row gap-2 sm:w-auto sm:flex-col sm:pt-6">
             <button
               onClick={() => apply(company.id)}
               disabled={isApplied}
-              className={`w-[124px] rounded-[9px] border py-[7px] text-[12.5px] font-semibold transition ${
+              className={`flex-1 rounded-[9px] border py-[7px] text-[12.5px] font-semibold transition sm:w-[124px] sm:flex-none ${
                 isApplied
                   ? 'border-[#c9f0d9] bg-[#ecfdf3] text-[#0d9a5b]'
                   : 'border-[#d5cbff] bg-white text-brand-dark hover:bg-[#faf8ff]'
@@ -95,7 +96,7 @@ export default function CompanyPanel({ company, onClose }: { company: Company; o
             </button>
             <button
               onClick={() => toggleSave(company.id)}
-              className={`flex w-[124px] items-center justify-center gap-1.5 rounded-[9px] border py-[7px] text-[12.5px] font-medium transition ${
+              className={`flex flex-1 items-center justify-center gap-1.5 rounded-[9px] border py-[7px] text-[12.5px] font-medium transition sm:w-[124px] sm:flex-none ${
                 isSaved ? 'border-brand bg-brand-tint text-brand-dark' : 'border-line bg-white text-ink-soft hover:bg-[#f7f8fa]'
               }`}
             >
@@ -106,7 +107,7 @@ export default function CompanyPanel({ company, onClose }: { company: Company; o
         </div>
       </div>
 
-      <div className="sticky top-0 z-10 flex gap-6 border-b border-line bg-white/85 px-6 backdrop-blur-xl">
+      <div className="sticky top-0 z-10 flex shrink-0 gap-5 overflow-x-auto whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden border-b border-line bg-white/85 px-4 backdrop-blur-xl sm:gap-6 sm:px-6">
         {TABS.map((t) => {
           const label = t === 'Alumni' ? `Alumni (${company.alumni.length})` : t
           const active = tab === t
@@ -125,10 +126,10 @@ export default function CompanyPanel({ company, onClose }: { company: Company; o
         })}
       </div>
 
-      <div className="flex-1 space-y-4 bg-canvas/40 px-6 py-5">
+      <div className="flex-1 space-y-4 bg-white/30 px-3 py-4 sm:px-6 sm:py-5">
         {tab === 'Overview' && (
           <>
-            <div className="grid grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {[
                 { k: 'CTC (Average)', v: `₹${company.ctcAvg.toFixed(1)}`, u: 'LPA', s: `Min: ${company.ctcMin} LPA | Max: ${company.ctcMax} LPA` },
                 { k: 'Work Location', v: company.location, s: 'On-site' },
@@ -146,7 +147,7 @@ export default function CompanyPanel({ company, onClose }: { company: Company; o
               ))}
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="card p-4">
                 <p className="text-[13px] font-semibold text-ink">About {company.name}</p>
                 <p className="mt-2 text-[11.5px] leading-[1.65] text-ink-mute">{company.about}</p>
@@ -193,16 +194,16 @@ export default function CompanyPanel({ company, onClose }: { company: Company; o
                 {alumni.map((a) => (
                   <div key={a.name + a.batch} className="flex items-center gap-3 py-2.5">
                     <Avatar src={a.avatar} name={a.name} size={34} />
-                    <div className="min-w-0 w-[188px]">
+                    <div className="min-w-0 flex-1 sm:w-[188px] sm:flex-none">
                       <p className="truncate text-[12.5px] font-semibold text-ink">{a.name}</p>
                       <p className="truncate text-[11px] text-ink-mute">{a.title}</p>
                       <p className="truncate text-[10.5px] text-ink-faint">{a.batch}</p>
                     </div>
-                    <div className="w-[76px]">
+                    <div className="hidden w-[76px] sm:block">
                       <p className="text-[10.5px] text-ink-faint">Experience</p>
                       <p className="text-[11.5px] font-medium text-ink-soft">{a.years}</p>
                     </div>
-                    <div className="w-[80px]">
+                    <div className="hidden w-[80px] sm:block">
                       <p className="text-[10.5px] text-ink-faint">Location</p>
                       <p className="text-[11.5px] font-medium text-ink-soft">{a.location}</p>
                     </div>
@@ -239,15 +240,15 @@ export default function CompanyPanel({ company, onClose }: { company: Company; o
         )}
 
         {tab === 'Eligibility Criteria' && (
-          <div className="card overflow-hidden">
-            <div className="grid grid-cols-[1.3fr_1fr_1fr_auto] gap-3 border-b border-line bg-[#fafbfc] px-4 py-2.5 text-[11px] font-semibold text-ink-mute">
+          <div className="card overflow-x-auto">
+            <div className="grid min-w-[460px] grid-cols-[1.3fr_1fr_1fr_auto] gap-3 border-b border-line bg-[#fafbfc] px-4 py-2.5 text-[11px] font-semibold text-ink-mute">
               <span>Criteria</span>
               <span>Required</span>
               <span>Your Profile</span>
               <span>Status</span>
             </div>
             {criteria.map((c) => (
-              <div key={c.label} className="grid grid-cols-[1.3fr_1fr_1fr_auto] items-center gap-3 border-b border-line px-4 py-3 text-[12px] last:border-0">
+              <div key={c.label} className="grid min-w-[460px] grid-cols-[1.3fr_1fr_1fr_auto] items-center gap-3 border-b border-line px-4 py-3 text-[12px] last:border-0">
                 <span className="font-medium text-ink">{c.label}</span>
                 <span className="text-ink-mute">{c.required}</span>
                 <span className="text-ink-soft">{c.yours}</span>
@@ -297,7 +298,7 @@ export default function CompanyPanel({ company, onClose }: { company: Company; o
                     <p className="truncate text-[11px] text-ink-mute">{a.title} · {a.batch}</p>
                   </div>
                   <span className="text-[11.5px] text-ink-mute">{a.years}</span>
-                  <span className="w-[80px] text-[11.5px] text-ink-mute">{a.location}</span>
+                  <span className="hidden w-[80px] text-[11.5px] text-ink-mute sm:inline">{a.location}</span>
                   <button
                     onClick={() => openAssistant(`Draft a short intro message to ${a.name}, ${a.title}.`)}
                     className="flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[11.5px] font-medium text-ink-soft hover:bg-[#f7f8fa]"
@@ -312,7 +313,7 @@ export default function CompanyPanel({ company, onClose }: { company: Company; o
         )}
 
         {tab === 'Statistics' && (
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {company.stats.map((s) => (
               <div key={s.label} className="card p-4">
                 <p className="text-[11px] font-medium text-ink-mute">{s.label}</p>
@@ -344,5 +345,12 @@ export default function CompanyPanel({ company, onClose }: { company: Company; o
         </div>
       </div>
     </motion.section>
+  )
+
+  if (!overlay) return section
+  return (
+    <motion.div className="fixed inset-0 z-50 flex justify-end bg-[oklch(0.2_0.05_285/0.2)] p-2 sm:p-3" initial={{ opacity: 0 }} animate={{ opacity: 1 }} onMouseDown={onClose}>
+      {section}
+    </motion.div>
   )
 }

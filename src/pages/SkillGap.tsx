@@ -37,7 +37,7 @@ export default function SkillGap() {
           <CompanyLogo company={target} size={24} />
           <span className="rounded-md border border-line bg-[#fafbfc] px-2 py-[3px] text-[11px] font-medium text-ink-mute">{categoryLabel[target.category]}</span>
           <span className={`rounded-md border px-2 py-[3px] text-[11px] font-semibold ${m.head} ${m.text}`}>{m.title}</span>
-          <span className="ml-auto text-[12.5px] text-ink-mute">Overall match <b className="text-ink">{target.match}%</b></span>
+          <span className="text-[12.5px] text-ink-mute sm:ml-auto">Overall match <b className="text-ink">{target.match}%</b></span>
         </div>
         {!verified && (
           <p className="mt-3 rounded-[9px] border border-[#e6e0ff] bg-[#f6f3ff] px-3 py-2 text-[11.5px] text-ink-mute">
@@ -48,7 +48,7 @@ export default function SkillGap() {
         )}
       </Card>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <Card title="Your level">
           <div className="space-y-3">
             {SKILLS.map((n) => <Meter key={n} label={n} value={level(n)} tone={level(n) >= req[n] ? '#12b76a' : tone(level(n))} />)}
@@ -71,7 +71,7 @@ export default function SkillGap() {
       </Card>
 
       <Card title="Academic & experience requirements">
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {target.criteria.filter((c) => !(SKILLS as readonly string[]).includes(c.label)).map((c) => (
             <div key={c.label} className={`rounded-[11px] border px-3 py-2.5 ${c.met ? 'border-[#c9f0d9] bg-[#f6fef9]' : 'border-[#fbd5d1] bg-[#fef8f7]'}`}>
               <p className="text-[11px] text-ink-mute">{c.label}</p>

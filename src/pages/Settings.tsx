@@ -48,11 +48,11 @@ export default function Settings() {
   return (
     <Page title="Settings" subtitle="Account, notification and privacy preferences.">
       <Card title="Account">
-        <div className="grid grid-cols-2 gap-4 text-[12.5px]">
+        <div className="grid grid-cols-1 gap-4 text-[12.5px] sm:grid-cols-2">
           {[['Name', p.full_name], ['Sign-in email', session?.user.email ?? ''], ['Branch', p.branch], ['Batch', p.batch]].map(([k, v]) => (
             <div key={k}>
               <p className="text-[11.5px] text-ink-mute">{k}</p>
-              <p className="mt-0.5 font-medium text-ink">{v}</p>
+              <p className="mt-0.5 break-words font-medium text-ink">{v}</p>
             </div>
           ))}
         </div>
@@ -99,7 +99,7 @@ export default function Settings() {
       </Card>
 
       <Card title="Security">
-        <div className="grid max-w-[520px] grid-cols-2 gap-3">
+        <div className="grid max-w-[520px] grid-cols-1 gap-3 sm:grid-cols-2">
           {(['next', 'confirm'] as const).map((k) => (
             <label key={k} className="block">
               <span className="text-[11.5px] font-medium text-ink-mute">{k === 'next' ? 'New password' : 'Confirm password'}</span>
@@ -113,7 +113,7 @@ export default function Settings() {
             </label>
           ))}
         </div>
-        <div className="mt-3 flex gap-2">
+        <div className="mt-3 flex flex-wrap gap-2">
           <button onClick={changePassword} disabled={busy || !pw.next} className="rounded-[9px] border border-[#d5cbff] px-4 py-2 text-[12.5px] font-semibold text-brand-dark hover:bg-[#faf8ff] disabled:opacity-50">
             Change password
           </button>
