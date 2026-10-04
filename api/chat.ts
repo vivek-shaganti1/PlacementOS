@@ -9,7 +9,7 @@ export const config = { runtime: 'edge' }
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://oewjimwozaksyigfyrkz.supabase.co'
 const SUPABASE_KEY = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_l4oFZfheVfvTBAfU3t9sRg_AwdkNqse'
-const MODEL = process.env.GROQ_MODEL || 'llama-3.3-70b-versatile'
+const MODEL = process.env.GROQ_MODEL || 'openai/gpt-oss-120b'
 
 type Msg = { role: 'user' | 'bot'; text: string }
 
@@ -82,7 +82,8 @@ export default async function handler(req: Request): Promise<Response> {
     body: JSON.stringify({
       model: MODEL,
       temperature: 0.5,
-      max_tokens: 700,
+      max_tokens: 1200,
+      ...(MODEL.startsWith('openai/gpt-oss') ? { reasoning_effort: 'low' } : {}),
       messages: [
         { role: 'system', content: systemPrompt(profile) },
         ...messages.map((m) => ({ role: m.role === 'bot' ? 'assistant' : 'user', content: m.text })),
@@ -98,7 +99,11 @@ export default async function handler(req: Request): Promise<Response> {
   }
 
   const data = (await groqRes.json()) as { choices?: { message?: { content?: string } }[] }
-  const reply = data.choices?.[0]?.message?.content?.trim()
+  // The chat UI shows plain text, so strip markdown emphasis and headings.
+  const reply = data.choices?.[0]?.message?.content
+    ?.replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/^#{1,6}\s+/gm, '')
+    .trim()
   if (!reply) return json({ error: 'The AI returned an empty answer.' }, 502)
   return json({ reply })
 }
