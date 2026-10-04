@@ -1,4 +1,4 @@
-import { motion } from 'motion/react'
+import { AnimatePresence, motion } from 'motion/react'
 import { useAuth } from '../lib/auth'
 import { NavLink } from 'react-router-dom'
 import {
@@ -61,23 +61,18 @@ const adminGroup = {
   ],
 }
 
-export default function Sidebar({ open, onChat }: { open: boolean; onChat: () => void }) {
+export default function Sidebar({ open, onChat, mobile, onClose }: { open: boolean; onChat: () => void; mobile?: boolean; onClose?: () => void }) {
   const { isAdmin } = useAuth()
   const visible = isAdmin ? [adminGroup, ...groups] : groups
-  return (
-    <motion.aside
-      initial={false}
-      animate={{ width: open ? 240 : 0, opacity: open ? 1 : 0 }}
-      transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
-      className="relative z-10 shrink-0 overflow-hidden"
-    >
-      <div className="glass m-3 mr-0 flex h-[calc(100%-24px)] w-[228px] flex-col rounded-[22px]">
+
+  const panel = (
+      <div className={`glass flex flex-col rounded-[22px] ${mobile ? 'h-full w-[min(300px,86vw)]' : 'm-3 mr-0 h-[calc(100%-24px)] w-[228px]'}`}>
         <nav className="scroll-thin flex-1 overflow-y-auto px-2.5 pb-2 pt-3" aria-label="Main">
           {visible.map((g) => (
             <div key={g.label} className="mb-2">
               <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-faint">{g.label}</p>
               {g.items.map(({ to, label, Icon }) => (
-                <NavLink key={to} to={to} end={to === '/admin'} className="relative mb-[2px] block rounded-[12px]">
+                <NavLink key={to} to={to} end={to === '/admin'} onClick={mobile ? onClose : undefined} className="relative mb-[2px] block rounded-[12px]">
                   {({ isActive }) => (
                     <>
                       {isActive && (
@@ -114,7 +109,10 @@ export default function Sidebar({ open, onChat }: { open: boolean; onChat: () =>
               </div>
               <p className="mt-2 text-[11.5px] leading-[1.5] text-white/70">Grounded in your profile, resume and coding stats.</p>
               <button
-                onClick={onChat}
+                onClick={() => {
+                  onChat()
+                  onClose?.()
+                }}
                 className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-[11px] bg-white py-2 text-[12.5px] font-semibold text-[#2c2075] transition hover:bg-white/90 active:scale-[.98]"
               >
                 <IconSpark className="h-3.5 w-3.5" />
@@ -124,6 +122,36 @@ export default function Sidebar({ open, onChat }: { open: boolean; onChat: () =>
           </div>
         </div>
       </div>
+  )
+
+  if (mobile)
+    return (
+      <AnimatePresence>
+        {open && (
+          <motion.div className="fixed inset-0 z-40 flex bg-[oklch(0.2_0.05_285/0.25)] p-3" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onMouseDown={onClose}>
+            <motion.aside
+              initial={{ x: -40, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: -40, opacity: 0 }}
+              transition={{ type: 'spring', stiffness: 380, damping: 34 }}
+              onMouseDown={(e) => e.stopPropagation()}
+              className="h-full"
+            >
+              {panel}
+            </motion.aside>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    )
+
+  return (
+    <motion.aside
+      initial={false}
+      animate={{ width: open ? 240 : 0, opacity: open ? 1 : 0 }}
+      transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
+      className="relative z-10 shrink-0 overflow-hidden"
+    >
+      {panel}
     </motion.aside>
   )
 }

@@ -112,7 +112,7 @@ export function evaluate(base: CompanyBase, p: StudentLike, override?: { categor
   const skills = Math.round(clamp(100 - 1.2 * totalGap))
 
   const experience = r.minInternships === 0 ? (internships > 0 ? 100 : 80) : Math.round(Math.min(1, internships / r.minInternships) * 100)
-  const projectScore = Math.round(Math.min(1, projects / r.minProjects) * 100)
+  const projectScore = r.minProjects === 0 ? 100 : Math.round(Math.min(1, projects / r.minProjects) * 100)
 
   const match = Math.round(0.15 * academic + 0.6 * skills + 0.1 * experience + 0.15 * projectScore)
 

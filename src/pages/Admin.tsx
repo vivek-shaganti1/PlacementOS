@@ -45,7 +45,7 @@ export function AdminOverview() {
 
   return (
     <Page title="Placement cell" subtitle="Live view of every student, drive and application." wide>
-      <div className="grid grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
         <Stat label="Students" value={`${students.length}`} sub={`${onboarded} completed onboarding`} />
         <Stat label="Avg. readiness" value={`${avg((r) => r.readiness)}`} sub="Product-track companies" tone="text-brand-dark" />
         <Stat label="Avg. resume score" value={`${avg((r) => r.resume ?? 0)}`} sub="Across analyzed resumes" />
@@ -53,7 +53,7 @@ export function AdminOverview() {
         <Stat label="Offers" value={`${applications.filter((a) => a.status === 'offer').length}`} sub={`${applications.length} applications`} tone="text-[#0d9a5b]" />
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card title="Readiness distribution">
           {students.length ? <Columns data={bands} x="band" y="n" name="Students" height={220} /> : <EmptyChart>{loading ? 'Loading…' : 'No students yet.'}</EmptyChart>}
         </Card>
@@ -71,12 +71,12 @@ export function AdminOverview() {
             <div key={r.profile.id} className="flex items-center gap-3 py-2.5">
               <span className="w-8 text-[13px] font-semibold text-ink-faint">#{r.rank}</span>
               <Avatar src={r.profile.avatar_url ?? undefined} name={r.profile.full_name || r.profile.email} size={30} />
-              <span className="flex-1">
-                <span className="block text-[13px] font-semibold text-ink">{r.profile.full_name || r.profile.email}</span>
-                <span className="block text-[11px] text-ink-mute">{r.profile.branch || '—'} · {r.profile.batch || '—'} · CGPA {r.profile.cgpa || '—'}</span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[13px] font-semibold text-ink">{r.profile.full_name || r.profile.email}</span>
+                <span className="block truncate text-[11px] text-ink-mute">{r.profile.branch || '—'} · {r.profile.batch || '—'} · CGPA {r.profile.cgpa || '—'}</span>
               </span>
-              <span className="text-[12px] text-ink-mute">Readiness {r.readiness}</span>
-              <span className="w-[70px] text-right text-[14px] font-semibold text-brand-dark">{r.score}</span>
+              <span className="hidden text-[12px] text-ink-mute sm:inline">Readiness {r.readiness}</span>
+              <span className="w-[48px] text-right text-[14px] font-semibold text-brand-dark sm:w-[70px]">{r.score}</span>
             </div>
           ))}
           {!students.length && <p className="py-6 text-center text-[12px] text-ink-faint">{loading ? 'Loading…' : 'No students have signed up yet.'}</p>}
@@ -103,18 +103,18 @@ function StudentDrawer({ row, applications, jobs, onClose }: { row: StudentRow; 
   }
   const apps = applications.filter((a) => a.user_id === p.id)
   return (
-    <motion.div className="fixed inset-0 z-50 flex justify-end bg-[oklch(0.2_0.05_285/0.18)] p-3" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onMouseDown={onClose}>
+    <motion.div className="fixed inset-0 z-50 flex justify-end bg-[oklch(0.2_0.05_285/0.18)] p-2 sm:p-3" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onMouseDown={onClose}>
       <motion.aside
-        className="glass-strong scroll-thin h-full w-[560px] overflow-y-auto rounded-[24px] p-6"
+        className="glass-strong scroll-thin h-full w-full max-w-[560px] overflow-y-auto rounded-[24px] p-4 sm:p-6"
         initial={{ x: 60, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         exit={{ x: 40, opacity: 0 }}
         transition={{ type: 'spring', stiffness: 380, damping: 34 }}
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div className="flex items-start gap-4">
+        <div className="flex flex-wrap items-start gap-4">
           <Avatar src={p.avatar_url ?? undefined} name={p.full_name || p.email} size={56} />
-          <div className="flex-1">
+          <div className="min-w-0 flex-1">
             <p className="text-[19px] font-semibold tracking-[-0.02em] text-ink">{p.full_name || '—'}</p>
             <p className="text-[12px] text-ink-mute">{p.branch} · Batch {p.batch} · {p.college}</p>
             <p className="text-[12px] text-ink-mute">{p.email} · {p.phone}</p>
@@ -128,7 +128,7 @@ function StudentDrawer({ row, applications, jobs, onClose }: { row: StudentRow; 
           <Ring value={row.score} size={84} stroke={8} label={`Rank #${row.rank}`} />
         </div>
 
-        <div className="mt-5 grid grid-cols-4 gap-2 text-center">
+        <div className="mt-5 grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
           {[['CGPA', p.cgpa || '—'], ['Backlogs', p.backlogs], ['Class X', `${p.class_x || '—'}%`], ['Class XII', `${p.class_xii || '—'}%`]].map(([k, v]) => (
             <div key={k as string} className="rounded-[12px] border border-white/80 bg-white/70 px-2 py-2.5">
               <p className="text-[10.5px] text-ink-mute">{k}</p>
@@ -138,12 +138,12 @@ function StudentDrawer({ row, applications, jobs, onClose }: { row: StudentRow; 
         </div>
 
         <p className="mt-5 text-[12px] font-semibold text-ink">Skills</p>
-        <div className="mt-2 grid grid-cols-2 gap-x-5 gap-y-2.5">
+        <div className="mt-2 grid grid-cols-1 gap-x-5 gap-y-2.5 sm:grid-cols-2">
           {p.skills.slice(0, 8).map((s) => <Meter key={s.name} label={SKILL_SHORT[s.name] ?? s.name} value={s.level} tone={tone(s.level)} />)}
         </div>
 
         <p className="mt-5 text-[12px] font-semibold text-ink">Coding & resume</p>
-        <div className="mt-2 grid grid-cols-2 gap-2 text-[12px]">
+        <div className="mt-2 grid grid-cols-1 gap-2 text-[12px] sm:grid-cols-2">
           {[
             ['Resume score', row.resume ?? '—'],
             ['LeetCode', i.leetcode ? `${i.leetcode.solved} solved${i.leetcode.contest_rating ? ` · ${i.leetcode.contest_rating}` : ''}` : '—'],
@@ -220,16 +220,16 @@ export function AdminStudents() {
     <Page title="Students" subtitle="Ranked by a composite placement score: 35% readiness, 20% resume, 20% DSA, 15% profile strength, 10% CGPA." wide actions={<button onClick={exportCsv} className="btn-glass">Export CSV</button>}>
       <Card>
         <div className="flex flex-wrap gap-2">
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, email, college" className="field w-[260px]" />
-          <select value={branch} onChange={(e) => setBranch(e.target.value)} className="field w-auto" aria-label="Branch">
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, email, college" className="field w-full sm:w-[260px]" />
+          <select value={branch} onChange={(e) => setBranch(e.target.value)} className="field w-full sm:w-auto" aria-label="Branch">
             <option value="all">All branches</option>
             {branches.map((b) => <option key={b}>{b}</option>)}
           </select>
-          <select value={batch} onChange={(e) => setBatch(e.target.value)} className="field w-auto" aria-label="Batch">
+          <select value={batch} onChange={(e) => setBatch(e.target.value)} className="field min-w-0 flex-1 sm:w-auto sm:flex-none" aria-label="Batch">
             <option value="all">All batches</option>
             {batches.map((b) => <option key={b}>{b}</option>)}
           </select>
-          <select value={sort} onChange={(e) => setSort(e.target.value as typeof sort)} className="field ml-auto w-auto" aria-label="Sort">
+          <select value={sort} onChange={(e) => setSort(e.target.value as typeof sort)} className="field min-w-0 flex-1 sm:ml-auto sm:w-auto sm:flex-none" aria-label="Sort">
             <option value="score">Sort: Overall score</option>
             <option value="readiness">Sort: Readiness</option>
             <option value="cgpa">Sort: CGPA</option>
@@ -239,7 +239,21 @@ export function AdminStudents() {
           </select>
         </div>
         {error && <p className="mt-3 text-[12px] text-[#d92d20]">{error}</p>}
-        <div className="mt-4 overflow-x-auto">
+        <div className="mt-3 space-y-2 md:hidden">
+          {shown.map((r) => (
+            <button key={r.profile.id} onClick={() => setOpen(r)} className="flex w-full items-center gap-3 rounded-[14px] border border-white/80 bg-white/70 p-3 text-left">
+              <span className="w-6 text-[12px] font-semibold text-ink-faint">#{r.rank}</span>
+              <Avatar src={r.profile.avatar_url ?? undefined} name={r.profile.full_name || r.profile.email} size={34} />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-[13px] font-semibold text-ink">{r.profile.full_name || '—'}</span>
+                <span className="block truncate text-[11px] text-ink-mute">{r.profile.branch || '—'} · {r.profile.batch || '—'} · CGPA {r.profile.cgpa || '—'}</span>
+                <span className="block text-[11px] text-ink-faint">Readiness {r.readiness} · Resume {r.resume ?? '—'} · DSA {r.dsa}</span>
+              </span>
+              <span className="text-[16px] font-semibold tabular-nums text-brand-dark">{r.score}</span>
+            </button>
+          ))}
+        </div>
+        <div className="mt-4 hidden overflow-x-auto md:block">
           <table className="w-full text-left text-[12.5px]">
             <thead>
               <tr className="border-b border-line text-[11px] font-semibold text-ink-mute">
@@ -338,7 +352,7 @@ function JobForm({ initial, onDone }: { initial?: JobPosting; onDone: () => void
 
   return (
     <form onSubmit={submit} className="space-y-4">
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {input('company', 'Company')}
         {input('role', 'Role')}
         {input('location', 'Location')}
@@ -356,7 +370,7 @@ function JobForm({ initial, onDone }: { initial?: JobPosting; onDone: () => void
         <textarea className="field mt-1 h-auto py-2" rows={7} value={f.description} onChange={(e) => set('description', e.target.value)} />
       </label>
       <p className="text-[12px] font-semibold text-ink">Eligibility criteria</p>
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {input('min_cgpa', 'Min CGPA')}
         {input('max_backlogs', 'Max active backlogs')}
         {input('min_class_x', 'Min Class X %')}
@@ -376,7 +390,7 @@ function JobForm({ initial, onDone }: { initial?: JobPosting; onDone: () => void
         </label>
       </div>
       <p className="text-[12px] font-semibold text-ink">Required skill levels <span className="font-normal text-ink-faint">(0 = not required)</span></p>
-      <div className="grid grid-cols-2 gap-x-6 gap-y-2">
+      <div className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
         {SKILLS.map((s) => (
           <label key={s} className="block">
             <span className="flex justify-between text-[11.5px] text-ink-soft"><span>{s}</span><b className="tabular-nums">{f.skills[s]}</b></span>
@@ -447,7 +461,7 @@ export function AdminJobs() {
       {jobs.length === 0 ? (
         <Card><p className="py-10 text-center text-[13px] text-ink-mute">No drives yet. Post your first one — every student is notified and scored against it instantly.</p></Card>
       ) : (
-        <div className="grid grid-cols-[340px_1fr] gap-4">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[340px_1fr]">
           <Card className="self-start">
             <div className="space-y-2">
               {jobs.map((j) => {
@@ -469,9 +483,9 @@ export function AdminJobs() {
           {selected && (
             <div className="space-y-4">
               <div className="card p-5">
-                <div className="flex items-start gap-3">
-                  <div className="flex-1">
-                    <p className="text-[20px] font-semibold tracking-[-0.03em]">{selected.company} — {selected.role}</p>
+                <div className="flex flex-wrap items-start gap-2 sm:gap-3">
+                  <div className="min-w-[220px] flex-1">
+                    <p className="text-[18px] font-semibold tracking-[-0.03em] sm:text-[20px]">{selected.company} — {selected.role}</p>
                     <p className="text-[12.5px] text-ink-mute">{ctcText(selected)} · {selected.location || 'Location TBA'} · {selected.deadline ? `apply by ${selected.deadline}` : 'no deadline'}</p>
                     <p className="mt-1 text-[12px] text-ink-mute">
                       Min CGPA {selected.min_cgpa} · backlogs ≤ {selected.max_backlogs} · {selected.branches.join(', ') || 'all branches'} · {selected.batches.join(', ') || 'all batches'}
@@ -481,7 +495,7 @@ export function AdminJobs() {
                   <button onClick={() => toggle(selected)} className="btn-glass py-1.5 text-[12px]">{selected.status === 'open' ? 'Close' : 'Open'}</button>
                   <button onClick={() => remove(selected)} className="btn-glass py-1.5 text-[12px] text-[#d92d20]">Delete</button>
                 </div>
-                <div className="mt-4 grid grid-cols-3 gap-2">
+                <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
                   <Stat label="Applicants" value={`${applicants.length}`} />
                   <Stat label="Eligible, not applied" value={`${eligibleNotApplied}`} tone="text-[#b45309]" />
                   <Stat label="Offers" value={`${applicants.filter((x) => x.a.status === 'offer').length}`} tone="text-[#0d9a5b]" />
@@ -491,16 +505,16 @@ export function AdminJobs() {
               <Card title="Applicants — ranked by profile match and AI resume fit">
                 <div className="divide-y divide-line">
                   {applicants.map(({ a, r, ev }, idx) => (
-                    <div key={a.user_id} className="flex items-center gap-3 py-2.5">
+                    <div key={a.user_id} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-2.5">
                       <span className="w-6 text-[12px] font-semibold text-ink-faint">{idx + 1}</span>
                       <Avatar src={r?.profile.avatar_url ?? undefined} name={r?.profile.full_name || 'Student'} size={30} />
-                      <span className="min-w-0 flex-1">
+                      <span className="min-w-[140px] flex-1">
                         <span className="block truncate text-[13px] font-semibold text-ink">{r?.profile.full_name ?? 'Student'}</span>
                         <span className="block text-[11px] text-ink-mute">{r?.profile.branch} · CGPA {r?.profile.cgpa} · resume {r?.resume ?? '—'}</span>
                       </span>
                       <span className="text-center text-[11px] text-ink-mute">Match<b className="block text-[14px] text-ink">{ev?.match ?? a.match ?? '—'}%</b></span>
                       <span className="text-center text-[11px] text-ink-mute">AI fit<b className="block text-[14px] text-ink">{a.ai_fit ?? '—'}</b></span>
-                      <select value={a.status} onChange={(e) => setStatus(a, e.target.value as JobStatus)} className="field h-[32px] w-[130px] py-0 text-[12px]" aria-label={`Status for ${r?.profile.full_name}`}>
+                      <select value={a.status} onChange={(e) => setStatus(a, e.target.value as JobStatus)} className="field h-[32px] w-full py-0 text-[12px] sm:w-[130px]" aria-label={`Status for ${r?.profile.full_name}`}>
                         {(Object.keys(STATUS_META) as JobStatus[]).map((s) => <option key={s} value={s}>{STATUS_META[s].label}</option>)}
                       </select>
                     </div>
@@ -536,7 +550,7 @@ export function AdminTeam() {
   return (
     <Page title="Admins" subtitle="Placement-cell members who can post drives, see every student and update application status.">
       <Card title="Add an admin">
-        <form onSubmit={(e) => { e.preventDefault(); if (email.trim()) change(email.trim(), true) }} className="flex gap-2">
+        <form onSubmit={(e) => { e.preventDefault(); if (email.trim()) change(email.trim(), true) }} className="flex flex-col gap-2 sm:flex-row">
           <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Their PlacementIQ sign-in email" className="field" type="email" />
           <button className="btn-primary shrink-0">Grant admin</button>
         </form>
@@ -547,7 +561,7 @@ export function AdminTeam() {
           {admins.map((r) => (
             <div key={r.profile.id} className="flex items-center gap-3 py-2.5">
               <Avatar src={r.profile.avatar_url ?? undefined} name={r.profile.full_name || r.profile.email} size={30} />
-              <span className="flex-1 text-[13px] font-semibold text-ink">{r.profile.full_name || r.profile.email}<span className="ml-2 font-normal text-ink-faint">{r.profile.email}</span></span>
+              <span className="min-w-0 flex-1 text-[13px] font-semibold text-ink">{r.profile.full_name || r.profile.email}<span className="block truncate font-normal text-ink-faint sm:ml-2 sm:inline">{r.profile.email}</span></span>
               {r.profile.id !== session?.user.id && (
                 <button onClick={() => change(r.profile.id, false)} className="text-[11.5px] font-medium text-[#d92d20] hover:underline">Remove</button>
               )}

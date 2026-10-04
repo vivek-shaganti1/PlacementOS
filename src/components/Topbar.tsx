@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { useCompanies } from '../lib/companies'
 import Avatar from './Avatar'
 import CompanyLogo from './CompanyLogo'
-import { Logo } from './Logo'
+import { Logo, LogoMark } from './Logo'
 import { IconBell, IconChevronDown, IconMenu, IconSearch } from './Icons'
 import { useAuth, useProfile } from '../lib/auth'
 import { useApp } from '../lib/store'
@@ -54,9 +54,10 @@ export default function Topbar({ onToggleSidebar }: { onToggleSidebar: () => voi
     : []
 
   return (
-    <header ref={wrap} className="glass relative z-30 mx-3 mt-3 flex h-[62px] shrink-0 items-center gap-4 rounded-[20px] px-4">
-      <button onClick={() => navigate('/dashboard')} className="w-[206px] shrink-0 text-left" aria-label="PlacementIQ home">
-        <Logo size={34} />
+    <header ref={wrap} className="glass relative z-30 mx-2 mt-2 flex h-[58px] shrink-0 items-center gap-2 rounded-[18px] px-2.5 sm:mx-3 sm:mt-3 sm:h-[62px] sm:gap-4 sm:rounded-[20px] sm:px-4">
+      <button onClick={() => navigate('/dashboard')} className="shrink-0 text-left lg:w-[206px]" aria-label="PlacementIQ home">
+        <span className="sm:hidden"><LogoMark size={34} /></span>
+        <span className="hidden sm:block"><Logo size={34} /></span>
       </button>
 
       <button
@@ -67,7 +68,8 @@ export default function Topbar({ onToggleSidebar }: { onToggleSidebar: () => voi
         <IconMenu className="h-[19px] w-[19px]" />
       </button>
 
-      <div className="relative mx-auto w-full max-w-[512px]">
+      <div className="flex-1 md:hidden" />
+      <div className="relative mx-auto hidden w-full max-w-[512px] md:block">
         <IconSearch className="pointer-events-none absolute left-3.5 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-ink-faint" />
         <input
           ref={search}
@@ -127,7 +129,7 @@ export default function Topbar({ onToggleSidebar }: { onToggleSidebar: () => voi
             exit={{ opacity: 0, y: -6, scale: 0.97 }}
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
             style={{ transformOrigin: 'top right' }}
-            className="glass-strong absolute right-0 top-12 w-[340px] overflow-hidden rounded-[18px]">
+            className="glass-strong absolute right-0 top-12 w-[340px] overflow-hidden rounded-[18px] max-sm:fixed max-sm:inset-x-3 max-sm:top-[68px] max-sm:w-auto">
             <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
               <p className="text-[13px] font-semibold">Notifications</p>
               {unread > 0 && (
@@ -164,11 +166,11 @@ export default function Topbar({ onToggleSidebar }: { onToggleSidebar: () => voi
           className="flex items-center gap-2.5 rounded-[14px] py-1 pl-1 pr-2 transition hover:bg-white/80"
         >
           <Avatar src={profile.avatar_url ?? undefined} name={profile.full_name || profile.email} size={34} />
-          <div className="text-left leading-tight">
-            <p className="text-[13px] font-semibold text-ink">{profile.full_name || profile.email}</p>
-            <p className="text-[11px] text-ink-faint">{profile.meta}</p>
+          <div className="hidden max-w-[150px] text-left leading-tight sm:block xl:max-w-[220px]">
+            <p className="truncate text-[13px] font-semibold text-ink">{profile.full_name || profile.email}</p>
+            <p className="truncate text-[11px] text-ink-faint">{profile.meta}</p>
           </div>
-          <IconChevronDown className="h-4 w-4 text-ink-faint" />
+          <IconChevronDown className="hidden h-4 w-4 text-ink-faint sm:block" />
         </button>
         <AnimatePresence>
         {openMenu && (

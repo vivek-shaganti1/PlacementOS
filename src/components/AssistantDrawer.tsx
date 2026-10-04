@@ -37,7 +37,7 @@ export default function AssistantDrawer() {
     <AnimatePresence>
       {assistantOpen && (
         <motion.div
-          className="fixed inset-0 z-50 flex justify-end bg-[oklch(0.2_0.05_285/0.18)] p-3"
+          className="fixed inset-0 z-50 flex justify-end bg-[oklch(0.2_0.05_285/0.18)] p-2 sm:p-3"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -46,7 +46,7 @@ export default function AssistantDrawer() {
           <motion.aside
             role="dialog"
             aria-label="AI Career Assistant"
-            className="glass-strong flex h-full w-[420px] flex-col overflow-hidden rounded-[24px]"
+            className="glass-strong flex h-full w-full max-w-[420px] flex-col overflow-hidden rounded-[24px]"
             initial={{ x: 60, opacity: 0, scale: 0.98 }}
             animate={{ x: 0, opacity: 1, scale: 1 }}
             exit={{ x: 40, opacity: 0, transition: { duration: 0.18 } }}

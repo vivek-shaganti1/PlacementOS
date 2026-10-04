@@ -25,11 +25,11 @@ export const trackSpotlight = (e: PointerEvent<HTMLElement>) => {
 
 export function Page({ title, subtitle, children, wide, actions }: { title: string; subtitle?: string; children: ReactNode; wide?: boolean; actions?: ReactNode }) {
   return (
-    <div className="scroll-thin relative flex-1 overflow-y-auto px-6 py-7">
+    <div className="scroll-thin relative flex-1 overflow-y-auto px-3 py-5 sm:px-6 sm:py-7">
       <div className={wide ? 'mx-auto max-w-[1180px]' : 'mx-auto max-w-[1000px]'}>
-        <motion.div initial="hidden" animate="show" variants={itemVariants} className="flex items-end gap-4">
+        <motion.div initial="hidden" animate="show" variants={itemVariants} className="flex flex-wrap items-end gap-3 sm:gap-4">
           <div className="flex-1">
-            <h1 className="text-[26px] font-semibold tracking-[-0.03em] text-ink">{title}</h1>
+            <h1 className="text-[22px] font-semibold tracking-[-0.03em] text-ink sm:text-[26px]">{title}</h1>
             {subtitle && <p className="mt-1 max-w-[680px] text-[13px] text-ink-mute">{subtitle}</p>}
           </div>
           {actions}
@@ -42,7 +42,7 @@ export function Page({ title, subtitle, children, wide, actions }: { title: stri
 
 export function Card({ title, action, children, className, icon }: { title?: string; action?: ReactNode; children: ReactNode; className?: string; icon?: ReactNode }) {
   return (
-    <motion.section {...revealProps} onPointerMove={trackSpotlight} className={`card spotlight p-5 ${className ?? ''}`}>
+    <motion.section {...revealProps} onPointerMove={trackSpotlight} className={`card spotlight min-w-0 p-4 sm:p-5 ${className ?? ''}`}>
       {(title || action) && (
         <div className="mb-4 flex items-center justify-between gap-3">
           {title && (

@@ -145,7 +145,7 @@ export function Columns({ data, x, y, name, height = 200, color = BRAND, unit = 
       <BarChart data={data} margin={{ top: 16, right: 8, left: -18, bottom: 0 }} barCategoryGap="28%">
         <CartesianGrid stroke={INK.grid} vertical={false} />
         <XAxis dataKey={x} {...axis} />
-        <YAxis {...axis} width={44} domain={domain ?? [0, 'auto']} />
+        <YAxis {...axis} width={44} domain={domain ?? [0, 'auto']} allowDecimals={false} />
         <Tooltip content={<TooltipBox format={(v) => `${v}${unit}`} />} cursor={{ fill: 'rgba(109,74,255,0.06)' }} />
         <Bar dataKey={y} name={name} fill={color} radius={[6, 6, 0, 0]} maxBarSize={44} animationDuration={900} />
       </BarChart>

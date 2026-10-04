@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { lazy, Suspense, useState, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import AssistantDrawer from './components/AssistantDrawer'
 import { LogoMark } from './components/Logo'
@@ -9,6 +9,7 @@ import Topbar from './components/Topbar'
 import { AuthProvider, useAuth } from './lib/auth'
 import { AppProvider, useApp } from './lib/store'
 import { supabaseConfigured } from './lib/supabase'
+import { useIsMobile } from './lib/useMediaQuery'
 import Login from './pages/Login'
 
 import Profile from './pages/Profile'
@@ -47,9 +48,13 @@ function Loader() {
 }
 
 function Shell() {
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const isMobile = useIsMobile()
+  const [sidebarOpen, setSidebarOpen] = useState(() => !window.matchMedia('(max-width: 1023px)').matches)
   const { openAssistant, toast } = useApp()
   const location = useLocation()
+
+  // Switching between phone and desktop layouts: drawer starts closed on phones, rail starts open on desktop.
+  useEffect(() => setSidebarOpen(!isMobile), [isMobile])
 
   return (
     <div className="relative flex h-screen flex-col overflow-hidden">
@@ -57,7 +62,7 @@ function Shell() {
       <div className="relative z-10 flex min-h-0 flex-1 flex-col">
         <Topbar onToggleSidebar={() => setSidebarOpen((v) => !v)} />
         <div className="flex min-h-0 flex-1">
-          <Sidebar open={sidebarOpen} onChat={() => openAssistant()} />
+          <Sidebar open={sidebarOpen} onChat={() => openAssistant()} mobile={isMobile} onClose={() => setSidebarOpen(false)} />
           <main className="flex min-w-0 flex-1">
             <AnimatePresence mode="wait">
               <motion.div
@@ -110,7 +115,7 @@ function Shell() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.98 }}
             transition={{ type: 'spring', stiffness: 420, damping: 32 }}
-            className="glass-dark fixed bottom-6 left-1/2 z-[60] -translate-x-1/2 rounded-[14px] px-4 py-2.5 text-[12.5px] font-medium text-white"
+            className="glass-dark fixed bottom-6 left-1/2 z-[60] w-max max-w-[calc(100vw-32px)] -translate-x-1/2 rounded-[14px] px-4 py-2.5 text-center text-[12.5px] font-medium text-white"
           >
             {toast}
           </motion.div>
