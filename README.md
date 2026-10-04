@@ -61,7 +61,7 @@ Animations respect `prefers-reduced-motion`. The logo is an SVG component in `sr
 
 There are three separate kinds of account, decided by the database (`user_roles`), never by the client:
 
-- **Platform admin** (`super_admin`, e.g. superadmin@sparkv.si): sees only the platform pages. Creates colleges with their
+- **Platform admin** (`super_admin`, e.g. shagantivivekgoud@gmail.com): sees only the platform pages. Creates colleges with their
   official code, admin login emails (any address, e.g. admin1@gmail.com), plan, seats and price per seat, and sees each
   college's students, activity, storage, AI usage and contract value (`public.org_usage()`). Platform admin emails are
   listed in `private.platform_admin_emails`; listed emails get the role when they sign up.

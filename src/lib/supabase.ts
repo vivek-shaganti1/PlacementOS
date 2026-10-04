@@ -121,8 +121,17 @@ export type JdMatch = {
 
 export type ProfilePatch = Partial<Omit<Profile, 'id'>>
 
-export const errMsg = (e: unknown) =>
-  e && typeof e === 'object' && 'message' in e ? String((e as { message: unknown }).message) : 'Something went wrong.'
+const FRIENDLY: [RegExp, string][] = [
+  [/email rate limit exceeded/i, 'Too many emails were sent in the last hour, so a confirmation email could not go out. Try again in an hour, or ask your admin to create your login with a temporary password.'],
+  [/email address .* is invalid|email_address_invalid/i, 'That email address cannot receive mail (its domain has no mail server). Use an address you can open.'],
+  [/invalid login credentials/i, 'Wrong email or password.'],
+  [/email not confirmed/i, 'Confirm your email first: open the link we sent you, then sign in.'],
+]
+
+export const errMsg = (e: unknown) => {
+  const raw = e && typeof e === 'object' && 'message' in e ? String((e as { message: unknown }).message) : 'Something went wrong.'
+  return FRIENDLY.find(([re]) => re.test(raw))?.[1] ?? raw
+}
 
 export type Organization = {
   id: string

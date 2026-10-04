@@ -8,7 +8,7 @@ import { useApp } from '../lib/store'
 import { errMsg, supabase, type Organization } from '../lib/supabase'
 
 type RosterRow = { id: number; email: string; full_name: string; roll_number: string; branch: string; batch: string; user_id: string | null; invited_at: string | null; created_at: string }
-type InviteResult = { email: string; status: 'invited' | 'existing' | 'failed' | 'saved'; detail?: string }
+type InviteResult = { email: string; status: 'invited' | 'created' | 'existing' | 'failed' | 'saved'; detail?: string }
 type AdminRow = { email: string; user_id: string | null; full_name: string; joined: boolean }
 
 function Denied({ what }: { what: string }) {
@@ -49,16 +49,38 @@ function parseRoster(text: string) {
 
 function ResultList({ results }: { results: InviteResult[] }) {
   if (!results.length) return null
-  const label: Record<InviteResult['status'], string> = { invited: 'Invite sent', existing: 'Already registered', failed: 'Failed', saved: 'Saved, no email sent' }
+  const label: Record<InviteResult['status'], string> = { invited: 'Invite sent', created: 'Login created', existing: 'Already registered', failed: 'Failed', saved: 'Saved, no email sent' }
   return (
     <div className="mt-3 max-h-[220px] overflow-y-auto border border-line">
       {results.map((r) => (
         <p key={r.email} className="flex flex-wrap gap-x-3 border-b border-line px-3 py-1.5 text-[12px] last:border-0">
           <span className="font-medium text-ink">{r.email}</span>
-          <span className={r.status === 'failed' ? 'text-[#d92d20]' : r.status === 'invited' ? 'text-[#067647]' : 'text-ink-mute'}>{label[r.status]}</span>
+          <span className={r.status === 'failed' ? 'text-[#d92d20]' : r.status === 'invited' || r.status === 'created' ? 'text-[#067647]' : 'text-ink-mute'}>{label[r.status]}</span>
           {r.detail && <span className="text-ink-faint">{r.detail}</span>}
         </p>
       ))}
+    </div>
+  )
+}
+
+/**
+ * How new logins are delivered: an invite email (limited by the mail provider, 2 per hour on Supabase's built-in mail)
+ * or a temporary password set here and shared by the admin, which sends no email.
+ */
+function LoginMethod({ password, setPassword }: { password: string; setPassword: (v: string) => void }) {
+  const [mode, setMode] = useState<'invite' | 'password'>(password ? 'password' : 'invite')
+  return (
+    <div className="flex flex-col gap-2 rounded-[12px] border border-line bg-white/60 p-3 text-[12.5px] sm:flex-row sm:items-center">
+      <span className="font-medium text-ink">New logins:</span>
+      <label className="flex items-center gap-1.5">
+        <input type="radio" checked={mode === 'invite'} onChange={() => { setMode('invite'); setPassword('') }} /> Email an invite link
+      </label>
+      <label className="flex items-center gap-1.5">
+        <input type="radio" checked={mode === 'password'} onChange={() => setMode('password')} /> Create with a temporary password
+      </label>
+      {mode === 'password' && (
+        <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 8 characters" className="field h-[34px] sm:max-w-[220px]" />
+      )}
     </div>
   )
 }
@@ -74,6 +96,7 @@ export function AdminRoster() {
   const [single, setSingle] = useState({ email: '', full_name: '', roll_number: '', branch: '', batch: '' })
   const [busy, setBusy] = useState(false)
   const [results, setResults] = useState<InviteResult[]>([])
+  const [password, setPassword] = useState('')
   const [q, setQ] = useState('')
 
   const load = useCallback(async () => {
@@ -100,7 +123,8 @@ export function AdminRoster() {
       return showToast(`This adds more students than your ${org.seat_limit} seats. Contact the platform admin to raise the limit.`)
     setBusy(true)
     try {
-      const { results } = await callApi<{ results: InviteResult[] }>('admin', { action: 'invite', org_id: orgId, role: 'student', people, send })
+      if (send && password && password.length < 8) throw new Error('Temporary password must be at least 8 characters.')
+      const { results } = await callApi<{ results: InviteResult[] }>('admin', { action: 'invite', org_id: orgId, role: 'student', people, send, password: send ? password || undefined : undefined })
       setResults(results)
       showToast(`${results.length} student record${results.length === 1 ? '' : 's'} processed.`)
       setPaste('')
@@ -132,6 +156,8 @@ export function AdminRoster() {
         <Stat label="Seats" value={`${rows.length} / ${org?.seat_limit ?? '∞'}`} sub={org?.email_domains.length ? `Only ${org.email_domains.map((d) => '@' + d).join(', ')} emails` : 'Any email allowed'} />
       </div>
 
+      <LoginMethod password={password} setPassword={setPassword} />
+
       <Card title="Add one student">
         <form
           className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-[1.4fr_1.2fr_0.9fr_1fr_0.6fr_auto]"
@@ -145,7 +171,7 @@ export function AdminRoster() {
           <input value={single.roll_number} onChange={(e) => setSingle({ ...single, roll_number: e.target.value })} placeholder="Roll number" className="field" />
           <input value={single.branch} onChange={(e) => setSingle({ ...single, branch: e.target.value })} placeholder="Branch" className="field" />
           <input value={single.batch} onChange={(e) => setSingle({ ...single, batch: e.target.value })} placeholder="Batch" className="field" />
-          <button disabled={busy || !orgId} className="btn-primary">Save and invite</button>
+          <button disabled={busy || !orgId} className="btn-primary">{password ? 'Save and create login' : 'Save and invite'}</button>
         </form>
       </Card>
 
@@ -156,7 +182,7 @@ export function AdminRoster() {
         <textarea value={paste} onChange={(e) => setPaste(e.target.value)} rows={6} className="field mt-2 h-auto py-2 font-mono text-[12px]" placeholder={'23eg105a01@anurag.edu.in, Asha Reddy, 23EG105A01, CSE, 2027'} />
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <span className="text-[12px] text-ink-mute">{parsed.length} valid row{parsed.length === 1 ? '' : 's'}</span>
-          <button disabled={busy || !parsed.length} onClick={() => submit(parsed, true)} className="btn-primary">Save and send invites</button>
+          <button disabled={busy || !parsed.length} onClick={() => submit(parsed, true)} className="btn-primary">{password ? 'Save and create logins' : 'Save and send invites'}</button>
           <button disabled={busy || !parsed.length} onClick={() => submit(parsed, false)} className="btn-glass">Save without emailing</button>
         </div>
         <ResultList results={results} />
@@ -213,6 +239,7 @@ export function AdminTeam() {
   const [email, setEmail] = useState('')
   const [busy, setBusy] = useState(false)
   const [results, setResults] = useState<InviteResult[]>([])
+  const [password, setPassword] = useState('')
 
   const load = useCallback(async () => {
     if (!orgId) return
@@ -231,7 +258,7 @@ export function AdminTeam() {
     if (!email.trim()) return
     setBusy(true)
     try {
-      const { results } = await callApi<{ results: InviteResult[] }>('admin', { action: 'invite', org_id: orgId, role: 'org_admin', people: [{ email: email.trim() }] })
+      const { results } = await callApi<{ results: InviteResult[] }>('admin', { action: 'invite', org_id: orgId, role: 'org_admin', people: [{ email: email.trim() }], password: password || undefined })
       setResults(results)
       setEmail('')
       load()
@@ -260,7 +287,8 @@ export function AdminTeam() {
           <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder={`placement@${org?.email_domains[0] ?? 'college.edu'}`} className="field" />
           <button disabled={busy || !orgId} className="btn-primary shrink-0">Add and invite</button>
         </form>
-        <p className="mt-2 text-[12px] text-ink-mute">Existing accounts get access immediately. New addresses receive an invite and become admins when they sign up.</p>
+        <div className="mt-3"><LoginMethod password={password} setPassword={setPassword} /></div>
+        <p className="mt-2 text-[12px] text-ink-mute">Existing accounts get access immediately. New addresses get an invite email, or a login with the temporary password you set.</p>
         <ResultList results={results} />
       </Card>
 
@@ -321,6 +349,7 @@ export function SuperOrgs() {
   const [f, setF] = useState(blankOrg)
   const [busy, setBusy] = useState(false)
   const [results, setResults] = useState<InviteResult[]>([])
+  const [password, setPassword] = useState('')
 
   const loadUsage = useCallback(async () => {
     const { data, error } = await supabase.rpc('org_usage')
@@ -383,7 +412,7 @@ export function SuperOrgs() {
     const fresh = admins.filter((x) => !editing?.admin_emails.includes(x))
     if (fresh.length) {
       try {
-        const { results } = await callApi<{ results: InviteResult[] }>('admin', { action: 'invite', org_id: res.data.id, role: 'org_admin', people: fresh.map((email) => ({ email })) })
+        const { results } = await callApi<{ results: InviteResult[] }>('admin', { action: 'invite', org_id: res.data.id, role: 'org_admin', people: fresh.map((email) => ({ email })), password: password || undefined })
         setResults(results)
       } catch (err) {
         showToast(`College saved, but invites failed: ${errMsg(err)}`)
@@ -453,6 +482,7 @@ export function SuperOrgs() {
             {input('renews_on', 'Renews on', '', 'date')}
           </div>
           {input('notes', 'Notes', 'Contact person, payment terms…')}
+          <LoginMethod password={password} setPassword={setPassword} />
           <div className="flex gap-2">
             <button disabled={busy} className="btn-primary">{busy ? 'Saving…' : editing ? 'Save changes' : 'Create college and invite admins'}</button>
             {editing && <button type="button" onClick={() => startEdit(null)} className="btn-glass">Cancel</button>}
@@ -545,6 +575,7 @@ export function SuperAdmins() {
   const [email, setEmail] = useState('')
   const [busy, setBusy] = useState(false)
   const [results, setResults] = useState<InviteResult[]>([])
+  const [password, setPassword] = useState('')
 
   const load = useCallback(async () => {
     const { data, error } = await supabase.rpc('platform_admins')
@@ -561,7 +592,7 @@ export function SuperAdmins() {
     if (!email.trim()) return
     setBusy(true)
     try {
-      const { results } = await callApi<{ results: InviteResult[] }>('admin', { action: 'invite', role: 'platform_admin', people: [{ email: email.trim() }] })
+      const { results } = await callApi<{ results: InviteResult[] }>('admin', { action: 'invite', role: 'platform_admin', people: [{ email: email.trim() }], password: password || undefined })
       setResults(results)
       setEmail('')
       load()
@@ -590,6 +621,7 @@ export function SuperAdmins() {
           <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="owner@yourcompany.com" className="field" />
           <button disabled={busy} className="btn-primary shrink-0">Add and invite</button>
         </form>
+        <div className="mt-3"><LoginMethod password={password} setPassword={setPassword} /></div>
         <p className="mt-2 text-[12px] text-ink-mute">
           A platform admin account is separate from student and placement-cell accounts: it only sees the platform pages. New addresses get an invite and become
           platform admins when they sign up.

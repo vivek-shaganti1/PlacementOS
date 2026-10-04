@@ -133,7 +133,7 @@ on conflict do nothing;
 -- ---------------------------------------------------------------------------
 -- Platform admin account
 -- ---------------------------------------------------------------------------
-insert into private.platform_admin_emails (email) values ('superadmin@sparkv.si') on conflict do nothing;
+insert into private.platform_admin_emails (email) values ('shagantivivekgoud@gmail.com') on conflict do nothing;
 
 -- ---------------------------------------------------------------------------
 -- Usage report for the platform admin
