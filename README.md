@@ -54,8 +54,11 @@ Server-only environment variables: `GROQ_API_KEY`, `GROQ_MODEL` (default `openai
 
 ## Design
 
-Soft-depth glass UI over an animated aurora, built with Tailwind and [Motion](https://motion.dev); charts use Recharts.
-Animations respect `prefers-reduced-motion`. The logo is an SVG component in `src/components/Logo.tsx` (favicon in `public/favicon.svg`).
+Editorial and flat: warm paper background, off-white surfaces, hairline rules, 3px corners and one pine accent.
+Type is Newsreader (headings), IBM Plex Sans (body) and IBM Plex Mono (figures). Status and chart colours are muted
+and validated for colour-blind separation. There are no gradients, glass, blur, drop shadows or hover animations, and
+UI copy avoids em dashes, arrows, emojis and checkmark bullets (AI output is cleaned the same way on the server).
+The logo is an SVG component in `src/components/Logo.tsx` (favicon in `public/favicon.svg`).
 
 ## Supabase dashboard settings
 
