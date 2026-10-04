@@ -29,17 +29,17 @@ export default function Drives() {
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="Search company"
-            className="h-[36px] w-full rounded-[3px] border border-line bg-surface px-3 text-[12.5px] outline-none focus:border-[#C8C0B0] sm:w-[220px]"
+            className="h-[36px] w-full rounded-[9px] border border-line bg-white px-3 text-[12.5px] outline-none focus:border-[#d5cbff] sm:w-[220px]"
           />
-          <button onClick={() => setFilter('all')} className={`rounded-[3px] border px-3 py-[7px] text-[12px] font-medium ${filter === 'all' ? 'border-brand bg-brand-tint text-brand-dark' : 'border-line text-ink-soft hover:bg-[#F0EDE5]'}`}>
+          <button onClick={() => setFilter('all')} className={`rounded-[9px] border px-3 py-[7px] text-[12px] font-medium ${filter === 'all' ? 'border-brand bg-brand-tint text-brand-dark' : 'border-line text-ink-soft hover:bg-[#f7f8fa]'}`}>
             All
           </button>
           {bucketOrder.map((b) => (
-            <button key={b} onClick={() => setFilter(b)} className={`rounded-[3px] border px-3 py-[7px] text-[12px] font-medium ${filter === b ? 'border-brand bg-brand-tint text-brand-dark' : 'border-line text-ink-soft hover:bg-[#F0EDE5]'}`}>
+            <button key={b} onClick={() => setFilter(b)} className={`rounded-[9px] border px-3 py-[7px] text-[12px] font-medium ${filter === b ? 'border-brand bg-brand-tint text-brand-dark' : 'border-line text-ink-soft hover:bg-[#f7f8fa]'}`}>
               {bucketMeta[b].title}
             </button>
           ))}
-          <select value={sort} onChange={(e) => setSort(e.target.value as typeof sort)} className="h-[36px] sm:ml-auto rounded-[3px] border border-line bg-surface px-2.5 text-[12.5px] outline-none">
+          <select value={sort} onChange={(e) => setSort(e.target.value as typeof sort)} className="h-[36px] sm:ml-auto rounded-[9px] border border-line bg-white px-2.5 text-[12.5px] outline-none">
             <option value="match">Sort: Match</option>
             <option value="ctc">Sort: CTC</option>
             <option value="name">Sort: Name</option>
@@ -64,7 +64,7 @@ export default function Drives() {
                 <span className="hidden w-[110px] text-[12px] text-ink-soft md:inline">₹{c.ctcAvg.toFixed(1)} LPA</span>
                 <span className={`hidden w-[150px] text-[11.5px] font-semibold md:inline ${m.text}`}>{m.title}</span>
                 <span className="w-[50px] text-right text-[12px] font-semibold text-ink">{c.match}%</span>
-                <button onClick={() => navigate(`/eligibility?company=${c.id}`)} className="rounded-md md:ml-auto border border-line px-3 py-1.5 text-[11.5px] font-medium text-ink-soft hover:bg-[#F0EDE5]">
+                <button onClick={() => navigate(`/eligibility?company=${c.id}`)} className="rounded-md md:ml-auto border border-line px-3 py-1.5 text-[11.5px] font-medium text-ink-soft hover:bg-[#f7f8fa]">
                   View
                 </button>
               </div>

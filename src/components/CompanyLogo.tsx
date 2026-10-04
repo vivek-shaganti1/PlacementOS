@@ -21,7 +21,7 @@ const marks: Record<string, (s: number) => JSX.Element> = {
   ),
   Amazon: (s) => (
     <svg width={s} height={s * 0.72} viewBox="0 0 64 46">
-      <text x="2" y="26" fontFamily="IBM Plex Sans, sans-serif" fontSize="21" fontWeight="700" fill="#232F3E">
+      <text x="2" y="26" fontFamily="Inter, sans-serif" fontSize="21" fontWeight="700" fill="#232F3E">
         amazon
       </text>
       <path d="M6 33c9 6.6 21 9.4 32.5 6.6 3.4-.8 7-2.3 10-4.3.9-.6.2-1.6-.8-1.2-3.4 1.2-7.1 2.2-10.7 2.7C26.8 38.1 16 35.8 7 31.6c-1-.5-1.7.7-1 1.4Z" fill="#FF9900" />
@@ -45,7 +45,7 @@ const marks: Record<string, (s: number) => JSX.Element> = {
   ),
   Deloitte: (s) => (
     <svg width={s} height={s * 0.5} viewBox="0 0 72 36">
-      <text x="0" y="26" fontFamily="IBM Plex Sans, sans-serif" fontSize="22" fontWeight="700" fill="#111827">
+      <text x="0" y="26" fontFamily="Inter, sans-serif" fontSize="22" fontWeight="700" fill="#111827">
         Deloitte
       </text>
       <circle cx="68" cy="24" r="4" fill="#86BC25" />
@@ -67,7 +67,7 @@ const marks: Record<string, (s: number) => JSX.Element> = {
   ),
   Visa: (s) => (
     <svg width={s} height={s * 0.4} viewBox="0 0 72 28">
-      <text x="0" y="22" fontFamily="IBM Plex Sans, sans-serif" fontSize="24" fontWeight="700" fontStyle="italic" fill="#1A1F71">
+      <text x="0" y="22" fontFamily="Inter, sans-serif" fontSize="24" fontWeight="700" fontStyle="italic" fill="#1A1F71">
         VISA
       </text>
     </svg>
@@ -75,7 +75,7 @@ const marks: Record<string, (s: number) => JSX.Element> = {
   Intel: (s) => (
     <svg width={s} height={s * 0.5} viewBox="0 0 64 32">
       <rect x="0.8" y="1.6" width="62.4" height="28.8" rx="14.4" fill="none" stroke="#0071C5" strokeWidth="2.4" />
-      <text x="32" y="22" textAnchor="middle" fontFamily="IBM Plex Sans, sans-serif" fontSize="16" fontWeight="600" fill="#0071C5">
+      <text x="32" y="22" textAnchor="middle" fontFamily="Inter, sans-serif" fontSize="16" fontWeight="600" fill="#0071C5">
         intel
       </text>
     </svg>
@@ -108,7 +108,7 @@ const marks: Record<string, (s: number) => JSX.Element> = {
     <svg width={s} height={s * 0.46} viewBox="0 0 64 30">
       <path fill="#111111" d="M2 25 22 5h8L10 25Z" />
       <path fill="#111111" d="M2 5h8l20 20h-8Z" />
-      <text x="34" y="20" fontFamily="IBM Plex Sans, sans-serif" fontSize="15" fontWeight="600" fill="#111111">
+      <text x="34" y="20" fontFamily="Inter, sans-serif" fontSize="15" fontWeight="600" fill="#111111">
         X
       </text>
     </svg>
@@ -121,27 +121,27 @@ const marks: Record<string, (s: number) => JSX.Element> = {
   ),
   'Goldman Sachs': (s) => (
     <svg width={s} height={s * 0.5} viewBox="0 0 76 38">
-      <text x="0" y="15" fontFamily="IBM Plex Sans, sans-serif" fontSize="13" fontWeight="700" fill="#111827">
+      <text x="0" y="15" fontFamily="Inter, sans-serif" fontSize="13" fontWeight="700" fill="#111827">
         Goldman
       </text>
-      <text x="0" y="30" fontFamily="IBM Plex Sans, sans-serif" fontSize="13" fontWeight="700" fill="#111827">
+      <text x="0" y="30" fontFamily="Inter, sans-serif" fontSize="13" fontWeight="700" fill="#111827">
         Sachs
       </text>
     </svg>
   ),
   'J.P. Morgan': (s) => (
     <svg width={s} height={s * 0.44} viewBox="0 0 64 28">
-      <text x="0" y="21" fontFamily="IBM Plex Sans, sans-serif" fontSize="19" fontWeight="700" fill="#5A3E28">
+      <text x="0" y="21" fontFamily="Inter, sans-serif" fontSize="19" fontWeight="700" fill="#5A3E28">
         J.P.
       </text>
     </svg>
   ),
   'Morgan Stanley': (s) => (
     <svg width={s} height={s * 0.5} viewBox="0 0 80 38">
-      <text x="0" y="15" fontFamily="IBM Plex Sans, sans-serif" fontSize="12.5" fontWeight="600" fill="#111827">
+      <text x="0" y="15" fontFamily="Inter, sans-serif" fontSize="12.5" fontWeight="600" fill="#111827">
         Morgan
       </text>
-      <text x="0" y="30" fontFamily="IBM Plex Sans, sans-serif" fontSize="12.5" fontWeight="600" fill="#111827">
+      <text x="0" y="30" fontFamily="Inter, sans-serif" fontSize="12.5" fontWeight="600" fill="#111827">
         Stanley
       </text>
     </svg>
@@ -170,8 +170,8 @@ export default function CompanyLogo({ company, size = 26, className }: Props) {
 
   return (
     <span
-      className={`inline-flex items-center justify-center rounded-[2px] border border-rule-strong bg-surface-2 font-semibold text-ink-soft ${className ?? ''}`}
-      style={{ width: size, height: size, fontSize: size * 0.42 }}
+      className={`inline-flex items-center justify-center rounded-[7px] font-semibold text-white ${className ?? ''}`}
+      style={{ width: size, height: size, background: company.brand, fontSize: size * 0.42 }}
     >
       {initials}
     </span>

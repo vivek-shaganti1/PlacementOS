@@ -11,6 +11,7 @@ import { allEvidence } from '../lib/verify'
 
 const BRANCHES = ['Computer Science & Engineering', 'Information Technology', 'CSE (AI & ML)', 'CSE (Data Science)', 'Electronics & Communication', 'Electrical & Electronics', 'Mechanical', 'Civil']
 const STEPS = ['About you', 'Academics', 'Resume', 'Accounts', 'Skills'] as const
+const ease = [0.16, 1, 0.3, 1] as const
 
 function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
   return (
@@ -84,12 +85,12 @@ export default function Onboarding() {
       if (![n.class_x, n.class_xii].every((v) => v > 0 && v <= 100)) return setError('Class X and XII percentages must be between 0 and 100.')
       if (await run('Saving…', () => updateProfile(n))) setStep(2)
     } else if (step === 2) {
-      if (!p.resume_path) return setError('Upload your resume to continue. It powers your skill and eligibility analysis.')
+      if (!p.resume_path) return setError('Upload your resume to continue — it powers your skill and eligibility analysis.')
       setStep(3)
     } else if (step === 3) {
       const gh = links.github.trim()
       const li = links.linkedin_url.trim()
-      if (!gh) return setError('Add your GitHub username. Your projects and tech stack are read from it.')
+      if (!gh) return setError('Add your GitHub username — your projects and tech stack are read from it.')
       if (!/linkedin\.com\/in\//i.test(li)) return setError('Add your LinkedIn profile URL (linkedin.com/in/…).')
       const ok = await run('Connecting your accounts…', async () => {
         const platforms = (['github', 'leetcode', 'codeforces', 'codechef'] as const).filter((k) => links[k].trim() && links[k].trim() !== p[`${k}_username`])
@@ -150,17 +151,17 @@ export default function Onboarding() {
         <div className="mt-6 grid grid-cols-5 gap-1.5 sm:mt-8 sm:gap-2">
           {STEPS.map((s, i) => (
             <div key={s}>
-              <span className="block h-1.5 overflow-hidden bg-[#E6E1D6]">
-                <motion.span className="block h-full origin-left bg-brand" animate={{ scaleX: i < step ? 1 : i === step ? 0.5 : 0 }} transition={{ duration: 0.15 }} />
+              <span className="block h-1.5 overflow-hidden rounded-full bg-white/60">
+                <motion.span className="block h-full origin-left rounded-full bg-gradient-to-r from-[#6d4aff] to-[#38bdf8]" animate={{ scaleX: i < step ? 1 : i === step ? 0.5 : 0 }} transition={{ duration: 0.5, ease }} />
               </span>
               <p className={`mt-2 text-[10.5px] font-semibold sm:text-[11.5px] ${i <= step ? 'text-ink' : 'text-ink-faint'}`}><span className="sm:hidden">{i + 1}</span><span className="hidden sm:inline">{i + 1}. {s}</span></p>
             </div>
           ))}
         </div>
 
-        <div className="glass-strong mt-5 rounded-[3px] p-4 sm:mt-6 sm:rounded-[3px] sm:p-7">
+        <div className="glass-strong mt-5 rounded-[24px] p-4 sm:mt-6 sm:rounded-[26px] sm:p-7">
           <AnimatePresence mode="wait">
-            <motion.div key={step} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.15 }}>
+            <motion.div key={step} initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }} transition={{ duration: 0.3, ease }}>
               {step === 0 && (
                 <div className="space-y-4">
                   <h2 className="text-[22px] font-semibold tracking-[-0.03em]">Tell us about you</h2>
@@ -198,13 +199,13 @@ export default function Onboarding() {
                 <div className="space-y-4">
                   <h2 className="text-[22px] font-semibold tracking-[-0.03em]">Upload your resume</h2>
                   <p className="text-[12.5px] text-ink-mute">We read it in your browser, score it against ATS checks and pull out your projects, experience and skills.</p>
-                  <label className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-[3px] border-2 border-dashed border-rule-strong bg-surface-2 px-6 py-8 text-center hover:bg-surface-2 ${busy ? 'pointer-events-none opacity-70' : ''}`}>
+                  <label className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-[20px] border-2 border-dashed border-[oklch(0.8_0.08_285)] bg-white/50 px-6 py-8 text-center transition hover:bg-white/80 ${busy ? 'pointer-events-none opacity-70' : ''}`}>
                     <span className="text-[14px] font-semibold text-brand-dark">{p.resume_path ? 'Replace resume' : 'Choose your resume'}</span>
                     <span className="text-[12px] text-ink-faint">PDF or DOCX, up to 5 MB{p.resume_name ? ` · current: ${p.resume_name}` : ''}</span>
                     <input type="file" className="hidden" accept=".pdf,.docx" onChange={(e) => { uploadResume(e.target.files?.[0]); e.target.value = '' }} />
                   </label>
                   {a && (
-                    <div className="flex flex-col items-center gap-4 rounded-[3px] border border-rule bg-surface-2 p-4 sm:flex-row sm:gap-5">
+                    <div className="flex flex-col items-center gap-4 rounded-[18px] border border-white/80 bg-white/70 p-4 sm:flex-row sm:gap-5">
                       <Ring value={a.overall} size={96} stroke={9} label="Resume score" />
                       <div className="flex-1 text-[12.5px] text-ink-soft">
                         <p>{a.summary}</p>
@@ -239,13 +240,13 @@ export default function Onboarding() {
                 <div className="space-y-4">
                   <h2 className="text-[22px] font-semibold tracking-[-0.03em]">Confirm your skill levels</h2>
                   <p className="text-[12.5px] text-ink-mute">
-                    Pre-filled from your resume, GitHub and coding stats where we found evidence. Adjust anything that looks off. Be honest, recruiters test these.
+                    Pre-filled from your resume, GitHub and coding stats where we found evidence. Adjust anything that looks off — be honest, recruiters test these.
                   </p>
                   <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
                     {SKILLS.map((s) => (
                       <div key={s}>
-                        <Meter label={s} value={levels[s]} tone={levels[s] >= 75 ? '#0A7A5C' : levels[s] >= 55 ? '#B47B12' : '#A63A2A'} />
-                        <input type="range" min={0} max={100} value={levels[s]} onChange={(e) => setLevels({ ...levels, [s]: Number(e.target.value) })} className="mt-1 w-full accent-[#0F5A45]" aria-label={s} />
+                        <Meter label={s} value={levels[s]} tone={levels[s] >= 75 ? '#12b76a' : levels[s] >= 55 ? '#f79009' : '#f04438'} />
+                        <input type="range" min={0} max={100} value={levels[s]} onChange={(e) => setLevels({ ...levels, [s]: Number(e.target.value) })} className="mt-1 w-full accent-[#6d4aff]" aria-label={s} />
                         <p className="text-[10.5px] text-ink-faint">{evidence[s] ? `Evidence: ${evidence[s].sources.join(' · ')}` : 'Self-rated'}</p>
                       </div>
                     ))}
@@ -255,7 +256,7 @@ export default function Onboarding() {
             </motion.div>
           </AnimatePresence>
 
-          {error && <p className="mt-5 rounded-[3px] border border-[#C8C0B0] bg-[#F0EDE5]/90 px-3 py-2 text-[12px] text-[#9C3526]">{error}</p>}
+          {error && <p className="mt-5 rounded-[12px] border border-[#fbd5d1] bg-[#fef3f2]/90 px-3 py-2 text-[12px] text-[#d92d20]">{error}</p>}
 
           <div className="mt-6 flex flex-wrap items-center gap-3">
             {step > 0 && (

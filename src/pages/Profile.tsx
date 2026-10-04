@@ -7,10 +7,10 @@ import { useApp } from '../lib/store'
 import { errMsg, supabase, type Internship, type Skill } from '../lib/supabase'
 
 const input =
-  'mt-1 h-[36px] w-full rounded-[3px] border border-line bg-surface px-3 text-[12.5px] outline-none focus:border-[#C8C0B0] focus:ring-4 focus:ring-brand/10'
-const btnGhost = 'rounded-md border border-line px-3 py-1.5 text-[11.5px] font-medium text-ink-soft hover:bg-[#F0EDE5]'
-const btnPrimary = 'rounded-[3px] bg-brand px-4 py-2 text-[12.5px] font-semibold text-white hover:bg-brand-dark disabled:opacity-60'
-const tone = (v: number) => (v >= 75 ? '#0A7A5C' : v >= 60 ? '#B47B12' : '#A63A2A')
+  'mt-1 h-[36px] w-full rounded-[9px] border border-line bg-white px-3 text-[12.5px] outline-none focus:border-[#d5cbff] focus:ring-4 focus:ring-brand/10'
+const btnGhost = 'rounded-md border border-line px-3 py-1.5 text-[11.5px] font-medium text-ink-soft hover:bg-[#f7f8fa]'
+const btnPrimary = 'rounded-[9px] bg-brand px-4 py-2 text-[12.5px] font-semibold text-white hover:bg-brand-dark disabled:opacity-60'
+const tone = (v: number) => (v >= 75 ? '#12b76a' : v >= 60 ? '#f79009' : '#f04438')
 
 const fields = [
   ['full_name', 'Full name', 'text'],
@@ -125,7 +125,7 @@ export default function Profile() {
           </div>
           <div className="grid w-full grid-cols-3 gap-2 text-center sm:w-auto sm:gap-3">
             {[['CGPA', String(p.cgpa)], ['Backlogs', String(p.backlogs)], ['Class XII', `${p.class_xii}%`]].map(([k, v]) => (
-              <div key={k} className="rounded-[3px] border border-line bg-[#F0EDE5] px-2 py-2.5 sm:px-4">
+              <div key={k} className="rounded-[11px] border border-line bg-[#fafbfc] px-2 py-2.5 sm:px-4">
                 <p className="text-[10.5px] text-ink-mute">{k}</p>
                 <p className="text-[16px] font-bold text-ink">{v}</p>
               </div>
@@ -190,7 +190,7 @@ export default function Profile() {
                       max={100}
                       value={s.level}
                       onChange={(e) => setSkills(skills.map((x, j) => (j === i ? { ...x, level: Number(e.target.value) } : x)))}
-                      className="w-full accent-[#0F5A45]"
+                      className="w-full accent-[#6d4aff]"
                     />
                   </div>
                 ))
@@ -212,7 +212,7 @@ export default function Profile() {
                 </span>
                 <button
                   onClick={() => save({ projects: p.projects.filter((_, j) => j !== i) }, 'Project removed.')}
-                  className="text-[11px] text-ink-faint opacity-0 hover:text-[#9C3526] group-hover:opacity-100"
+                  className="text-[11px] text-ink-faint opacity-0 hover:text-[#d92d20] group-hover:opacity-100"
                 >
                   Remove
                 </button>
@@ -245,7 +245,7 @@ export default function Profile() {
                 </div>
                 <button
                   onClick={() => save({ internships: p.internships.filter((_, j) => j !== i) }, 'Internship removed.')}
-                  className="text-[11px] text-ink-faint opacity-0 hover:text-[#9C3526] group-hover:opacity-100"
+                  className="text-[11px] text-ink-faint opacity-0 hover:text-[#d92d20] group-hover:opacity-100"
                 >
                   Remove
                 </button>

@@ -49,14 +49,14 @@ export const canned = (q: string, p: Profile) => {
   if (t.includes('roadmap') || t.includes('prepare') || t.includes('plan'))
     return `Start with ${g1?.name ?? 'Advanced DSA'} for 4 weeks, then ${g2?.name ?? 'System Design'} for 3 weeks. Ship one distributed-systems project and do 2 mock interviews per week. Track it all on your Learning Roadmap page.`
   if (t.includes('message') || t.includes('intro'))
-    return `Suggested message: "Hi, I am a ${p.meta} student from ${p.college}. I am preparing for the upcoming SDE drive and would value 10 minutes of your advice on what the interview loop focuses on. Thank you!"`
+    return `Suggested message: "Hi — I am a ${p.meta} student from ${p.college}. I am preparing for the upcoming SDE drive and would value 10 minutes of your advice on what the interview loop focuses on. Thank you!"`
   if (t.includes('resume'))
     return p.resume_name
       ? `I have your resume "${p.resume_name}" on file. Biggest wins: quantify impact on every project, move skills above education, and cut the objective statement.`
       : 'Upload your resume on the Resume Analyzer page first. Then: quantify impact on every project, move skills above education, and cut the objective statement.'
   if (t.includes('skill') || t.includes('gap'))
     return `Your largest gaps are ${g1?.name} (${g1?.level}%) and ${g2?.name} (${g2?.level}%). Closing those moves the most companies up a stack.`
-  return `Based on your profile (CGPA ${p.cgpa}, ${p.backlogs === 0 ? 'no' : p.backlogs} backlogs, ${p.internships.length} internship${p.internships.length === 1 ? '' : 's'} and ${p.skills.filter((s) => s.level >= 75).length} strong skills), ask me about any specific company, skill, round, your resume or a roadmap.`
+  return `Based on your profile — CGPA ${p.cgpa}, ${p.backlogs === 0 ? 'no' : p.backlogs} backlogs, ${p.internships.length} internship${p.internships.length === 1 ? '' : 's'} and ${p.skills.filter((s) => s.level >= 75).length} strong skills — ask me about any specific company, skill, round, your resume or a roadmap.`
 }
 
 export function AppProvider({ children }: { children: ReactNode }) {

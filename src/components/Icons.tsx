@@ -157,10 +157,25 @@ export const IconMessage = ({ className, strokeWidth }: P) => (
     <path d="M20.4 12.6a7.4 7.4 0 0 1-8 7.4L4 20.8l1-4.6a7.4 7.4 0 1 1 15.4-3.6Z" />
   </svg>
 )
+export const IconSpark = ({ className, strokeWidth }: P) => (
+  <svg {...base(className, strokeWidth)}>
+    <path d="m12 3.4 1.9 4.9 4.9 1.9-4.9 1.9L12 17l-1.9-4.9L5.2 10.2l4.9-1.9Z" />
+    <path d="M18.4 15.6l.7 1.9 1.9.7-1.9.7-.7 1.9-.7-1.9-1.9-.7 1.9-.7Z" />
+  </svg>
+)
 export const IconPlusCircle = ({ className, strokeWidth }: P) => (
   <svg {...base(className, strokeWidth)}>
     <circle cx="12" cy="12" r="8.6" />
     <path d="M12 8.4v7.2M8.4 12h7.2" />
+  </svg>
+)
+export const IconBot = ({ className, strokeWidth }: P) => (
+  <svg {...base(className, strokeWidth)}>
+    <rect x="4.2" y="7.6" width="15.6" height="11.4" rx="3.2" />
+    <path d="M12 4v3.6" />
+    <circle cx="12" cy="3.4" r="1.2" />
+    <circle cx="9.4" cy="13" r="1.1" fill="currentColor" stroke="none" />
+    <circle cx="14.6" cy="13" r="1.1" fill="currentColor" stroke="none" />
   </svg>
 )
 export const IconLinkedIn = ({ className }: P) => (

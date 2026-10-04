@@ -1,11 +1,14 @@
-import { motion, type Variants } from 'motion/react'
-import type { PointerEvent, ReactNode } from 'react'
+import { animate, motion, useInView, useReducedMotion, type Variants } from 'motion/react'
+import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react'
 
+const ease = [0.16, 1, 0.3, 1] as const
+
+export const listVariants: Variants = { show: { transition: { staggerChildren: 0.06 } } }
 export const itemVariants: Variants = {
-  hidden: { opacity: 0 },
-  show: { opacity: 1, transition: { duration: 0.25, ease: 'easeOut' } },
+  hidden: { opacity: 0, y: 14 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.5, ease } },
 }
-/** A quiet fade when content first enters the viewport. No movement. */
+/** Props that make an element reveal itself when it scrolls into view (no parent orchestration needed). */
 export const revealProps = {
   initial: 'hidden',
   whileInView: 'show',
@@ -13,20 +16,24 @@ export const revealProps = {
   variants: itemVariants,
 } as const
 
-/** Kept for call sites; the cursor spotlight effect has been retired. */
-export const trackSpotlight = (_e: PointerEvent<HTMLElement>) => {}
+/** Updates --mx/--my so `.spotlight` cards light up under the cursor. */
+export const trackSpotlight = (e: PointerEvent<HTMLElement>) => {
+  const r = e.currentTarget.getBoundingClientRect()
+  e.currentTarget.style.setProperty('--mx', `${e.clientX - r.left}px`)
+  e.currentTarget.style.setProperty('--my', `${e.clientY - r.top}px`)
+}
 
 export function Page({ title, subtitle, children, wide, actions }: { title: string; subtitle?: string; children: ReactNode; wide?: boolean; actions?: ReactNode }) {
   return (
     <div className="scroll-thin relative flex-1 overflow-y-auto overflow-x-hidden px-3 py-5 sm:px-6 sm:py-7">
       <div className={wide ? 'mx-auto max-w-[1180px]' : 'mx-auto max-w-[1000px]'}>
-        <div className="flex flex-wrap items-end gap-3 border-b border-rule pb-4 sm:gap-4">
+        <motion.div initial="hidden" animate="show" variants={itemVariants} className="flex flex-wrap items-end gap-3 sm:gap-4">
           <div className="flex-1">
-            <h1 className="font-display text-[28px] font-medium leading-tight text-ink sm:text-[32px]">{title}</h1>
-            {subtitle && <p className="mt-1.5 max-w-[680px] text-[13px] leading-[1.6] text-ink-mute">{subtitle}</p>}
+            <h1 className="text-[22px] font-semibold tracking-[-0.03em] text-ink sm:text-[26px]">{title}</h1>
+            {subtitle && <p className="mt-1 max-w-[680px] text-[13px] text-ink-mute">{subtitle}</p>}
           </div>
           {actions}
-        </div>
+        </motion.div>
         <div className="mt-6 space-y-4">{children}</div>
       </div>
     </div>
@@ -35,11 +42,11 @@ export function Page({ title, subtitle, children, wide, actions }: { title: stri
 
 export function Card({ title, action, children, className, icon }: { title?: string; action?: ReactNode; children: ReactNode; className?: string; icon?: ReactNode }) {
   return (
-    <motion.section {...revealProps} className={`card min-w-0 p-4 sm:p-5 ${className ?? ''}`}>
+    <motion.section {...revealProps} onPointerMove={trackSpotlight} className={`card spotlight min-w-0 p-4 sm:p-5 ${className ?? ''}`}>
       {(title || action) && (
-        <div className="mb-4 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <div className="mb-4 flex items-center justify-between gap-3">
           {title && (
-            <p className="flex items-center gap-2 text-[14px] font-semibold text-ink">
+            <p className="flex items-center gap-2 text-[14px] font-semibold tracking-[-0.01em] text-ink">
               {icon}
               {title}
             </p>
@@ -52,49 +59,107 @@ export function Card({ title, action, children, className, icon }: { title?: str
   )
 }
 
-/** Renders a figure as-is (no count-up), in the tabular mono face. */
+/** Counts up to a number when it scrolls into view. Non-numeric values render as-is. */
 export function AnimatedValue({ value }: { value: string }) {
-  return <span className="figure">{value}</span>
+  const ref = useRef<HTMLSpanElement>(null)
+  const inView = useInView(ref, { once: true })
+  const reduce = useReducedMotion()
+  const m = value.match(/^([^\d-]*)(-?\d+(?:\.\d+)?)(.*)$/)
+  const target = m ? parseFloat(m[2]) : NaN
+  const decimals = m?.[2].includes('.') ? m[2].split('.')[1].length : 0
+  const [shown, setShown] = useState(reduce || !m ? target : 0)
+
+  useEffect(() => {
+    if (!m || !inView || reduce) {
+      setShown(target)
+      return
+    }
+    const controls = animate(0, target, { duration: 1.1, ease, onUpdate: setShown })
+    return () => controls.stop()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [target, inView, reduce])
+
+  if (!m) return <span ref={ref}>{value}</span>
+  return (
+    <span ref={ref} className="tabular-nums">
+      {m[1]}
+      {shown.toFixed(decimals)}
+      {m[3]}
+    </span>
+  )
 }
 
-export function Stat({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: string; icon?: ReactNode }) {
+export function Stat({ label, value, sub, tone, icon }: { label: string; value: string; sub?: string; tone?: string; icon?: ReactNode }) {
   return (
-    <motion.div {...revealProps} className="card px-4 py-4">
-      <p className="text-[11.5px] font-medium text-ink-mute">{label}</p>
-      <p className={`figure mt-2 text-[26px] font-medium leading-none ${tone ?? 'text-ink'}`}>{value}</p>
-      {sub && <p className="mt-2 text-[11px] leading-[1.45] text-ink-faint">{sub}</p>}
+    <motion.div {...revealProps} onPointerMove={trackSpotlight} className="card card-hover spotlight px-4 py-4">
+      <div className="flex items-center justify-between">
+        <p className="text-[11.5px] font-medium text-ink-mute">{label}</p>
+        {icon && <span className="text-ink-faint">{icon}</span>}
+      </div>
+      <p className={`mt-2 text-[24px] font-semibold leading-none tracking-[-0.03em] ${tone ?? 'text-ink'}`}>
+        <AnimatedValue value={value} />
+      </p>
+      {sub && <p className="mt-2 text-[11px] text-ink-faint">{sub}</p>}
     </motion.div>
   )
 }
 
-export function Meter({ label, value, tone = '#0F5A45' }: { label: string; value: number; tone?: string }) {
+export function Meter({ label, value, tone = '#6d4aff' }: { label: string; value: number; tone?: string }) {
+  const ref = useRef<HTMLSpanElement>(null)
+  const inView = useInView(ref, { once: true })
   const v = Math.max(0, Math.min(100, value))
   return (
     <div>
       <div className="flex items-center justify-between text-[12px]">
         <span className="font-medium text-ink-soft">{label}</span>
-        <span className="figure font-medium text-ink-mute">{value}%</span>
+        <span className="font-semibold tabular-nums text-ink-mute">{value}%</span>
       </div>
-      <span className="mt-1.5 block h-[6px] bg-[#E6E1D6]">
-        <span className="block h-full" style={{ width: `${v}%`, background: tone }} />
+      <span ref={ref} className="mt-1.5 block h-[7px] overflow-hidden rounded-full bg-[oklch(0.92_0.015_285)]">
+        <motion.span
+          className="block h-full w-full origin-left rounded-full"
+          style={{ background: `linear-gradient(90deg, ${tone}cc, ${tone})` }}
+          initial={{ scaleX: 0 }}
+          animate={{ scaleX: inView ? v / 100 : 0 }}
+          transition={{ duration: 0.9, ease }}
+        />
       </span>
     </div>
   )
 }
 
-/** Circular progress ring, solid stroke. */
-export function Ring({ value, size = 120, stroke = 10, label, sub, color = '#0F5A45' }: { value: number; size?: number; stroke?: number; label?: string; sub?: string; color?: string }) {
+/** Circular progress ring with an animated sweep. */
+export function Ring({ value, size = 120, stroke = 10, label, sub, color = '#6d4aff' }: { value: number; size?: number; stroke?: number; label?: string; sub?: string; color?: string }) {
   const r = (size - stroke) / 2
   const c = 2 * Math.PI * r
-  const v = Math.max(0, Math.min(100, value))
+  const id = `ring${size}${Math.round(value)}`
   return (
     <div className="relative grid place-items-center" style={{ width: size, height: size }}>
-      <svg width={size} height={size} className="-rotate-90" aria-hidden>
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#E6E1D6" strokeWidth={stroke} />
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={stroke} strokeDasharray={c} strokeDashoffset={c * (1 - v / 100)} />
+      <svg width={size} height={size} className="-rotate-90">
+        <defs>
+          <linearGradient id={id} x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0" stopColor={color} />
+            <stop offset="1" stopColor="#38bdf8" />
+          </linearGradient>
+        </defs>
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="oklch(0.92 0.015 285)" strokeWidth={stroke} />
+        <motion.circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          stroke={`url(#${id})`}
+          strokeWidth={stroke}
+          strokeLinecap="round"
+          strokeDasharray={c}
+          initial={{ strokeDashoffset: c }}
+          animate={{ strokeDashoffset: c * (1 - Math.max(0, Math.min(100, value)) / 100) }}
+          transition={{ duration: 1.2, ease }}
+        />
       </svg>
       <div className="absolute text-center">
-        <p className="figure text-[26px] font-medium leading-none text-ink">{Math.round(value)}</p>
+        <p className="text-[26px] font-semibold leading-none tracking-[-0.03em] text-ink">
+          <AnimatedValue value={`${Math.round(value)}`} />
+        </p>
         {label && <p className="mt-1 text-[10.5px] font-medium text-ink-mute">{label}</p>}
         {sub && <p className="text-[10px] text-ink-faint">{sub}</p>}
       </div>
@@ -102,52 +167,22 @@ export function Ring({ value, size = 120, stroke = 10, label, sub, color = '#0F5
   )
 }
 
-/** Retired decorative backdrop; renders nothing. */
 export function Aurora() {
-  return null
+  return (
+    <>
+      <div className="aurora" aria-hidden>
+        <div className="aurora__blob aurora__blob--a" />
+        <div className="aurora__blob aurora__blob--b" />
+        <div className="aurora__blob aurora__blob--c" />
+      </div>
+      <div className="grain" aria-hidden />
+    </>
+  )
 }
 
-/* ---------------------------------------------------------------- skeleton loaders */
-
+/** Loading placeholder that keeps the layout steady while data arrives. */
 export function Skeleton({ className }: { className?: string }) {
-  return <span aria-hidden className={`skeleton block ${className ?? ''}`} />
-}
-
-export function CardSkeleton({ lines = 4, className }: { lines?: number; className?: string }) {
-  return (
-    <div className={`card p-5 ${className ?? ''}`} aria-hidden>
-      <Skeleton className="h-4 w-40" />
-      <div className="mt-5 space-y-3">
-        {Array.from({ length: lines }, (_, i) => <Skeleton key={i} className={`h-3 ${i % 3 === 2 ? 'w-2/3' : 'w-full'}`} />)}
-      </div>
-    </div>
-  )
-}
-
-/** Placeholder for a whole page while its code or data loads. */
-export function PageSkeleton() {
-  return (
-    <div className="flex-1 overflow-hidden px-3 py-5 sm:px-6 sm:py-7" role="status" aria-label="Loading">
-      <div className="mx-auto max-w-[1000px]">
-        <div className="border-b border-rule pb-4">
-          <Skeleton className="h-8 w-64" />
-          <Skeleton className="mt-3 h-3 w-96 max-w-full" />
-        </div>
-        <div className="mt-6 grid grid-cols-2 gap-3 lg:grid-cols-4">
-          {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="card px-4 py-4">
-              <Skeleton className="h-3 w-24" />
-              <Skeleton className="mt-3 h-7 w-16" />
-            </div>
-          ))}
-        </div>
-        <div className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <CardSkeleton lines={6} />
-          <CardSkeleton lines={6} />
-        </div>
-      </div>
-    </div>
-  )
+  return <span aria-hidden className={`shimmer block rounded-[8px] bg-[oklch(0.92_0.02_285/0.7)] ${className ?? ''}`} />
 }
 
 export function RowsSkeleton({ rows = 5 }: { rows?: number }) {
@@ -155,7 +190,7 @@ export function RowsSkeleton({ rows = 5 }: { rows?: number }) {
     <div className="divide-y divide-line" aria-hidden>
       {Array.from({ length: rows }, (_, i) => (
         <div key={i} className="flex items-center gap-3 py-3">
-          <Skeleton className="h-8 w-8" />
+          <Skeleton className="h-8 w-8 rounded-full" />
           <div className="flex-1 space-y-2">
             <Skeleton className="h-3 w-1/3" />
             <Skeleton className="h-2.5 w-1/2" />

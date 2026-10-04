@@ -9,8 +9,8 @@ import { allEvidence } from '../lib/verify'
 import { Card } from './Page'
 
 const input =
-  'h-[34px] w-full rounded-[3px] border border-line bg-surface px-3 text-[12.5px] outline-none focus:border-[#C8C0B0] focus:ring-4 focus:ring-brand/10'
-const btnGhost = 'rounded-md border border-line px-3 py-1.5 text-[11.5px] font-medium text-ink-soft hover:bg-[#F0EDE5] disabled:opacity-50'
+  'h-[34px] w-full rounded-[9px] border border-line bg-white px-3 text-[12.5px] outline-none focus:border-[#d5cbff] focus:ring-4 focus:ring-brand/10'
+const btnGhost = 'rounded-md border border-line px-3 py-1.5 text-[11.5px] font-medium text-ink-soft hover:bg-[#f7f8fa] disabled:opacity-50'
 const ago = (iso: string) => {
   const m = Math.floor((Date.now() - new Date(iso).getTime()) / 60000)
   return m < 1 ? 'just now' : m < 60 ? `${m} min ago` : m < 1440 ? `${Math.floor(m / 60)} h ago` : `${Math.floor(m / 1440)} d ago`
@@ -40,19 +40,19 @@ export function Completeness({ p }: { p: Profile }) {
   const missing = items.filter((x) => !x[1])
   return (
     <Card title="Profile strength" action={<span className="text-[13px] font-bold text-brand-dark">{pct}%</span>}>
-      <span className="block h-[8px] overflow-hidden rounded-[2px] bg-[#E6E1D6]">
-        <span className="block h-full rounded-[2px] bg-brand" style={{ width: `${pct}%` }} />
+      <span className="block h-[8px] overflow-hidden rounded-full bg-[#eef0f3]">
+        <span className="block h-full rounded-full bg-brand transition-[width] duration-500" style={{ width: `${pct}%` }} />
       </span>
       {missing.length > 0 ? (
         <div className="mt-3 flex flex-wrap gap-1.5">
           {missing.map(([label, , to]) => (
-            <button key={label} onClick={() => (to === '/profile' ? document.getElementById('accounts')?.scrollIntoView({ behavior: 'smooth' }) : navigate(to))} className="rounded-md border border-[#C8C0B0] bg-[#F0EDE5] px-2 py-[3px] text-[11px] font-medium text-[#8A5A0B] hover:underline">
+            <button key={label} onClick={() => (to === '/profile' ? document.getElementById('accounts')?.scrollIntoView({ behavior: 'smooth' }) : navigate(to))} className="rounded-md border border-[#fbe3bd] bg-[#fff8ec] px-2 py-[3px] text-[11px] font-medium text-[#b45309] hover:underline">
               + {label}
             </button>
           ))}
         </div>
       ) : (
-        <p className="mt-2 text-[12px] font-medium text-[#0A6B50]">Everything recruiters look for is on your profile.</p>
+        <p className="mt-2 text-[12px] font-medium text-[#0d9a5b]">Everything recruiters look for is on your profile.</p>
       )}
     </Card>
   )
@@ -68,13 +68,13 @@ const platforms = [
 function statsLine(p: Profile, key: (typeof platforms)[number]['key']) {
   const i = p.integrations ?? {}
   if (key === 'github' && i.github)
-    return `${i.github.original_repos} repos · ${i.github.stars} stars · ${i.github.languages.slice(0, 4).map((l) => l.name).join(', ') || 'no languages'}`
+    return `${i.github.original_repos} repos · ${i.github.stars}★ · ${i.github.languages.slice(0, 4).map((l) => l.name).join(', ') || 'no languages'}`
   if (key === 'leetcode' && i.leetcode)
     return `${i.leetcode.solved} solved (E ${i.leetcode.easy} · M ${i.leetcode.medium} · H ${i.leetcode.hard})${i.leetcode.contest_rating ? ` · contest ${i.leetcode.contest_rating}` : ''}`
   if (key === 'codeforces' && i.codeforces)
-    return `${i.codeforces.rating ? `${i.codeforces.rating} (${i.codeforces.rank})` : 'Unrated'} · max ${i.codeforces.max_rating ?? 'n/a'} · ${i.codeforces.solved} solved`
+    return `${i.codeforces.rating ? `${i.codeforces.rating} (${i.codeforces.rank})` : 'Unrated'} · max ${i.codeforces.max_rating ?? '—'} · ${i.codeforces.solved} solved`
   if (key === 'codechef' && i.codechef)
-    return `${i.codechef.rating ? `${i.codechef.rating}${i.codechef.stars ? ` · ${i.codechef.stars} star` : ''}` : 'Unrated'} · ${i.codechef.solved} solved`
+    return `${i.codechef.rating ? `${i.codechef.rating}${i.codechef.stars ? ` · ${i.codechef.stars}★` : ''}` : 'Unrated'} · ${i.codechef.solved} solved`
   return null
 }
 
@@ -141,7 +141,7 @@ export function ConnectedAccounts({ p }: { p: Profile }) {
                       {synced && <p className="text-[10.5px] text-ink-faint">Synced {ago(synced)}</p>}
                     </div>
                     <button onClick={() => sync(key, username)} disabled={!!busy} className={btnGhost}>{busy === key ? 'Syncing…' : 'Sync'}</button>
-                    <button onClick={() => sync(key, null)} disabled={!!busy} className="text-[11px] text-ink-faint hover:text-[#9C3526]">Disconnect</button>
+                    <button onClick={() => sync(key, null)} disabled={!!busy} className="text-[11px] text-ink-faint hover:text-[#d92d20]">Disconnect</button>
                   </>
                 ) : (
                   <form
@@ -211,7 +211,7 @@ export function VerifiedSkills({ p }: { p: Profile }) {
             <div key={n} className="grid grid-cols-[1.4fr_60px_60px] items-center gap-2 py-2 text-[12px] sm:grid-cols-[1.4fr_70px_70px_2fr]">
               <span className="font-medium text-ink">{n}</span>
               <span className="text-ink-mute">{cur}%</span>
-              <span className={`font-semibold ${v.level >= cur ? 'text-[#0A6B50]' : 'text-[#8A5A0B]'}`}>{v.level}%</span>
+              <span className={`font-semibold ${v.level >= cur ? 'text-[#0d9a5b]' : 'text-[#d97706]'}`}>{v.level}%</span>
               <span className="col-span-3 truncate text-[11px] text-ink-faint sm:col-span-1" title={v.sources.join(' · ')}>{v.sources.join(' · ')}</span>
             </div>
           )
@@ -240,10 +240,10 @@ export function GithubProjects({ p }: { p: Profile }) {
     <Card title={`GitHub projects (${gh.original_repos} original repos)`}>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {gh.top_repos.map((r) => (
-          <div key={r.name} className="rounded-[3px] border border-line p-3">
+          <div key={r.name} className="rounded-[11px] border border-line p-3">
             <div className="flex items-center gap-2">
               <a href={r.url} target="_blank" rel="noreferrer" className="flex-1 truncate text-[12.5px] font-semibold text-brand-dark hover:underline">{r.name}</a>
-              <span className="text-[11px] text-ink-faint">{r.stars} stars</span>
+              <span className="text-[11px] text-ink-faint">★ {r.stars}</span>
             </div>
             <p className="mt-0.5 line-clamp-2 text-[11.5px] text-ink-mute">{r.description ?? 'No description'}</p>
             <div className="mt-2 flex items-center gap-2">
@@ -282,7 +282,7 @@ export function Achievements({ p }: { p: Profile }) {
               <p className="text-[12.5px] font-semibold text-ink">{a.title} {a.date && <span className="font-normal text-ink-faint">· {a.date}</span>}</p>
               {a.detail && <p className="text-[11.5px] text-ink-mute">{a.detail}</p>}
             </div>
-            <button onClick={() => save(p.achievements.filter((_, j) => j !== i), 'Removed.')} className="text-[11px] text-ink-faint opacity-0 hover:text-[#9C3526] group-hover:opacity-100">Remove</button>
+            <button onClick={() => save(p.achievements.filter((_, j) => j !== i), 'Removed.')} className="text-[11px] text-ink-faint opacity-0 hover:text-[#d92d20] group-hover:opacity-100">Remove</button>
           </div>
         ))}
         {p.achievements.length === 0 && <p className="py-2 text-[12px] text-ink-faint">Add hackathon wins, contest ranks, club roles, publications…</p>}

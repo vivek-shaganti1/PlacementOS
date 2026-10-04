@@ -51,11 +51,11 @@ function ResultList({ results }: { results: InviteResult[] }) {
   if (!results.length) return null
   const label: Record<InviteResult['status'], string> = { invited: 'Invite sent', existing: 'Already registered', failed: 'Failed', saved: 'Saved, no email sent' }
   return (
-    <div className="mt-3 max-h-[220px] overflow-y-auto border border-rule">
+    <div className="mt-3 max-h-[220px] overflow-y-auto border border-line">
       {results.map((r) => (
-        <p key={r.email} className="flex flex-wrap gap-x-3 border-b border-rule px-3 py-1.5 text-[12px] last:border-0">
+        <p key={r.email} className="flex flex-wrap gap-x-3 border-b border-line px-3 py-1.5 text-[12px] last:border-0">
           <span className="font-medium text-ink">{r.email}</span>
-          <span className={r.status === 'failed' ? 'text-[#9C3526]' : r.status === 'invited' ? 'text-[#0A6B50]' : 'text-ink-mute'}>{label[r.status]}</span>
+          <span className={r.status === 'failed' ? 'text-[#d92d20]' : r.status === 'invited' ? 'text-[#067647]' : 'text-ink-mute'}>{label[r.status]}</span>
           {r.detail && <span className="text-ink-faint">{r.detail}</span>}
         </p>
       ))}
@@ -146,7 +146,7 @@ export function AdminRoster() {
 
       <Card title="Import many students">
         <p className="text-[12.5px] text-ink-mute">
-          Paste rows from a spreadsheet, one student per line: <span className="figure text-ink">email, full name, roll number, branch, batch</span>. Commas or tabs both work.
+          Paste rows from a spreadsheet, one student per line: <span className="tabular-nums text-ink">email, full name, roll number, branch, batch</span>. Commas or tabs both work.
         </p>
         <textarea value={paste} onChange={(e) => setPaste(e.target.value)} rows={6} className="field mt-2 h-auto py-2 font-mono text-[12px]" placeholder={'23eg105a01@anurag.edu.in, Asha Reddy, 23EG105A01, CSE, 2027'} />
         <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -166,26 +166,26 @@ export function AdminRoster() {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] text-left text-[12.5px]">
               <thead>
-                <tr className="border-b border-rule text-[11px] font-semibold text-ink-mute">
+                <tr className="border-b border-line text-[11px] font-semibold text-ink-mute">
                   {['Roll no.', 'Name', 'Email', 'Branch', 'Batch', 'Status', ''].map((h) => <th key={h} className="px-2 py-2">{h}</th>)}
                 </tr>
               </thead>
               <tbody>
                 {shown.map((r) => (
-                  <tr key={r.id} className="border-b border-rule/70">
-                    <td className="figure px-2 py-2">{r.roll_number || 'n/a'}</td>
+                  <tr key={r.id} className="border-b border-line/70">
+                    <td className="tabular-nums px-2 py-2">{r.roll_number || 'n/a'}</td>
                     <td className="px-2 py-2 font-medium text-ink">{r.full_name || 'n/a'}</td>
                     <td className="px-2 py-2 text-ink-soft">{r.email}</td>
                     <td className="px-2 py-2 text-ink-soft">{r.branch || 'n/a'}</td>
                     <td className="px-2 py-2 text-ink-soft">{r.batch || 'n/a'}</td>
-                    <td className={`px-2 py-2 ${r.user_id ? 'text-[#0A6B50]' : 'text-ink-mute'}`}>{r.user_id ? 'Joined' : r.invited_at ? 'Invited' : 'Not invited'}</td>
+                    <td className={`px-2 py-2 ${r.user_id ? 'text-[#067647]' : 'text-ink-mute'}`}>{r.user_id ? 'Joined' : r.invited_at ? 'Invited' : 'Not invited'}</td>
                     <td className="px-2 py-2 text-right">
                       {!r.user_id && (
                         <button onClick={() => submit([{ email: r.email, full_name: r.full_name, roll_number: r.roll_number, branch: r.branch, batch: r.batch }], true)} className="mr-3 text-[12px] font-semibold text-brand underline" disabled={busy}>
                           {r.invited_at ? 'Resend' : 'Invite'}
                         </button>
                       )}
-                      <button onClick={() => remove(r)} className="text-[12px] text-[#9C3526] underline">Remove</button>
+                      <button onClick={() => remove(r)} className="text-[12px] text-[#d92d20] underline">Remove</button>
                     </td>
                   </tr>
                 ))}
@@ -272,8 +272,8 @@ export function AdminTeam() {
                   <span className="block truncate text-[13px] font-semibold text-ink">{a.full_name || a.email}</span>
                   {a.full_name && <span className="block truncate text-[12px] text-ink-mute">{a.email}</span>}
                 </span>
-                <span className={`text-[12px] ${a.joined ? 'text-[#0A6B50]' : 'text-ink-mute'}`}>{a.joined ? 'Active' : a.user_id ? 'Account exists' : 'Invited, not signed up'}</span>
-                {a.email !== me && <button onClick={() => remove(a)} className="text-[12px] text-[#9C3526] underline">Remove</button>}
+                <span className={`text-[12px] ${a.joined ? 'text-[#067647]' : 'text-ink-mute'}`}>{a.joined ? 'Active' : a.user_id ? 'Account exists' : 'Invited, not signed up'}</span>
+                {a.email !== me && <button onClick={() => remove(a)} className="text-[12px] text-[#d92d20] underline">Remove</button>}
               </div>
             ))}
           </div>
@@ -375,32 +375,117 @@ export function SuperOrgs() {
           <div className="overflow-x-auto">
             <table className="w-full min-w-[760px] text-left text-[12.5px]">
               <thead>
-                <tr className="border-b border-rule text-[11px] font-semibold text-ink-mute">
+                <tr className="border-b border-line text-[11px] font-semibold text-ink-mute">
                   {['Organization', 'Code', 'Domains', 'Students', 'Roster', 'Drives', 'Admins', ''].map((h) => <th key={h} className="px-2 py-2">{h}</th>)}
                 </tr>
               </thead>
               <tbody>
                 {orgs.map((o) => (
-                  <tr key={o.id} className="border-b border-rule/70 align-top">
+                  <tr key={o.id} className="border-b border-line/70 align-top">
                     <td className="px-2 py-2.5">
                       <span className="block font-semibold text-ink">{o.name}</span>
                       <span className="text-[11.5px] text-ink-mute">{o.city || 'n/a'}</span>
                     </td>
-                    <td className="figure px-2 py-2.5">{o.official_code || 'n/a'}</td>
+                    <td className="tabular-nums px-2 py-2.5">{o.official_code || 'n/a'}</td>
                     <td className="px-2 py-2.5 text-ink-soft">{o.email_domains.join(', ') || 'n/a'}</td>
-                    <td className="figure px-2 py-2.5">{counts[o.id]?.students ?? '...'}</td>
-                    <td className="figure px-2 py-2.5">{counts[o.id]?.roster ?? '...'}</td>
-                    <td className="figure px-2 py-2.5">{counts[o.id]?.jobs ?? '...'}</td>
+                    <td className="tabular-nums px-2 py-2.5">{counts[o.id]?.students ?? '...'}</td>
+                    <td className="tabular-nums px-2 py-2.5">{counts[o.id]?.roster ?? '...'}</td>
+                    <td className="tabular-nums px-2 py-2.5">{counts[o.id]?.jobs ?? '...'}</td>
                     <td className="px-2 py-2.5 text-ink-soft">{o.admin_emails.join(', ') || 'none'}</td>
                     <td className="whitespace-nowrap px-2 py-2.5 text-right text-[12px]">
                       <button onClick={() => navigate(`/admin/students?org=${o.id}`)} className="mr-3 font-semibold text-brand underline">Students</button>
                       <button onClick={() => startEdit(o)} className="mr-3 text-ink-soft underline">Edit</button>
-                      <button onClick={() => remove(o)} className="text-[#9C3526] underline">Delete</button>
+                      <button onClick={() => remove(o)} className="text-[#d92d20] underline">Delete</button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+      </Card>
+    </Page>
+  )
+}
+
+/* ================================================================ super admin: platform admins */
+type PlatformAdmin = { email: string; user_id: string | null; full_name: string | null; active: boolean }
+
+export function SuperAdmins() {
+  const { isSuperAdmin, session } = useAuth()
+  const { showToast } = useApp()
+  const [rows, setRows] = useState<PlatformAdmin[]>([])
+  const [loading, setLoading] = useState(true)
+  const [email, setEmail] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [results, setResults] = useState<InviteResult[]>([])
+
+  const load = useCallback(async () => {
+    const { data, error } = await supabase.rpc('platform_admins')
+    if (error) showToast(errMsg(error))
+    setRows((data ?? []) as PlatformAdmin[])
+    setLoading(false)
+  }, [showToast])
+  useEffect(() => {
+    load()
+  }, [load])
+
+  const add = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!email.trim()) return
+    setBusy(true)
+    try {
+      const { results } = await callApi<{ results: InviteResult[] }>('admin', { action: 'invite', role: 'platform_admin', people: [{ email: email.trim() }] })
+      setResults(results)
+      setEmail('')
+      load()
+    } catch (err) {
+      showToast(errMsg(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const remove = async (a: PlatformAdmin) => {
+    if (!window.confirm(`Remove platform admin access for ${a.email}? That account goes back to being a normal account.`)) return
+    const { error } = await supabase.rpc('remove_platform_admin', { target_email: a.email })
+    if (error) return showToast(errMsg(error))
+    showToast('Platform admin access removed.')
+    load()
+  }
+
+  if (!isSuperAdmin) return <Denied what="Platform admins" />
+  const me = session?.user.email?.toLowerCase()
+
+  return (
+    <Page title="Platform admins" subtitle="Accounts that run PlacementIQ itself: create colleges, manage their placement cells and see every college's students.">
+      <Card title="Add a platform admin">
+        <form onSubmit={add} className="flex flex-col gap-2 sm:flex-row">
+          <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="owner@yourcompany.com" className="field" />
+          <button disabled={busy} className="btn-primary shrink-0">Add and invite</button>
+        </form>
+        <p className="mt-2 text-[12px] text-ink-mute">
+          A platform admin account is separate from student and placement-cell accounts: it only sees the platform pages. New addresses get an invite and become
+          platform admins when they sign up.
+        </p>
+        <ResultList results={results} />
+      </Card>
+
+      <Card title={`Platform admins (${rows.length})`}>
+        {loading ? (
+          <RowsSkeleton rows={2} />
+        ) : (
+          <div className="divide-y divide-line">
+            {rows.map((a) => (
+              <div key={a.email} className="flex flex-wrap items-center gap-3 py-2.5">
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[13px] font-semibold text-ink">{a.full_name || a.email}</span>
+                  {a.full_name && <span className="block truncate text-[12px] text-ink-mute">{a.email}</span>}
+                </span>
+                <span className={`text-[12px] ${a.active ? 'text-[#067647]' : 'text-ink-mute'}`}>{a.active ? 'Active' : 'Invited, not signed up'}</span>
+                <button onClick={() => remove(a)} className="text-[12px] text-[#d92d20] underline">{a.email === me ? 'Remove me' : 'Remove'}</button>
+              </div>
+            ))}
           </div>
         )}
       </Card>

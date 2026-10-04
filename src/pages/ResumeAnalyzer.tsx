@@ -11,7 +11,7 @@ const ago = (iso: string) => {
   const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000)
   return d <= 0 ? 'today' : d === 1 ? 'yesterday' : `${d} days ago`
 }
-const tone = (v: number) => (v >= 80 ? '#0A7A5C' : v >= 60 ? '#B47B12' : '#A63A2A')
+const tone = (v: number) => (v >= 80 ? '#12b76a' : v >= 60 ? '#f79009' : '#f04438')
 const chip = 'rounded-md border px-2 py-[3px] text-[11px] font-medium'
 
 export default function ResumeAnalyzer() {
@@ -116,7 +116,7 @@ export default function ResumeAnalyzer() {
     <Page title="Resume Analyzer" subtitle="Your resume is parsed, measured against ATS checks, reviewed by AI and matched to job descriptions.">
       <Card>
         <div className="flex flex-wrap items-center gap-4">
-          <label className={`cursor-pointer rounded-[3px] border border-[#C8C0B0] bg-surface px-4 py-2 text-[12.5px] font-semibold text-brand-dark hover:bg-[#F0EDE5] ${busy ? 'pointer-events-none opacity-60' : ''}`}>
+          <label className={`cursor-pointer rounded-[9px] border border-[#d5cbff] bg-white px-4 py-2 text-[12.5px] font-semibold text-brand-dark hover:bg-[#faf8ff] ${busy ? 'pointer-events-none opacity-60' : ''}`}>
             {p.resume_path ? 'Replace resume' : 'Upload resume (PDF / DOCX)'}
             <input
               type="file"
@@ -131,19 +131,19 @@ export default function ResumeAnalyzer() {
               {p.resume_name} {p.resume_uploaded_at && `(uploaded ${ago(p.resume_uploaded_at)})`}
               <button onClick={view} className="font-medium text-brand-dark hover:underline">View</button>
               <button onClick={reanalyze} disabled={busy} className="font-medium text-brand-dark hover:underline">Re-analyze</button>
-              <button onClick={remove} disabled={busy} className="font-medium text-[#9C3526] hover:underline">Delete</button>
+              <button onClick={remove} disabled={busy} className="font-medium text-[#d92d20] hover:underline">Delete</button>
             </span>
           ) : (
             <span className="text-[12.5px] text-ink-faint">No resume uploaded yet. PDF or DOCX, up to 5 MB.</span>
           )}
           <div className="text-left sm:ml-auto sm:text-right">
             <p className="text-[11px] text-ink-mute">Overall score</p>
-            <p className="text-[26px] font-bold leading-none text-brand-dark">{a ? a.overall : 'n/a'}<span className="text-[13px] text-ink-mute">/100</span></p>
+            <p className="text-[26px] font-bold leading-none text-brand-dark">{a ? a.overall : '—'}<span className="text-[13px] text-ink-mute">/100</span></p>
           </div>
         </div>
         {step && <p className="mt-3 animate-pulse text-[12px] font-medium text-brand-dark">{step}</p>}
         {p.resume_path && !a && !step && (
-          <p className="mt-3 rounded-[3px] border border-[#C8C0B0] bg-[#F0EDE5] px-3 py-2 text-[12px] text-[#8A5A0B]">
+          <p className="mt-3 rounded-[9px] border border-[#fbe3bd] bg-[#fff8ec] px-3 py-2 text-[12px] text-[#b45309]">
             This resume has not been analyzed yet. <button onClick={reanalyze} className="font-semibold underline">Analyze now</button>
           </p>
         )}
@@ -179,23 +179,23 @@ export default function ResumeAnalyzer() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Card title="Strengths">
               <ul className="space-y-1.5">
-                {a.strengths.map((s) => <li key={s} className="text-[12px] text-ink-soft">{s}</li>)}
+                {a.strengths.map((s) => <li key={s} className="text-[12px] text-ink-soft">✓ {s}</li>)}
               </ul>
             </Card>
             <Card title="Fix next">
               <ul className="space-y-1.5">
-                {a.improvements.map((s) => <li key={s} className="text-[12px] text-ink-soft">{s}</li>)}
+                {a.improvements.map((s) => <li key={s} className="text-[12px] text-ink-soft">→ {s}</li>)}
               </ul>
             </Card>
           </div>
 
           {a.rewrites.length > 0 && (
-            <Card title="Suggested rewrites" action={<button onClick={() => openAssistant('Rewrite my weakest resume bullets with impact metrics.')} className="text-[11.5px] font-medium text-brand-dark hover:underline">Ask AI for more</button>}>
+            <Card title="Suggested rewrites" action={<button onClick={() => openAssistant('Rewrite my weakest resume bullets with impact metrics.')} className="text-[11.5px] font-medium text-brand-dark hover:underline">Ask AI for more →</button>}>
               <div className="space-y-3">
                 {a.rewrites.map((r) => (
-                  <div key={r.before} className="rounded-[3px] border border-line bg-[#F0EDE5] p-3">
-                    <p className="text-[11.5px] text-[#9C3526] line-through">{r.before}</p>
-                    <p className="mt-1.5 text-[12px] font-medium text-[#0A6B50]">{r.after}</p>
+                  <div key={r.before} className="rounded-[11px] border border-line bg-[#fafbfc] p-3">
+                    <p className="text-[11.5px] text-[#d92d20] line-through">{r.before}</p>
+                    <p className="mt-1.5 text-[12px] font-medium text-[#0d9a5b]">{r.after}</p>
                   </div>
                 ))}
               </div>
@@ -208,7 +208,7 @@ export default function ResumeAnalyzer() {
           >
             <p className="text-[11.5px] font-semibold text-ink-mute">Skills ({a.extracted.skills.length})</p>
             <div className="mt-1.5 flex flex-wrap gap-1.5">
-              {a.extracted.skills.map((s) => <span key={s} className={`${chip} border-line bg-[#F0EDE5] text-ink-soft`}>{s}</span>)}
+              {a.extracted.skills.map((s) => <span key={s} className={`${chip} border-line bg-[#fafbfc] text-ink-soft`}>{s}</span>)}
             </div>
             <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
@@ -243,13 +243,13 @@ export default function ResumeAnalyzer() {
           onChange={(e) => setJd(e.target.value)}
           rows={6}
           placeholder="Paste the full job description here (role, responsibilities, requirements)…"
-          className="w-full rounded-[3px] border border-line bg-surface px-3 py-2 text-[12.5px] outline-none focus:border-[#C8C0B0] focus:ring-4 focus:ring-brand/10"
+          className="w-full rounded-[9px] border border-line bg-white px-3 py-2 text-[12.5px] outline-none focus:border-[#d5cbff] focus:ring-4 focus:ring-brand/10"
         />
         <div className="mt-2 flex items-center gap-3">
           <button
             onClick={runMatch}
             disabled={matching || !a || jd.trim().length < 80}
-            className="rounded-[3px] bg-brand px-4 py-2 text-[12.5px] font-semibold text-white hover:bg-brand-dark disabled:opacity-50"
+            className="rounded-[9px] bg-brand px-4 py-2 text-[12.5px] font-semibold text-white hover:bg-brand-dark disabled:opacity-50"
           >
             {matching ? 'Matching…' : 'Match my resume'}
           </button>
@@ -267,22 +267,22 @@ export default function ResumeAnalyzer() {
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <p className="text-[11.5px] font-semibold text-[#0A6B50]">Matched ({jm.matched_skills.length})</p>
-                <div className="mt-1.5 flex flex-wrap gap-1.5">{jm.matched_skills.map((s) => <span key={s} className={`${chip} border-[#C8C0B0] bg-[#F0EDE5] text-[#0A6B50]`}>{s}</span>)}</div>
+                <p className="text-[11.5px] font-semibold text-[#0d9a5b]">Matched ({jm.matched_skills.length})</p>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">{jm.matched_skills.map((s) => <span key={s} className={`${chip} border-[#c9f0d9] bg-[#ecfdf3] text-[#0d9a5b]`}>{s}</span>)}</div>
               </div>
               <div>
-                <p className="text-[11.5px] font-semibold text-[#9C3526]">Missing ({jm.missing_skills.length})</p>
-                <div className="mt-1.5 flex flex-wrap gap-1.5">{jm.missing_skills.map((s) => <span key={s} className={`${chip} border-[#C8C0B0] bg-[#F0EDE5] text-[#9C3526]`}>{s}</span>)}</div>
+                <p className="text-[11.5px] font-semibold text-[#d92d20]">Missing ({jm.missing_skills.length})</p>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">{jm.missing_skills.map((s) => <span key={s} className={`${chip} border-[#fbd5d1] bg-[#fef3f2] text-[#d92d20]`}>{s}</span>)}</div>
               </div>
             </div>
             {jm.missing_keywords.length > 0 && (
               <p className="text-[12px] text-ink-mute"><b className="text-ink">Keywords to add (if true):</b> {jm.missing_keywords.join(', ')}</p>
             )}
             {jm.suggestions.length > 0 && (
-              <ul className="space-y-1">{jm.suggestions.map((s) => <li key={s} className="text-[12px] text-ink-soft">{s}</li>)}</ul>
+              <ul className="space-y-1">{jm.suggestions.map((s) => <li key={s} className="text-[12px] text-ink-soft">→ {s}</li>)}</ul>
             )}
             {jm.tailored_bullets.map((b) => (
-              <p key={b} className="rounded-[3px] border border-line bg-[#F0EDE5] px-3 py-2 text-[12px] font-medium text-[#0A6B50]">{b}</p>
+              <p key={b} className="rounded-[9px] border border-line bg-[#fafbfc] px-3 py-2 text-[12px] font-medium text-[#0d9a5b]">{b}</p>
             ))}
           </div>
         )}

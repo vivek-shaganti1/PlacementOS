@@ -3,10 +3,10 @@ import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import AssistantDrawer from './components/AssistantDrawer'
 import { LogoMark } from './components/Logo'
-import { PageSkeleton, Skeleton } from './components/Page'
+import { Aurora } from './components/Page'
 import Sidebar from './components/Sidebar'
 import Topbar from './components/Topbar'
-import { AuthProvider, useAuth } from './lib/auth'
+import { AuthProvider, HOME, useAuth } from './lib/auth'
 import { AppProvider, useApp } from './lib/store'
 import { supabaseConfigured } from './lib/supabase'
 import { useIsMobile } from './lib/useMediaQuery'
@@ -36,18 +36,83 @@ const AdminJobs = lazy(() => import('./pages/Admin').then((m) => ({ default: m.A
 const AdminTeam = lazy(() => import('./pages/AdminOrg').then((m) => ({ default: m.AdminTeam })))
 const AdminRoster = lazy(() => import('./pages/AdminOrg').then((m) => ({ default: m.AdminRoster })))
 const SuperOrgs = lazy(() => import('./pages/AdminOrg').then((m) => ({ default: m.SuperOrgs })))
+const SuperAdmins = lazy(() => import('./pages/AdminOrg').then((m) => ({ default: m.SuperAdmins })))
 const ResumeAnalyzer = lazy(() => import('./pages/ResumeAnalyzer'))
 const Landing = lazy(() => import('./pages/Landing'))
-const Legal = lazy(() => import('./pages/Legal'))
 
 function Loader() {
-  return <PageSkeleton />
+  return (
+    <div className="grid flex-1 place-items-center">
+      <motion.div animate={{ scale: [1, 1.06, 1] }} transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}>
+        <LogoMark size={44} />
+      </motion.div>
+    </div>
+  )
+}
+
+/** Each account type gets only its own pages; anything else lands on that account's home. */
+function RoleRoutes() {
+  const { role } = useAuth()
+  const location = useLocation()
+  const home = HOME[role]
+  const common = [
+    <Route key="root" path="/" element={<Navigate to={home} replace />} />,
+    <Route key="login" path="/login" element={<Navigate to={home} replace />} />,
+    <Route key="signup" path="/signup" element={<Navigate to={home} replace />} />,
+    <Route key="any" path="*" element={<Navigate to={home} replace />} />,
+  ]
+  if (role === 'super')
+    return (
+      <Routes location={location}>
+        <Route path="/super/orgs" element={<SuperOrgs />} />
+        <Route path="/super/admins" element={<SuperAdmins />} />
+        <Route path="/admin" element={<AdminOverview />} />
+        <Route path="/admin/students" element={<AdminStudents />} />
+        <Route path="/admin/roster" element={<AdminRoster />} />
+        <Route path="/admin/jobs" element={<AdminJobs />} />
+        <Route path="/admin/team" element={<AdminTeam />} />
+        {common}
+      </Routes>
+    )
+  if (role === 'org')
+    return (
+      <Routes location={location}>
+        <Route path="/admin" element={<AdminOverview />} />
+        <Route path="/admin/students" element={<AdminStudents />} />
+        <Route path="/admin/roster" element={<AdminRoster />} />
+        <Route path="/admin/jobs" element={<AdminJobs />} />
+        <Route path="/admin/team" element={<AdminTeam />} />
+        {common}
+      </Routes>
+    )
+  return (
+    <Routes location={location}>
+      <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/profile" element={<Profile />} />
+      <Route path="/eligibility" element={<EligibilityStacks />} />
+      <Route path="/drives" element={<Drives />} />
+      <Route path="/skill-gap" element={<SkillGap />} />
+      <Route path="/roadmap" element={<Roadmap />} />
+      <Route path="/practice" element={<Practice />} />
+      <Route path="/mock-interviews" element={<MockInterviews />} />
+      <Route path="/alumni" element={<AlumniNetwork />} />
+      <Route path="/applications" element={<Applications />} />
+      <Route path="/analytics" element={<Analytics />} />
+      <Route path="/resume" element={<ResumeAnalyzer />} />
+      <Route path="/certifications" element={<Certifications />} />
+      <Route path="/settings" element={<Settings />} />
+      <Route path="/help" element={<Help />} />
+      <Route path="/jobs" element={<Jobs />} />
+      {common}
+    </Routes>
+  )
 }
 
 function Shell() {
   const isMobile = useIsMobile()
   const [sidebarOpen, setSidebarOpen] = useState(() => !window.matchMedia('(max-width: 1023px)').matches)
   const { openAssistant, toast } = useApp()
+  const { role } = useAuth()
   const location = useLocation()
 
   // Switching between phone and desktop layouts: drawer starts closed on phones, rail starts open on desktop.
@@ -55,6 +120,7 @@ function Shell() {
 
   return (
     <div className="relative flex h-screen flex-col overflow-hidden">
+      <Aurora />
       <div className="relative z-10 flex min-h-0 flex-1 flex-col">
         <Topbar onToggleSidebar={() => setSidebarOpen((v) => !v)} />
         <div className="flex min-h-0 flex-1">
@@ -64,58 +130,29 @@ function Shell() {
               <motion.div
                 key={location.pathname}
                 className="flex min-w-0 flex-1"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0, transition: { duration: 0.08 } }}
-                transition={{ duration: 0.15 }}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6, transition: { duration: 0.14 } }}
+                transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
               >
                 <Suspense fallback={<Loader />}>
-                  <Routes location={location}>
-                    <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                    <Route path="/login" element={<Navigate to="/dashboard" replace />} />
-                    <Route path="/signup" element={<Navigate to="/dashboard" replace />} />
-                    <Route path="/dashboard" element={<Dashboard />} />
-                    <Route path="/profile" element={<Profile />} />
-                    <Route path="/eligibility" element={<EligibilityStacks />} />
-                    <Route path="/drives" element={<Drives />} />
-                    <Route path="/skill-gap" element={<SkillGap />} />
-                    <Route path="/roadmap" element={<Roadmap />} />
-                    <Route path="/practice" element={<Practice />} />
-                    <Route path="/mock-interviews" element={<MockInterviews />} />
-                    <Route path="/alumni" element={<AlumniNetwork />} />
-                    <Route path="/applications" element={<Applications />} />
-                    <Route path="/analytics" element={<Analytics />} />
-                    <Route path="/resume" element={<ResumeAnalyzer />} />
-                    <Route path="/certifications" element={<Certifications />} />
-                    <Route path="/settings" element={<Settings />} />
-                    <Route path="/help" element={<Help />} />
-                    <Route path="/terms" element={<Legal kind="terms" />} />
-                    <Route path="/privacy" element={<Legal kind="privacy" />} />
-                    <Route path="/jobs" element={<Jobs />} />
-                    <Route path="/admin" element={<AdminOverview />} />
-                    <Route path="/admin/students" element={<AdminStudents />} />
-                    <Route path="/admin/jobs" element={<AdminJobs />} />
-                    <Route path="/admin/team" element={<AdminTeam />} />
-                    <Route path="/admin/roster" element={<AdminRoster />} />
-                    <Route path="/super/orgs" element={<SuperOrgs />} />
-                    <Route path="*" element={<Navigate to="/dashboard" replace />} />
-                  </Routes>
+                  <RoleRoutes />
                 </Suspense>
               </motion.div>
             </AnimatePresence>
           </main>
         </div>
       </div>
-      <AssistantDrawer />
+      {role === 'student' && <AssistantDrawer />}
       <AnimatePresence>
         {toast && (
           <motion.div
             role="status"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            className="glass-dark fixed bottom-6 left-1/2 z-[60] w-max max-w-[calc(100vw-32px)] -translate-x-1/2 rounded-[3px] px-4 py-2.5 text-center text-[12.5px] font-medium text-white"
+            initial={{ opacity: 0, y: 16, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 10, scale: 0.98 }}
+            transition={{ type: 'spring', stiffness: 420, damping: 32 }}
+            className="glass-dark fixed bottom-6 left-1/2 z-[60] w-max max-w-[calc(100vw-32px)] -translate-x-1/2 rounded-[14px] px-4 py-2.5 text-center text-[12.5px] font-medium text-white"
           >
             {toast}
           </motion.div>
@@ -128,27 +165,19 @@ function Shell() {
 function Centered({ children }: { children: ReactNode }) {
   return (
     <div className="relative grid min-h-screen place-items-center px-4 text-center text-[13px] text-ink-mute">
+      <Aurora />
       <div className="relative z-10">{children}</div>
     </div>
   )
 }
 
-/** Skeleton of the app shell, shown while the session and profile load. */
 function Splash() {
   return (
-    <div className="flex h-screen flex-col" role="status" aria-label="Loading PlacementIQ">
-      <div className="flex h-[56px] shrink-0 items-center gap-3 border-b border-rule bg-surface px-5">
-        <LogoMark size={30} />
-        <Skeleton className="h-4 w-32" />
-        <Skeleton className="ml-auto h-8 w-8" />
-      </div>
-      <div className="flex min-h-0 flex-1">
-        <div className="hidden w-[232px] shrink-0 space-y-3 border-r border-rule bg-surface p-5 lg:block">
-          {Array.from({ length: 10 }, (_, i) => <Skeleton key={i} className={`h-3 ${i % 4 === 0 ? 'w-16' : 'w-36'}`} />)}
-        </div>
-        <PageSkeleton />
-      </div>
-    </div>
+    <Centered>
+      <motion.div animate={{ scale: [1, 1.06, 1] }} transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}>
+        <LogoMark size={56} animate />
+      </motion.div>
+    </Centered>
   )
 }
 
@@ -160,8 +189,6 @@ function PublicRoutes() {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Login initialMode="signup" />} />
         <Route path="/reset-password" element={<Login />} />
-        <Route path="/terms" element={<Legal kind="terms" />} />
-        <Route path="/privacy" element={<Legal kind="privacy" />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </Suspense>
@@ -169,7 +196,7 @@ function PublicRoutes() {
 }
 
 function Gate() {
-  const { session, loading, recovering, profile, profileError, signOut } = useAuth()
+  const { session, loading, recovering, profile, profileError, signOut, role } = useAuth()
   const { pathname } = useLocation()
 
   if (loading) return <Splash />
@@ -188,7 +215,8 @@ function Gate() {
       <Splash />
     )
 
-  if (!profile.onboarded_at)
+  // Only student accounts go through onboarding; admin accounts have no student profile to fill.
+  if (role === 'student' && !profile.onboarded_at)
     return (
       <Suspense fallback={<Splash />}>
         <Onboarding />

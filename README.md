@@ -54,11 +54,20 @@ Server-only environment variables: `GROQ_API_KEY`, `GROQ_MODEL` (default `openai
 
 ## Design
 
-Editorial and flat: warm paper background, off-white surfaces, hairline rules, 3px corners and one pine accent.
-Type is Newsreader (headings), IBM Plex Sans (body) and IBM Plex Mono (figures). Status and chart colours are muted
-and validated for colour-blind separation. There are no gradients, glass, blur, drop shadows or hover animations, and
-UI copy avoids em dashes, arrows, emojis and checkmark bullets (AI output is cleaned the same way on the server).
-The logo is an SVG component in `src/components/Logo.tsx` (favicon in `public/favicon.svg`).
+Soft-depth glass UI over an animated aurora, built with Tailwind and [Motion](https://motion.dev); charts use Recharts.
+Animations respect `prefers-reduced-motion`. The logo is an SVG component in `src/components/Logo.tsx` (favicon in `public/favicon.svg`).
+
+## Accounts and roles
+
+There are three separate kinds of account, decided by the database (`user_roles`), never by the client:
+
+- **Platform admin** (`super_admin`): sees only the platform pages. Creates colleges (organizations) with their official
+  code, email domains and placement-cell admin emails, and manages other platform admins. Platform admin emails are listed
+  in `private.platform_admin_emails`; listed emails get the role when they sign up.
+- **Placement cell** (`org_admin` of one college): sees only that college's students (profiles, resumes, repos,
+  LeetCode/Codeforces/CodeChef stats), its roster, its drives and its admins.
+- **Student**: everyone else. Joins a college automatically by email domain or roster entry and sees only their own data
+  and their college's drives.
 
 ## Supabase dashboard settings
 

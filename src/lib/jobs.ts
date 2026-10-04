@@ -15,11 +15,11 @@ export type JobApplication = {
 }
 
 export const STATUS_META: Record<JobStatus, { label: string; cls: string }> = {
-  applied: { label: 'Applied', cls: 'border-[#C8C0B0] bg-brand-tint text-brand-dark' },
-  shortlisted: { label: 'Shortlisted', cls: 'border-[#C8C0B0] bg-[#F0EDE5] text-[#2D5FA0]' },
-  interview: { label: 'Interview', cls: 'border-[#C8C0B0] bg-[#F0EDE5] text-[#8A5A0B]' },
-  offer: { label: 'Offer', cls: 'border-[#C8C0B0] bg-[#F0EDE5] text-[#0A6B50]' },
-  rejected: { label: 'Not selected', cls: 'border-[#C8C0B0] bg-[#F0EDE5] text-[#9C3526]' },
+  applied: { label: 'Applied', cls: 'border-[#d5cbff] bg-brand-tint text-brand-dark' },
+  shortlisted: { label: 'Shortlisted', cls: 'border-[#cfe4fb] bg-[#eef6ff] text-[#1570cd]' },
+  interview: { label: 'Interview', cls: 'border-[#fbe3bd] bg-[#fff8ec] text-[#b45309]' },
+  offer: { label: 'Offer', cls: 'border-[#c9f0d9] bg-[#ecfdf3] text-[#0d9a5b]' },
+  rejected: { label: 'Not selected', cls: 'border-[#fbd5d1] bg-[#fef3f2] text-[#d92d20]' },
 }
 
 export const normalizeJob = (j: Record<string, any>): JobPosting => ({

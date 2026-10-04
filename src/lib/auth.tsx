@@ -11,12 +11,19 @@ type AuthCtx = {
   isAdmin: boolean
   isSuperAdmin: boolean
   adminOrgIds: string[]
+  /** Which kind of account this is: platform owner, a college's placement cell, or a student. */
+  role: AccountRole
   profileError: string | null
   refreshProfile: () => Promise<void>
   updateProfile: (patch: ProfilePatch) => Promise<void>
   signOut: () => Promise<void>
   clearRecovery: () => void
 }
+
+export type AccountRole = 'super' | 'org' | 'student'
+
+/** Landing page for each kind of account. */
+export const HOME: Record<AccountRole, string> = { super: '/super/orgs', org: '/admin', student: '/dashboard' }
 
 const Ctx = createContext<AuthCtx | null>(null)
 
@@ -99,6 +106,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isSuperAdmin = roles.some((r) => r.role === 'super_admin')
   const adminOrgIds = useMemo(() => roles.filter((r) => r.role === 'org_admin' && r.org_id).map((r) => r.org_id as string), [roles])
   const isAdmin = isSuperAdmin || adminOrgIds.length > 0
+  const role: AccountRole = isSuperAdmin ? 'super' : adminOrgIds.length ? 'org' : 'student'
 
   const value = useMemo<AuthCtx>(
     () => ({
@@ -109,6 +117,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAdmin,
       isSuperAdmin,
       adminOrgIds,
+      role,
       profileError,
       refreshProfile,
       updateProfile,
@@ -118,7 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       },
       clearRecovery: () => setRecovering(false),
     }),
-    [session, loading, recovering, profile, isAdmin, isSuperAdmin, adminOrgIds, profileError, refreshProfile, updateProfile],
+    [session, loading, recovering, profile, isAdmin, isSuperAdmin, adminOrgIds, role, profileError, refreshProfile, updateProfile],
   )
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>

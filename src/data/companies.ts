@@ -37,7 +37,7 @@ function makeAlumni(company: string, count: number): Alumnus[] {
     batch: `${2021 + (i % 4)} Batch, ${branches[i % branches.length]}`,
     years: `${(1.2 + ((i * 0.37) % 3)).toFixed(1)} Years`,
     location: cities[i % cities.length],
-    avatar: '',
+    avatar: `https://i.pravatar.cc/96?img=${(i % 60) + 1}`,
   }))
 }
 
@@ -160,10 +160,10 @@ const notEligibleSeeds: Seed[] = [
 ]
 
 const googleAlumni: Alumnus[] = [
-  { name: 'Rahul Reddy', title: 'SDE II at Google', batch: '2022 Batch, CSE', years: '2.4 Years', location: 'Bangalore', avatar: '' },
-  { name: 'Sneha Priya', title: 'Software Engineer at Google', batch: '2023 Batch, CSE', years: '1.6 Years', location: 'Bangalore', avatar: '' },
-  { name: 'Vikram Singh', title: 'SDE at Google', batch: '2022 Batch, IT', years: '2.1 Years', location: 'Hyderabad', avatar: '' },
-  { name: 'Ananya Sharma', title: 'SWE at Google', batch: '2023 Batch, CSE', years: '1.3 Years', location: 'Bangalore', avatar: '' },
+  { name: 'Rahul Reddy', title: 'SDE II at Google', batch: '2022 Batch, CSE', years: '2.4 Years', location: 'Bangalore', avatar: 'https://i.pravatar.cc/96?img=13' },
+  { name: 'Sneha Priya', title: 'Software Engineer at Google', batch: '2023 Batch, CSE', years: '1.6 Years', location: 'Bangalore', avatar: 'https://i.pravatar.cc/96?img=45' },
+  { name: 'Vikram Singh', title: 'SDE at Google', batch: '2022 Batch, IT', years: '2.1 Years', location: 'Hyderabad', avatar: 'https://i.pravatar.cc/96?img=33' },
+  { name: 'Ananya Sharma', title: 'SWE at Google', batch: '2023 Batch, CSE', years: '1.3 Years', location: 'Bangalore', avatar: 'https://i.pravatar.cc/96?img=47' },
   ...makeAlumni('Google', 12).slice(4),
 ]
 
@@ -182,11 +182,42 @@ export const bucketMeta: Record<
   Bucket,
   { title: string; hint: string; head: string; ring: string; text: string; dot: string; more: string }
 > = {
-  // Stack identity is carried by the label and a small status dot; fills stay neutral.
-  eligible: { title: 'Eligible', hint: 'You meet all requirements', head: 'bg-surface-2 border-rule', ring: 'ring-[#0A7A5C]', text: 'text-[#0A6B50]', dot: 'bg-[#0A7A5C]', more: 'text-ink-mute' },
-  nearly: { title: 'Nearly Eligible', hint: 'Minor gaps to bridge', head: 'bg-surface-2 border-rule', ring: 'ring-[#B47B12]', text: 'text-[#8A5A0B]', dot: 'bg-[#B47B12]', more: 'text-ink-mute' },
-  canBecome: { title: 'Can Become Eligible', hint: 'Improve skills and reapply', head: 'bg-surface-2 border-rule', ring: 'ring-[#2D5FA0]', text: 'text-[#2D5FA0]', dot: 'bg-[#2D5FA0]', more: 'text-ink-mute' },
-  notEligible: { title: 'Not Eligible', hint: 'Major gaps found', head: 'bg-surface-2 border-rule', ring: 'ring-[#A63A2A]', text: 'text-[#9C3526]', dot: 'bg-[#A63A2A]', more: 'text-[#9C3526]' },
+  eligible: {
+    title: 'Eligible',
+    hint: 'You meet all requirements',
+    head: 'bg-[#ecfdf3] border-[#c9f0d9]',
+    ring: 'ring-[#12b76a]',
+    text: 'text-[#0d9a5b]',
+    dot: 'bg-[#12b76a]',
+    more: 'text-ink-mute',
+  },
+  nearly: {
+    title: 'Nearly Eligible',
+    hint: 'Minor gaps to bridge',
+    head: 'bg-[#fff8ec] border-[#fbe3bd]',
+    ring: 'ring-[#f79009]',
+    text: 'text-[#d97706]',
+    dot: 'bg-[#f79009]',
+    more: 'text-ink-mute',
+  },
+  canBecome: {
+    title: 'Can Become Eligible',
+    hint: 'Improve skills & reapply',
+    head: 'bg-[#eef6ff] border-[#cfe4fb]',
+    ring: 'ring-[#2e90fa]',
+    text: 'text-[#1570cd]',
+    dot: 'bg-[#2e90fa]',
+    more: 'text-ink-mute',
+  },
+  notEligible: {
+    title: 'Not Eligible',
+    hint: 'Major gaps found',
+    head: 'bg-[#fef3f2] border-[#fbd5d1]',
+    ring: 'ring-[#f04438]',
+    text: 'text-[#d92d20]',
+    dot: 'bg-[#f04438]',
+    more: 'text-[#d92d20]',
+  },
 }
 
 export const bucketOrder: Bucket[] = ['eligible', 'nearly', 'canBecome', 'notEligible']

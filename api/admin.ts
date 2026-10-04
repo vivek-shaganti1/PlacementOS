@@ -1,5 +1,5 @@
 // Organization administration that needs the Supabase secret key: sending account invites.
-// POST { action: 'invite', org_id, role: 'student' | 'org_admin', people: [{ email, full_name?, roll_number?, branch?, batch? }] }
+// POST { action: 'invite', org_id, role: 'student' | 'org_admin' | 'platform_admin', people: [{ email, full_name?, roll_number?, branch?, batch? }] }
 // The caller must be the super admin or an admin of org_id. Roster rows are written as the caller (RLS applies);
 // only the invite email itself uses the secret key, which never leaves the server.
 import { bearer, env, handle, HttpError, json, rest, SUPABASE_URL } from './_lib'
@@ -12,9 +12,8 @@ type Result = { email: string; status: 'invited' | 'existing' | 'failed' | 'save
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 const clip = (v: unknown, n: number) => String(v ?? '').trim().slice(0, n)
 
-async function callerCanAdmin(token: string, orgId: string) {
-  const roles = (await (await rest(token, 'user_roles?select=role,org_id')).json()) as { role: string; org_id: string | null }[]
-  return roles.some((r) => r.role === 'super_admin' || (r.role === 'org_admin' && r.org_id === orgId))
+async function callerRoles(token: string) {
+  return (await (await rest(token, 'user_roles?select=role,org_id')).json()) as { role: string; org_id: string | null }[]
 }
 
 async function sendInvite(email: string, fullName: string, redirectTo: string): Promise<Result> {
@@ -38,11 +37,16 @@ export default handle(async (req) => {
   const token = bearer(req)
   const body = (await req.json().catch(() => ({}))) as { action?: string; org_id?: string; role?: string; people?: Person[]; send?: boolean }
   if (body.action !== 'invite') throw new HttpError(400, 'Unknown action')
+  const role = body.role === 'platform_admin' ? 'platform_admin' : body.role === 'org_admin' ? 'org_admin' : 'student'
+  const roles = await callerRoles(token)
+  const isSuper = roles.some((r) => r.role === 'super_admin')
   const orgId = clip(body.org_id, 40)
-  if (!/^[0-9a-f-]{36}$/i.test(orgId)) throw new HttpError(400, 'Invalid organization')
-  if (!(await callerCanAdmin(token, orgId))) throw new HttpError(403, 'You do not administer this organization.')
-
-  const role = body.role === 'org_admin' ? 'org_admin' : 'student'
+  if (role === 'platform_admin') {
+    if (!isSuper) throw new HttpError(403, 'Only platform admins can add platform admins.')
+  } else {
+    if (!/^[0-9a-f-]{36}$/i.test(orgId)) throw new HttpError(400, 'Invalid organization')
+    if (!isSuper && !roles.some((r) => r.role === 'org_admin' && r.org_id === orgId)) throw new HttpError(403, 'You do not administer this organization.')
+  }
   const people = (Array.isArray(body.people) ? body.people : []).slice(0, 200).map((p) => ({
     email: clip(p.email, 200).toLowerCase(),
     full_name: clip(p.full_name, 160),
@@ -73,6 +77,11 @@ export default handle(async (req) => {
           body: JSON.stringify({ invited_at: new Date().toISOString() }),
           headers: { prefer: 'return=minimal' },
         })
+    }
+  } else if (role === 'platform_admin') {
+    for (const p of people) {
+      const granted = (await (await rest(token, 'rpc/add_platform_admin', { method: 'POST', body: JSON.stringify({ target_email: p.email }) })).json()) as string
+      results.push(granted === 'granted' ? { email: p.email, status: 'existing', detail: 'Platform admin access granted to the existing account.' } : await sendInvite(p.email, p.full_name, redirectTo))
     }
   } else {
     for (const p of people) {
