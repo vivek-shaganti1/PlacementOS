@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { byBucket, bucketMeta, bucketOrder, companies } from '../data/companies'
+import { bucketMeta, bucketOrder } from '../data/companies'
+import { useCompanies } from '../lib/companies'
 import type { Bucket, Company } from '../data/types'
 import CompanyLogo from '../components/CompanyLogo'
 import CompanyPanel from '../components/CompanyPanel'
@@ -8,32 +9,35 @@ import StackColumn from '../components/StackColumn'
 import { IconBot, IconInfo } from '../components/Icons'
 import { useApp } from '../lib/store'
 
-const lists = Object.fromEntries(bucketOrder.map((b) => [b, byBucket(b)])) as Record<Bucket, Company[]>
-const total = companies.length
 
 export default function EligibilityStacks() {
   const [params, setParams] = useSearchParams()
   const navigate = useNavigate()
   const { openAssistant } = useApp()
+  const { companies, byBucket, byId } = useCompanies()
+  const lists = Object.fromEntries(bucketOrder.map((b) => [b, byBucket(b)])) as Record<Bucket, Company[]>
+  const total = companies.length
 
-  const initial = companies.find((c) => c.id === params.get('company')) ?? lists.eligible[0]
-  const [selected, setSelected] = useState<Company | null>(initial)
+  const [selectedId, setSelectedId] = useState<string | null>(params.get('company') ?? companies[0]?.id ?? null)
+  const selected = byId(selectedId) ?? null
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     const id = params.get('company')
-    if (id) {
-      const c = companies.find((x) => x.id === id)
-      if (c) setSelected(c)
-    }
+    if (id) setSelectedId(id)
   }, [params])
 
   const select = (c: Company) => {
-    setSelected(c)
+    setSelectedId(c.id)
     setParams({ company: c.id }, { replace: true })
   }
 
-  const top = lists.eligible[0]
+  // Highest-paying company you already qualify for, else your best match.
+  const top = [...lists.eligible].sort((a, b) => b.ctcAvg - a.ctcAvg)[0] ?? companies[0]
+  // The skills that block the most "Nearly" / "Can Become" companies.
+  const blockers = Object.entries(
+    [...lists.nearly, ...lists.canBecome].flatMap((c) => c.gaps.slice(0, 2).map((g) => g.skill)).reduce<Record<string, number>>((a, s) => ({ ...a, [s]: (a[s] ?? 0) + 1 }), {}),
+  ).sort((a, b) => b[1] - a[1]).slice(0, 2)
 
   return (
     <div className="flex min-h-0 flex-1 overflow-hidden">
@@ -51,6 +55,7 @@ export default function EligibilityStacks() {
             {bucketOrder.map((b) => (
               <StackColumn
                 key={b}
+                bucket={b}
                 list={lists[b]}
                 selectedId={selected?.id}
                 onSelect={select}
@@ -111,13 +116,15 @@ export default function EligibilityStacks() {
                   <CompanyLogo company={top} size={32} />
                   <div className="flex-1">
                     <p className="text-[15px] font-bold text-ink">{top.name}</p>
-                    <p className="text-[12px] text-ink-mute">Software Engineer</p>
+                    <p className="text-[12px] text-ink-mute">{top.role} · ₹{top.ctcAvg.toFixed(1)} LPA</p>
                   </div>
-                  <span className="rounded-md border border-[#c9f0d9] bg-[#ecfdf3] px-2 py-[3px] text-[11px] font-semibold text-[#0d9a5b]">
-                    Highly Eligible
+                  <span className={`rounded-md border px-2 py-[3px] text-[11px] font-semibold ${bucketMeta[top.bucket].head} ${bucketMeta[top.bucket].text}`}>
+                    {bucketMeta[top.bucket].title} · {top.match}%
                   </span>
                 </div>
-                <p className="mt-3 text-[11.5px] font-medium text-[#0d9a5b]">Your profile is an excellent match!</p>
+                <p className={`mt-3 text-[11.5px] font-medium ${bucketMeta[top.bucket].text}`}>
+                  {top.bucket === 'eligible' ? 'Highest-paying company you qualify for today.' : `Closest match. Biggest gap: ${top.gaps[0]?.skill ?? 'academics'}.`}
+                </p>
               </button>
 
               <div className="rounded-xl2 border border-[#e6e0ff] bg-[#f6f3ff] px-4 py-3.5">
@@ -128,7 +135,9 @@ export default function EligibilityStacks() {
                   <div>
                     <p className="text-[12.5px] font-semibold text-ink">AI Suggestion</p>
                     <p className="mt-1 text-[11.5px] leading-[1.6] text-ink-mute">
-                      Focus on improving System Design and Advanced DSA to become eligible for Top Product based companies.
+                      {blockers.length
+                        ? `Improving ${blockers.map(([s]) => s).join(' and ')} would move up to ${blockers[0][1]} companies from "Nearly" / "Can Become" towards Eligible.`
+                        : 'Complete your profile and connect your coding accounts to get a sharper analysis.'}
                     </p>
                   </div>
                 </div>
@@ -151,7 +160,7 @@ export default function EligibilityStacks() {
         </div>
       </div>
 
-      {selected && <CompanyPanel company={selected} onClose={() => setSelected(null)} />}
+      {selected && <CompanyPanel company={selected} onClose={() => setSelectedId(null)} />}
     </div>
   )
 }

@@ -1,21 +1,23 @@
-import type { Company } from '../data/types'
+import type { Bucket, Company } from '../data/types'
 import { bucketMeta } from '../data/companies'
 import CompanyLogo from './CompanyLogo'
 
 export default function StackColumn({
+  bucket,
   list,
   selectedId,
   onSelect,
   expanded,
   onToggleExpand,
 }: {
+  bucket: Bucket
   list: Company[]
   selectedId?: string
   onSelect: (c: Company) => void
   expanded: boolean
   onToggleExpand: () => void
 }) {
-  const meta = bucketMeta[list[0].bucket]
+  const meta = bucketMeta[bucket]
   const shown = expanded ? list : list.slice(0, 5)
   const rest = list.length - 5
 
@@ -48,6 +50,10 @@ export default function StackColumn({
           </button>
         )
       })}
+
+      {list.length === 0 && (
+        <p className="rounded-xl2 border border-dashed border-line px-2.5 py-4 text-center text-[11px] text-ink-faint">No companies here right now</p>
+      )}
 
       {rest > 0 && (
         <button

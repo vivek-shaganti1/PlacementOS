@@ -1,4 +1,5 @@
-import { byBucket, bucketMeta, bucketOrder, companies } from '../data/companies'
+import { bucketMeta, bucketOrder } from '../data/companies'
+import { useCompanies } from '../lib/companies'
 import { Card, Page, Stat } from '../components/Page'
 
 const years = [
@@ -10,11 +11,12 @@ const years = [
 ]
 
 export default function Analytics() {
+  const { companies, byBucket } = useCompanies()
   const max = Math.max(...years.map((y) => y.placed))
   const totalCtc = companies.reduce((a, c) => a + c.ctcAvg, 0) / companies.length
 
   return (
-    <Page title="Placement Analytics" subtitle="How your campus has performed, and where you sit in the distribution." wide>
+    <Page title="Placement Analytics" subtitle="Your eligibility is computed live from your profile. Campus history below is sample data until your placement cell publishes its numbers." wide>
       <div className="grid grid-cols-4 gap-3">
         <Stat label="Students placed (2025)" value="466" sub="+9% YoY" tone="text-[#0d9a5b]" />
         <Stat label="Average package" value="₹13.9 LPA" sub="Campus-wide" />
@@ -23,7 +25,7 @@ export default function Analytics() {
       </div>
 
       <div className="grid grid-cols-[1.3fr_1fr] gap-4">
-        <Card title="Students placed by year">
+        <Card title="Students placed by year (sample campus data)">
           <div className="flex h-[190px] items-end gap-6 px-2">
             {years.map((y) => (
               <div key={y.year} className="flex flex-1 flex-col items-center gap-2">

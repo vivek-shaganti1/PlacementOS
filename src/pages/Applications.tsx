@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { companies } from '../data/companies'
+import { useCompanies } from '../lib/companies'
 import CompanyLogo from '../components/CompanyLogo'
 import { Card, Page, Stat } from '../components/Page'
 import { useApp } from '../lib/store'
@@ -9,6 +9,7 @@ const stages = ['Applied', 'Online Assessment', 'Technical Round', 'HR Round', '
 export default function Applications() {
   const { applications, saved, toggleSave, setStage, withdraw } = useApp()
   const navigate = useNavigate()
+  const { companies } = useCompanies()
   const stageOf = Object.fromEntries(applications.map((a) => [a.company_id, a.stage]))
   const rows = applications.map((a) => companies.find((c) => c.id === a.company_id)).filter((c): c is (typeof companies)[number] => !!c)
   const offers = applications.filter((a) => a.stage === stages.length - 1).length

@@ -1,109 +1,69 @@
-// Vercel Edge Function: AI Career Assistant backed by Groq.
-// The Groq key never reaches the browser. Callers must send a valid Supabase access token;
-// the student's profile is read with that token, so RLS guarantees it is their own.
-import { companies } from '../src/data/companies'
-
-declare const process: { env: Record<string, string | undefined> }
+// AI Career Assistant backed by Groq. The key never reaches the browser; callers must be signed in,
+// and the student's own profile (read under RLS) grounds every answer.
+import { evaluateAll, type StudentLike } from '../src/lib/eligibility'
+import { bearer, groq, handle, HttpError, json, loadProfile } from './_lib'
 
 export const config = { runtime: 'edge' }
 
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://oewjimwozaksyigfyrkz.supabase.co'
-const SUPABASE_KEY = process.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_l4oFZfheVfvTBAfU3t9sRg_AwdkNqse'
-const MODEL = process.env.GROQ_MODEL || 'openai/gpt-oss-120b'
-
 type Msg = { role: 'user' | 'bot'; text: string }
 
-const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })
+const bucketName: Record<string, string> = { eligible: 'Eligible', nearly: 'Nearly Eligible', canBecome: 'Can Become Eligible', notEligible: 'Not Eligible' }
 
-const bucketName: Record<string, string> = {
-  eligible: 'Eligible',
-  nearly: 'Nearly Eligible',
-  canBecome: 'Can Become Eligible',
-  notEligible: 'Not Eligible',
-}
+function systemPrompt(p: Record<string, any>) {
+  const companies = evaluateAll(p as StudentLike)
+  const catalog = companies
+    .map((c) => `${c.name} | ${bucketName[c.bucket]} ${c.match}% | CTC ₹${c.ctcAvg} LPA | gaps: ${c.gaps.slice(0, 3).map((g) => `${g.skill} ${g.have}->${g.need}`).join(', ') || 'none'}`)
+    .join('\n')
+  const i = p.integrations ?? {}
+  const coding = [
+    i.leetcode && `LeetCode: ${i.leetcode.solved} solved (E${i.leetcode.easy}/M${i.leetcode.medium}/H${i.leetcode.hard}), contest rating ${i.leetcode.contest_rating ?? 'n/a'}`,
+    i.codeforces && `Codeforces: rating ${i.codeforces.rating ?? 'unrated'} (max ${i.codeforces.max_rating ?? '-'}), ${i.codeforces.solved} solved`,
+    i.codechef && `CodeChef: rating ${i.codechef.rating ?? 'unrated'}, ${i.codechef.stars ?? 0}★, ${i.codechef.solved} solved`,
+    i.github && `GitHub: ${i.github.original_repos} original repos, languages ${i.github.languages.slice(0, 6).map((l: any) => l.name).join(', ')}, top repos ${i.github.top_repos.slice(0, 4).map((r: any) => r.name).join(', ')}`,
+  ].filter(Boolean)
+  const ra = p.resume_analysis
 
-const catalog = companies
-  .map((c) => `${c.name} | ${c.role} | ${bucketName[c.bucket]} ${c.match}% | CTC ₹${c.ctcAvg} LPA (${c.ctcMin}-${c.ctcMax}) | ${c.location}`)
-  .join('\n')
-
-function systemPrompt(p: Record<string, unknown>) {
   return `You are the AI Career Assistant inside PlacementIQ, a campus placement app for Indian engineering students.
-Be specific, practical and encouraging. Keep answers under 180 words unless asked for detail. Use short paragraphs or bullet lists. Plain text only, no markdown headings.
-When relevant, point to app pages: Eligibility Stacks, Company Drives, Skill Gap Analyzer, Learning Roadmap, Practice Arena, Mock Interviews, Alumni Network, Resume Analyzer, Certifications.
-Only use the company data below for match percentages and CTC; never invent other numbers about this student. If you don't know, say so.
+Be specific, practical and encouraging. Keep answers under 180 words unless asked for detail. Use short paragraphs or simple "-" bullet lists. Plain text only: no markdown headings, bold or tables.
+When relevant, point to app pages: Eligibility Stacks, Company Drives, Skill Gap Analyzer, Learning Roadmap, Practice Arena, Mock Interviews, Alumni Network, Resume Analyzer, Certifications, My Profile.
+Use only the data below for this student's numbers. If something is missing (e.g. no resume, no coding accounts), say so and suggest adding it.
 
 STUDENT PROFILE
-Name: ${p.full_name}
+Name: ${p.full_name} | Target role: ${p.target_roles}
 Program: ${p.meta}, ${p.branch}, batch ${p.batch}, ${p.college}
 CGPA: ${p.cgpa}/10 | Active backlogs: ${p.backlogs} | Class X: ${p.class_x}% | Class XII: ${p.class_xii}%
 Skills (0-100): ${JSON.stringify(p.skills)}
 Projects: ${JSON.stringify(p.projects)}
 Internships: ${JSON.stringify(p.internships)}
-Resume uploaded: ${p.resume_name ? 'yes (' + p.resume_name + ')' : 'no'}
+Certifications: ${JSON.stringify((p.certifications ?? []).map((c: any) => c.name))}
+Achievements: ${JSON.stringify((p.achievements ?? []).map((a: any) => a.title))}
+Coding profiles: ${coding.length ? coding.join(' | ') : 'none connected'}
+Resume: ${ra ? `score ${ra.overall}/100. ${ra.summary} Improvements: ${(ra.improvements ?? []).join('; ')}` : 'not analyzed yet'}
 
-COMPANIES TRACKED (name | role | stack and match | CTC | location)
+COMPANIES (computed from this profile: name | stack and match | CTC | top gaps)
 ${catalog}`
 }
 
-export default async function handler(req: Request): Promise<Response> {
-  if (req.method !== 'POST') return json({ error: 'Method not allowed' }, 405)
+export default handle(async (req) => {
+  if (req.method !== 'POST') throw new HttpError(405, 'Method not allowed')
+  const token = bearer(req)
 
-  const groqKey = process.env.GROQ_API_KEY
-  if (!groqKey) return json({ error: 'The AI assistant is not configured (GROQ_API_KEY missing).' }, 503)
+  const body = (await req.json().catch(() => ({}))) as { messages?: Msg[] }
+  const messages = (body.messages ?? [])
+    .filter((m) => (m.role === 'user' || m.role === 'bot') && typeof m.text === 'string' && m.text.trim())
+    .slice(-20)
+    .map((m) => ({ role: m.role, text: m.text.slice(0, 2000) }))
+  if (!messages.length || messages[messages.length - 1].role !== 'user') throw new HttpError(400, 'No question provided')
 
-  const token = req.headers.get('authorization')?.replace(/^Bearer\s+/i, '')
-  if (!token) return json({ error: 'Not signed in' }, 401)
-
-  let messages: Msg[]
-  try {
-    const body = (await req.json()) as { messages?: Msg[] }
-    messages = (body.messages ?? [])
-      .filter((m) => (m.role === 'user' || m.role === 'bot') && typeof m.text === 'string' && m.text.trim())
-      .slice(-20)
-      .map((m) => ({ role: m.role, text: m.text.slice(0, 2000) }))
-  } catch {
-    return json({ error: 'Invalid request body' }, 400)
-  }
-  if (!messages.length || messages[messages.length - 1].role !== 'user') return json({ error: 'No question provided' }, 400)
-
-  // Validates the token and loads the caller's own profile in one RLS-protected request.
-  const profRes = await fetch(`${SUPABASE_URL}/rest/v1/profiles?select=*&limit=1`, {
-    headers: { apikey: SUPABASE_KEY, authorization: `Bearer ${token}` },
-  })
-  if (profRes.status === 401) return json({ error: 'Session expired. Please sign in again.' }, 401)
-  if (!profRes.ok) return json({ error: 'Could not load your profile' }, 502)
-  const [profile] = (await profRes.json()) as Record<string, unknown>[]
-  if (!profile) return json({ error: 'Not signed in' }, 401)
-
-  const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: { authorization: `Bearer ${groqKey}`, 'content-type': 'application/json' },
-    body: JSON.stringify({
-      model: MODEL,
-      temperature: 0.5,
-      max_tokens: 1200,
-      ...(MODEL.startsWith('openai/gpt-oss') ? { reasoning_effort: 'low' } : {}),
-      messages: [
-        { role: 'system', content: systemPrompt(profile) },
-        ...messages.map((m) => ({ role: m.role === 'bot' ? 'assistant' : 'user', content: m.text })),
-      ],
-    }),
-  })
-
-  if (!groqRes.ok) {
-    const detail = await groqRes.text()
-    console.error('Groq error', groqRes.status, detail.slice(0, 500))
-    const msg = groqRes.status === 429 ? 'The assistant is busy right now. Try again in a moment.' : 'The AI service returned an error.'
-    return json({ error: msg }, 502)
-  }
-
-  const data = (await groqRes.json()) as { choices?: { message?: { content?: string } }[] }
+  const profile = await loadProfile(token)
+  const content = await groq(
+    [
+      { role: 'system', content: systemPrompt(profile) },
+      ...messages.map((m) => ({ role: m.role === 'bot' ? ('assistant' as const) : ('user' as const), content: m.text })),
+    ],
+    { maxTokens: 1200, temperature: 0.5 },
+  )
   // The chat UI shows plain text, so strip markdown emphasis and headings.
-  const reply = data.choices?.[0]?.message?.content
-    ?.replace(/\*\*(.+?)\*\*/g, '$1')
-    .replace(/^#{1,6}\s+/gm, '')
-    .trim()
-  if (!reply) return json({ error: 'The AI returned an empty answer.' }, 502)
+  const reply = content.replace(/\*\*(.+?)\*\*/g, '$1').replace(/^#{1,6}\s+/gm, '').trim()
   return json({ reply })
-}
+})

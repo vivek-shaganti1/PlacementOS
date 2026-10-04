@@ -1,12 +1,14 @@
 import { useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { bucketMeta, bucketOrder, companies } from '../data/companies'
+import { bucketMeta, bucketOrder } from '../data/companies'
+import { useCompanies } from '../lib/companies'
 import type { Bucket } from '../data/types'
 import CompanyLogo from '../components/CompanyLogo'
 import { Card, Page } from '../components/Page'
 
 export default function Drives() {
   const navigate = useNavigate()
+  const { companies } = useCompanies()
   const [q, setQ] = useState('')
   const [filter, setFilter] = useState<Bucket | 'all'>('all')
   const [sort, setSort] = useState<'match' | 'ctc' | 'name'>('match')
@@ -17,7 +19,7 @@ export default function Drives() {
     return [...r].sort((a, b) =>
       sort === 'match' ? b.match - a.match : sort === 'ctc' ? b.ctcAvg - a.ctcAvg : a.name.localeCompare(b.name),
     )
-  }, [q, filter, sort])
+  }, [companies, q, filter, sort])
 
   return (
     <Page title="Company Drives" subtitle={`${rows.length} drives match your current filters.`} wide>

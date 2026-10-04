@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { callApi } from './api'
 import { useAuth } from './auth'
 import { errMsg, supabase, type Profile } from './supabase'
 
@@ -161,14 +162,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setThinking(true)
       let reply: string
       try {
-        const res = await fetch('/api/chat', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json', authorization: `Bearer ${session!.access_token}` },
-          body: JSON.stringify({ messages: convo.slice(-20) }),
-        })
-        const body = (await res.json().catch(() => ({}))) as { reply?: string; error?: string }
-        if (!res.ok || !body.reply) throw new Error(body.error || `HTTP ${res.status}`)
-        reply = body.reply
+        reply = (await callApi<{ reply: string }>('chat', { messages: convo.slice(-20) })).reply
       } catch (e) {
         showToast(`AI unavailable (${errMsg(e)}). Showing a quick answer instead.`)
         reply = canned(text, profile)
@@ -177,7 +171,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
       persistChat([{ role: 'bot', text: reply }])
     },
-    [profile, thinking, persistChat, session, showToast],
+    [profile, thinking, persistChat, showToast],
   )
 
   const chat = useMemo<ChatMsg[]>(

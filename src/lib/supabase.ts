@@ -38,6 +38,81 @@ export type Profile = {
   resume_path: string | null
   resume_name: string | null
   resume_uploaded_at: string | null
+  github_username: string | null
+  leetcode_username: string | null
+  codeforces_username: string | null
+  codechef_username: string | null
+  hackerrank_username: string | null
+  linkedin_url: string | null
+  portfolio_url: string | null
+  integrations: Integrations
+  certifications: Certification[]
+  achievements: Achievement[]
+  mock_feedback: MockFeedback[]
+  target_roles: string
+  resume_text: string | null
+  resume_analysis: ResumeAnalysis | null
+  jd_match: JdMatch | null
+}
+
+export type GithubStats = {
+  username: string
+  name: string | null
+  avatar_url: string
+  public_repos: number
+  original_repos: number
+  followers: number
+  stars: number
+  languages: { name: string; repos: number }[]
+  topics: string[]
+  top_repos: { name: string; description: string | null; language: string | null; stars: number; url: string; topics: string[]; updated_at: string }[]
+  synced_at: string
+}
+export type LeetcodeStats = { username: string; solved: number; easy: number; medium: number; hard: number; ranking: number | null; contest_rating: number | null; contests: number; top_percentage: number | null; synced_at: string }
+export type CodeforcesStats = { username: string; rating: number | null; max_rating: number | null; rank: string | null; solved: number; contests: number; synced_at: string }
+export type CodechefStats = { username: string; rating: number | null; max_rating: number | null; stars: number | null; solved: number; synced_at: string }
+
+export type Integrations = {
+  github?: GithubStats
+  leetcode?: LeetcodeStats
+  codeforces?: CodeforcesStats
+  codechef?: CodechefStats
+}
+
+export type Certification = { name: string; issuer: string; date: string; credential_url?: string }
+export type Achievement = { title: string; detail: string; date: string }
+export type MockFeedback = { type: string; date: string; score: number; note: string }
+
+export type ResumeCheck = { label: string; score: number; tip: string }
+export type ResumeAnalysis = {
+  overall: number
+  summary: string
+  checks: ResumeCheck[]
+  strengths: string[]
+  improvements: string[]
+  rewrites: { before: string; after: string }[]
+  extracted: {
+    skills: string[]
+    projects: { name: string; tech: string; description: string }[]
+    internships: Internship[]
+    certifications: string[]
+    links: string[]
+  }
+  skill_levels: Record<string, number>
+  stats: { words: number; bullets: number; quantified: number; action_verbs: number; sections: string[] }
+  analyzed_at: string
+  file_name: string | null
+}
+export type JdMatch = {
+  score: number
+  verdict: string
+  matched_skills: string[]
+  missing_skills: string[]
+  missing_keywords: string[]
+  suggestions: string[]
+  tailored_bullets: string[]
+  jd_title: string
+  analyzed_at: string
 }
 
 export type ProfilePatch = Partial<Omit<Profile, 'id'>>

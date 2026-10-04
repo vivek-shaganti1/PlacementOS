@@ -4,29 +4,7 @@ import Avatar from './Avatar'
 import CompanyLogo from './CompanyLogo'
 import { IconArrowRight, IconBookmark, IconBot, IconChevronDown, IconClose, IconLinkedIn, IconMessage, IconSpark } from './Icons'
 import { useApp } from '../lib/store'
-import { useProfile } from '../lib/auth'
-import type { Profile } from '../lib/supabase'
 import { linkedInSearch } from '../lib/links'
-
-// Academic criteria are checked against the student's saved profile; the rest come from the company data.
-function personalize(c: Company['criteria'][number], p: Profile) {
-  switch (c.label) {
-    case 'Minimum CGPA':
-      return { ...c, yours: `${p.cgpa} / 10`, met: p.cgpa >= parseFloat(c.required) }
-    case 'Active Backlogs':
-      return { ...c, yours: p.backlogs === 0 ? 'None' : String(p.backlogs), met: p.backlogs === 0 }
-    case 'Class X Percentage':
-      return { ...c, yours: `${p.class_x}%`, met: p.class_x >= parseFloat(c.required) }
-    case 'Class XII Percentage':
-      return { ...c, yours: `${p.class_xii}%`, met: p.class_xii >= parseFloat(c.required) }
-    case 'Internship Experience': {
-      const n = p.internships.length
-      return { ...c, yours: `${n} internship${n === 1 ? '' : 's'}`, met: c.met && n >= 1 }
-    }
-    default:
-      return c
-  }
-}
 
 const TABS = ['Overview', 'Eligibility Criteria', 'Recruitment Process', 'Alumni', 'Statistics'] as const
 type Tab = (typeof TABS)[number]
@@ -60,8 +38,7 @@ export default function CompanyPanel({ company, onClose }: { company: Company; o
   const [tab, setTab] = useState<Tab>('Overview')
   const [showAllAlumni, setShowAllAlumni] = useState(false)
   const { saved, toggleSave, applied, apply, openAssistant } = useApp()
-  const profile = useProfile()
-  const criteria = company.criteria.map((c) => personalize(c, profile))
+  const criteria = company.criteria
 
   useEffect(() => {
     setTab('Overview')

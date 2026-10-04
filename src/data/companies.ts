@@ -1,8 +1,9 @@
-import type { Alumnus, Bucket, Company } from './types'
+import type { Alumnus, Bucket, CompanyBase } from './types'
 
 type Seed = {
   name: string
   role?: string
+  /** Original catalog ordering hint only; real match % is computed per student in lib/eligibility. */
   match: number
   brand: string
   ctc: [number, number, number]
@@ -40,18 +41,15 @@ function makeAlumni(company: string, count: number): Alumnus[] {
   }))
 }
 
-function build(seed: Seed, bucket: Bucket): Company {
+function build(seed: Seed, tier: Bucket): CompanyBase {
   const [avg, min, max] = seed.ctc
   const m = seed.match
-  const jitter = (d: number) => Math.max(10, Math.min(99, Math.round(m + d)))
-  const alumniCount = bucket === 'eligible' ? 12 : bucket === 'nearly' ? 9 : bucket === 'canBecome' ? 6 : 3
+  const alumniCount = tier === 'eligible' ? 12 : tier === 'nearly' ? 9 : tier === 'canBecome' ? 6 : 3
 
   return {
     id: seed.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
     name: seed.name,
     role: seed.role ?? ROLE,
-    match: m,
-    bucket,
     brand: seed.brand,
     ctcAvg: avg,
     ctcMin: min,
@@ -63,23 +61,7 @@ function build(seed: Seed, bucket: Bucket): Company {
     about:
       seed.about ??
       `${seed.name} is a global technology leader focused on building products that change the way billions of people connect, explore, and interact with information.`,
-    careers: seed.careers ?? `https://careers.${seed.name.toLowerCase().replace(/[^a-z0-9]/g, '')}.com`,
-    breakdown: {
-      academic: jitter(-2),
-      skills: jitter(3),
-      experience: jitter(-7),
-      projects: jitter(1),
-    },
-    criteria: [
-      { label: 'Minimum CGPA', required: '7.5 / 10', yours: '8.6 / 10', met: m >= 60 },
-      { label: 'Active Backlogs', required: 'None', yours: 'None', met: true },
-      { label: 'Class X Percentage', required: '70%', yours: '91%', met: true },
-      { label: 'Class XII Percentage', required: '70%', yours: '88%', met: true },
-      { label: 'Core DSA Proficiency', required: 'Advanced', yours: m >= 80 ? 'Advanced' : 'Intermediate', met: m >= 80 },
-      { label: 'System Design', required: m >= 80 ? 'Intermediate' : 'Advanced', yours: 'Intermediate', met: m >= 70 },
-      { label: 'Internship Experience', required: '1 internship', yours: '2 internships', met: m >= 50 },
-      { label: 'Eligible Branches', required: 'CSE / IT / ECE', yours: 'CSE', met: true },
-    ],
+    careers: seed.careers ?? `https://www.google.com/search?q=${encodeURIComponent(seed.name + ' careers')}`,
     process: [
       { stage: 'Online Assessment', detail: '2 DSA problems + 20 MCQs on CS fundamentals', duration: '90 min' },
       { stage: 'Technical Interview I', detail: 'Data structures, algorithms, problem solving', duration: '45 min' },
@@ -185,7 +167,8 @@ const googleAlumni: Alumnus[] = [
   ...makeAlumni('Google', 12).slice(4),
 ]
 
-export const companies: Company[] = [
+/** Static company facts. Use `useCompanies()` (lib/companies) for per-student match and stacks. */
+export const companyCatalog: CompanyBase[] = [
   ...eligibleSeeds.map((s) => {
     const c = build(s, 'eligible')
     return c.name === 'Google' ? { ...c, alumni: googleAlumni } : c
@@ -239,4 +222,3 @@ export const bucketMeta: Record<
 
 export const bucketOrder: Bucket[] = ['eligible', 'nearly', 'canBecome', 'notEligible']
 
-export const byBucket = (b: Bucket) => companies.filter((c) => c.bucket === b)

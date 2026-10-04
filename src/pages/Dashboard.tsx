@@ -1,5 +1,7 @@
 import { useNavigate } from 'react-router-dom'
-import { byBucket, companies } from '../data/companies'
+import { bucketMeta } from '../data/companies'
+import { useCompanies } from '../lib/companies'
+import { completeness } from '../components/ProfileExtras'
 import { useProfile } from '../lib/auth'
 import CompanyLogo from '../components/CompanyLogo'
 import { Card, Meter, Page, Stat } from '../components/Page'
@@ -9,8 +11,13 @@ export default function Dashboard() {
   const navigate = useNavigate()
   const { applied, saved, roadmapDone } = useApp()
   const student = useProfile()
+  const { companies, byBucket } = useCompanies()
   const eligible = byBucket('eligible')
-  const readiness = Math.round(student.skills.reduce((a, s) => a + s.level, 0) / Math.max(1, student.skills.length))
+  const profileStrength = completeness(student).pct
+  const avgTopMatch = Math.round(companies.slice(0, 10).reduce((a, c) => a + c.match, 0) / Math.min(10, companies.length))
+  // Readiness blends how well you match your top-10 companies with how complete and verified your profile is.
+  const readiness = Math.round(0.7 * avgTopMatch + 0.3 * profileStrength)
+  const toApply = companies.filter((c) => (c.bucket === 'eligible' || c.bucket === 'nearly') && !applied.includes(c.id)).slice(0, 5)
 
   return (
     <Page title={`Welcome back, ${(student.full_name || 'there').split(' ')[0]}`} subtitle="Here is where your placement readiness stands today." wide>
@@ -18,13 +25,13 @@ export default function Dashboard() {
         <Stat label="Eligible Companies" value={`${eligible.length}`} sub={`out of ${companies.length} tracked`} tone="text-[#0d9a5b]" />
         <Stat label="Applications" value={`${applied.length}`} sub="submitted this season" />
         <Stat label="Saved Companies" value={`${saved.length}`} sub="in your shortlist" />
-        <Stat label="Readiness Score" value={`${readiness}`} sub={`Avg. skill level · ${roadmapDone.length} roadmap tasks done`} tone="text-brand-dark" />
+        <Stat label="Readiness Score" value={`${readiness}`} sub={`Profile ${profileStrength}% complete · ${roadmapDone.length} roadmap tasks done`} tone="text-brand-dark" />
       </div>
 
       <div className="grid grid-cols-[1.4fr_1fr] gap-4">
         <Card title="Top matches for you" action={<button onClick={() => navigate('/eligibility')} className="text-[11.5px] font-medium text-brand-dark hover:underline">View all stacks →</button>}>
           <div className="divide-y divide-line">
-            {eligible.slice(0, 6).map((c) => (
+            {companies.slice(0, 6).map((c) => (
               <button key={c.id} onClick={() => navigate(`/eligibility?company=${c.id}`)} className="flex w-full items-center gap-3 py-2.5 text-left hover:opacity-80">
                 <CompanyLogo company={c} size={24} />
                 <span className="flex-1">
@@ -32,7 +39,7 @@ export default function Dashboard() {
                   <span className="block text-[11px] text-ink-mute">{c.role}</span>
                 </span>
                 <span className="text-[12px] text-ink-mute">₹{c.ctcAvg.toFixed(1)} LPA</span>
-                <span className="w-[52px] text-right text-[12px] font-semibold text-[#0d9a5b]">{c.match}%</span>
+                <span className={`w-[52px] text-right text-[12px] font-semibold ${bucketMeta[c.bucket].text}`}>{c.match}%</span>
               </button>
             ))}
           </div>
@@ -47,18 +54,23 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      <Card title="Upcoming drives">
+      <Card title="Apply next" action={<span className="text-[11px] text-ink-faint">Eligible or nearly eligible, not yet applied</span>}>
         <div className="divide-y divide-line">
-          {companies.slice(0, 5).map((c, i) => (
+          {toApply.map((c) => (
             <div key={c.id} className="flex items-center gap-3 py-2.5">
               <CompanyLogo company={c} size={22} />
               <span className="flex-1 text-[12.5px] font-medium text-ink">{c.name}</span>
-              <span className="text-[11.5px] text-ink-mute">Registration closes in {i + 2} days</span>
+              <span className="text-[11.5px] text-ink-mute">{c.match}% match · ₹{c.ctcAvg.toFixed(1)} LPA</span>
               <button onClick={() => navigate(`/eligibility?company=${c.id}`)} className="rounded-md border border-line px-3 py-1.5 text-[11.5px] font-medium text-ink-soft hover:bg-[#f7f8fa]">
                 Details
               </button>
             </div>
           ))}
+          {toApply.length === 0 && (
+            <p className="py-4 text-center text-[12px] text-ink-faint">
+              No eligible companies left to apply to. <button onClick={() => navigate('/skill-gap')} className="font-medium text-brand-dark hover:underline">Close a skill gap</button> to unlock more.
+            </p>
+          )}
         </div>
       </Card>
     </Page>

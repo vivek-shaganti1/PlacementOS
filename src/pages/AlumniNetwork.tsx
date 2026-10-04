@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { companies } from '../data/companies'
+import { companyCatalog as companies } from '../data/companies'
 import Avatar from '../components/Avatar'
 import { IconLinkedIn, IconMessage } from '../components/Icons'
 import { Card, Page } from '../components/Page'

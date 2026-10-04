@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import Avatar from '../components/Avatar'
+import { Achievements, Completeness, ConnectedAccounts, GithubProjects, VerifiedSkills } from '../components/ProfileExtras'
 import { Card, Meter, Page } from '../components/Page'
 import { useAuth, useProfile } from '../lib/auth'
 import { useApp } from '../lib/store'
@@ -16,6 +17,7 @@ const fields = [
   ['email', 'Contact email', 'email'],
   ['phone', 'Phone', 'tel'],
   ['meta', 'Year / headline', 'text'],
+  ['target_roles', 'Target role', 'text'],
   ['branch', 'Branch', 'text'],
   ['batch', 'Batch', 'text'],
   ['college', 'College', 'text'],
@@ -71,6 +73,7 @@ export default function Profile() {
         email: form.email.trim(),
         phone: form.phone.trim(),
         meta: form.meta.trim(),
+        target_roles: form.target_roles.trim() || 'Software Engineer (SDE)',
         branch: form.branch.trim(),
         batch: form.batch.trim(),
         college: form.college.trim(),
@@ -130,6 +133,8 @@ export default function Profile() {
           </div>
         </div>
       </Card>
+
+      <Completeness p={p} />
 
       <div className="grid grid-cols-2 gap-4">
         <Card title="Personal & academic details">
@@ -258,6 +263,11 @@ export default function Profile() {
           </form>
         </Card>
       </div>
+
+      <ConnectedAccounts p={p} />
+      <VerifiedSkills p={p} />
+      <GithubProjects p={p} />
+      <Achievements p={p} />
     </Page>
   )
 }

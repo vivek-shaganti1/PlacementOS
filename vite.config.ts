@@ -7,7 +7,9 @@ function apiDevServer(): Plugin {
     name: 'api-dev-server',
     configureServer(server) {
       Object.assign(process.env, loadEnv(server.config.mode, process.cwd(), ''))
-      server.middlewares.use('/api/chat', async (req, res) => {
+      server.middlewares.use('/api', async (req, res, next) => {
+        const name = (req.url ?? '').split('?')[0].replace(/^\/+|\/+$/g, '')
+        if (!/^[a-z][a-z0-9-]*$/.test(name)) return next()
         try {
           const chunks: Buffer[] = []
           for await (const c of req) chunks.push(c as Buffer)
@@ -18,7 +20,7 @@ function apiDevServer(): Plugin {
             headers,
             body: req.method === 'GET' || req.method === 'HEAD' ? undefined : Buffer.concat(chunks),
           })
-          const mod = await server.ssrLoadModule('/api/chat.ts')
+          const mod = await server.ssrLoadModule(`/api/${name}.ts`)
           const response: Response = await mod.default(request)
           res.statusCode = response.status
           response.headers.forEach((v, k) => res.setHeader(k, v))

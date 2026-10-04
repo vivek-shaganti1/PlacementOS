@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { companies } from '../data/companies'
+import { useCompanies } from '../lib/companies'
 import Avatar from './Avatar'
 import CompanyLogo from './CompanyLogo'
 import { IconBell, IconChevronDown, IconMenu, IconSearch } from './Icons'
@@ -13,6 +13,7 @@ export default function Topbar({ onToggleSidebar }: { onToggleSidebar: () => voi
   const [openBell, setOpenBell] = useState(false)
   const navigate = useNavigate()
   const profile = useProfile()
+  const { companies } = useCompanies()
   const { signOut } = useAuth()
   const { notifications, markRead } = useApp()
   const unread = notifications.filter((n) => !n.read).length
