@@ -3,7 +3,7 @@ import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import AssistantDrawer from './components/AssistantDrawer'
 import { LogoMark } from './components/Logo'
-import { Aurora } from './components/Page'
+import { PageSkeleton, Skeleton } from './components/Page'
 import Sidebar from './components/Sidebar'
 import Topbar from './components/Topbar'
 import { AuthProvider, useAuth } from './lib/auth'
@@ -36,15 +36,10 @@ const AdminJobs = lazy(() => import('./pages/Admin').then((m) => ({ default: m.A
 const AdminTeam = lazy(() => import('./pages/Admin').then((m) => ({ default: m.AdminTeam })))
 const ResumeAnalyzer = lazy(() => import('./pages/ResumeAnalyzer'))
 const Landing = lazy(() => import('./pages/Landing'))
+const Legal = lazy(() => import('./pages/Legal'))
 
 function Loader() {
-  return (
-    <div className="grid flex-1 place-items-center">
-      <motion.div animate={{ scale: [1, 1.06, 1] }} transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}>
-        <LogoMark size={44} />
-      </motion.div>
-    </div>
-  )
+  return <PageSkeleton />
 }
 
 function Shell() {
@@ -58,7 +53,6 @@ function Shell() {
 
   return (
     <div className="relative flex h-screen flex-col overflow-hidden">
-      <Aurora />
       <div className="relative z-10 flex min-h-0 flex-1 flex-col">
         <Topbar onToggleSidebar={() => setSidebarOpen((v) => !v)} />
         <div className="flex min-h-0 flex-1">
@@ -68,10 +62,10 @@ function Shell() {
               <motion.div
                 key={location.pathname}
                 className="flex min-w-0 flex-1"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6, transition: { duration: 0.14 } }}
-                transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0, transition: { duration: 0.08 } }}
+                transition={{ duration: 0.15 }}
               >
                 <Suspense fallback={<Loader />}>
                   <Routes location={location}>
@@ -93,6 +87,8 @@ function Shell() {
                     <Route path="/certifications" element={<Certifications />} />
                     <Route path="/settings" element={<Settings />} />
                     <Route path="/help" element={<Help />} />
+                    <Route path="/terms" element={<Legal kind="terms" />} />
+                    <Route path="/privacy" element={<Legal kind="privacy" />} />
                     <Route path="/jobs" element={<Jobs />} />
                     <Route path="/admin" element={<AdminOverview />} />
                     <Route path="/admin/students" element={<AdminStudents />} />
@@ -111,11 +107,11 @@ function Shell() {
         {toast && (
           <motion.div
             role="status"
-            initial={{ opacity: 0, y: 16, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 10, scale: 0.98 }}
-            transition={{ type: 'spring', stiffness: 420, damping: 32 }}
-            className="glass-dark fixed bottom-6 left-1/2 z-[60] w-max max-w-[calc(100vw-32px)] -translate-x-1/2 rounded-[14px] px-4 py-2.5 text-center text-[12.5px] font-medium text-white"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="glass-dark fixed bottom-6 left-1/2 z-[60] w-max max-w-[calc(100vw-32px)] -translate-x-1/2 rounded-[3px] px-4 py-2.5 text-center text-[12.5px] font-medium text-white"
           >
             {toast}
           </motion.div>
@@ -128,19 +124,27 @@ function Shell() {
 function Centered({ children }: { children: ReactNode }) {
   return (
     <div className="relative grid min-h-screen place-items-center px-4 text-center text-[13px] text-ink-mute">
-      <Aurora />
       <div className="relative z-10">{children}</div>
     </div>
   )
 }
 
+/** Skeleton of the app shell, shown while the session and profile load. */
 function Splash() {
   return (
-    <Centered>
-      <motion.div animate={{ scale: [1, 1.06, 1] }} transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}>
-        <LogoMark size={56} animate />
-      </motion.div>
-    </Centered>
+    <div className="flex h-screen flex-col" role="status" aria-label="Loading PlacementIQ">
+      <div className="flex h-[56px] shrink-0 items-center gap-3 border-b border-rule bg-surface px-5">
+        <LogoMark size={30} />
+        <Skeleton className="h-4 w-32" />
+        <Skeleton className="ml-auto h-8 w-8" />
+      </div>
+      <div className="flex min-h-0 flex-1">
+        <div className="hidden w-[232px] shrink-0 space-y-3 border-r border-rule bg-surface p-5 lg:block">
+          {Array.from({ length: 10 }, (_, i) => <Skeleton key={i} className={`h-3 ${i % 4 === 0 ? 'w-16' : 'w-36'}`} />)}
+        </div>
+        <PageSkeleton />
+      </div>
+    </div>
   )
 }
 
@@ -152,6 +156,8 @@ function PublicRoutes() {
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Login initialMode="signup" />} />
         <Route path="/reset-password" element={<Login />} />
+        <Route path="/terms" element={<Legal kind="terms" />} />
+        <Route path="/privacy" element={<Legal kind="privacy" />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
     </Suspense>

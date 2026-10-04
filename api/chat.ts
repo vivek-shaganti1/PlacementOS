@@ -1,7 +1,7 @@
 // AI Career Assistant backed by Groq. The key never reaches the browser; callers must be signed in,
 // and the student's own profile (read under RLS) grounds every answer.
 import { evaluateAll, type StudentLike } from '../src/lib/eligibility'
-import { bearer, groq, handle, HttpError, json, loadStudent } from './_lib'
+import { bearer, groq, handle, HttpError, json, loadStudent, STYLE_RULES, tidy } from './_lib'
 
 export const config = { runtime: 'edge' }
 
@@ -27,7 +27,7 @@ function systemPrompt(p: Record<string, any>) {
   const ra = p.resume_analysis
 
   return `You are the AI Career Assistant inside PlacementIQ, a campus placement app for Indian engineering students.
-Be specific, practical and encouraging. Keep answers under 180 words unless asked for detail. Use short paragraphs or simple "-" bullet lists. Plain text only: no markdown headings, bold or tables.
+Be specific, practical and encouraging. Keep answers under 180 words unless asked for detail. Use short paragraphs or simple "-" bullet lists. Plain text only: no markdown headings, bold or tables. ${STYLE_RULES}
 When relevant, point to app pages: Eligibility Stacks, Company Drives, Skill Gap Analyzer, Learning Roadmap, Practice Arena, Mock Interviews, Alumni Network, Resume Analyzer, Certifications, My Profile.
 Use only the data below for this student's numbers. If something is missing (e.g. no resume, no coding accounts), say so and suggest adding it.
 
@@ -67,6 +67,6 @@ export default handle(async (req) => {
     { maxTokens: 900, temperature: 0.5 },
   )
   // The chat UI shows plain text, so strip markdown emphasis and headings.
-  const reply = content.replace(/\*\*(.+?)\*\*/g, '$1').replace(/^#{1,6}\s+/gm, '').trim()
+  const reply = tidy(content.replace(/\*\*(.+?)\*\*/g, '$1').replace(/^#{1,6}\s+/gm, ''))
   return json({ reply })
 })

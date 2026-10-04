@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { BarList, BRAND, Columns, CompanyScatter, Donut, EmptyChart, SERIES, SkillRadar, STATUS, TrendChart } from '../components/charts'
-import { Card, Page, Stat } from '../components/Page'
+import { Card, Page, Skeleton, Stat } from '../components/Page'
 import { bucketMeta } from '../data/companies'
 import type { Category } from '../data/types'
 import { useProfile } from '../lib/auth'
@@ -49,13 +49,13 @@ export default function Analytics() {
     <Page title="Analytics" subtitle="Everything below is computed from your own data. Daily snapshots build your history as you use PlacementIQ." wide>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Readiness (product track)" value={`${readinessOf(companies)}`} sub="Avg. match across target tiers" tone="text-brand-dark" />
-        <Stat label="Eligible today" value={`${byBucket('eligible').length}`} sub={`${byBucket('nearly').length} more nearly eligible`} tone="text-[#0d9a5b]" />
+        <Stat label="Eligible today" value={`${byBucket('eligible').length}`} sub={`${byBucket('nearly').length} more nearly eligible`} tone="text-[#0A6B50]" />
         <Stat
           label="Best eligible package"
-          value={eligibleCtc.length ? `₹${Math.max(...eligibleCtc.map((c) => c.ctcAvg)).toFixed(1)} LPA` : '—'}
+          value={eligibleCtc.length ? `₹${Math.max(...eligibleCtc.map((c) => c.ctcAvg)).toFixed(1)} LPA` : 'n/a'}
           sub={eligibleCtc.length ? [...eligibleCtc].sort((a, b) => b.ctcAvg - a.ctcAvg)[0].name : 'No eligible companies yet'}
         />
-        <Stat label="Resume score" value={p.resume_analysis ? `${p.resume_analysis.overall}` : '—'} sub={resumes.length > 1 ? `${resumes.length} analyses so far` : 'Upload on Resume Analyzer'} />
+        <Stat label="Resume score" value={p.resume_analysis ? `${p.resume_analysis.overall}` : 'n/a'} sub={resumes.length > 1 ? `${resumes.length} analyses so far` : 'Upload on Resume Analyzer'} />
       </div>
 
       <Card title="Progress over time" action={<span className="text-[11px] text-ink-faint">{snapshots.length} daily snapshots</span>}>
@@ -72,7 +72,7 @@ export default function Analytics() {
             ]}
           />
         ) : (
-          <EmptyChart height={260}>{loading ? 'Loading…' : 'Come back tomorrow: a snapshot is saved each day you use PlacementIQ, and this chart fills in.'}</EmptyChart>
+          loading ? <Skeleton className="h-[260px] w-full" /> : <EmptyChart height={260}>Come back tomorrow: a snapshot is saved each day you use PlacementIQ, and this chart fills in.</EmptyChart>
         )}
       </Card>
 
@@ -102,7 +102,7 @@ export default function Analytics() {
         </Card>
       </div>
 
-      <Card title="Match vs. package — every tracked company" action={<span className="text-[11px] text-ink-faint">Hover a dot for details</span>}>
+      <Card title="Match against package for every tracked company" action={<span className="text-[11px] text-ink-faint">Hover a dot for details</span>}>
         <CompanyScatter data={companies.map((c) => ({ name: c.name, match: c.match, ctc: c.ctcAvg, bucket: c.bucket, label: bucketMeta[c.bucket].title }))} />
       </Card>
 
@@ -111,7 +111,7 @@ export default function Analytics() {
           <BarList data={byCategory} unit="%" max={100} />
         </Card>
         <Card title="Skills blocking the most companies">
-          {gapCounts.length ? <BarList data={gapCounts} color={SERIES[1]} /> : <EmptyChart height={200}>No skill gaps — every company is unlocked on skills.</EmptyChart>}
+          {gapCounts.length ? <BarList data={gapCounts} color={SERIES[1]} /> : <EmptyChart height={200}>No skill gaps. Every company is unlocked on skills.</EmptyChart>}
         </Card>
       </div>
 
@@ -151,7 +151,7 @@ export default function Analytics() {
         </Card>
       </div>
 
-      <Card title="Students placed by year" action={<span className="rounded-md border border-line bg-white/70 px-2 py-[3px] text-[10.5px] font-medium text-ink-faint">Sample campus data</span>}>
+      <Card title="Students placed by year" action={<span className="rounded-md border border-line bg-surface-2 px-2 py-[3px] text-[10.5px] font-medium text-ink-faint">Sample campus data</span>}>
         <Columns data={campus} x="year" y="placed" name="Students placed" height={200} color={SERIES[0]} />
       </Card>
     </Page>

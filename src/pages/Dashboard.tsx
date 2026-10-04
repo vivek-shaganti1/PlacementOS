@@ -2,7 +2,7 @@ import { motion } from 'motion/react'
 import { useNavigate } from 'react-router-dom'
 import { BRAND, Donut, EmptyChart, STATUS, TrendChart } from '../components/charts'
 import CompanyLogo from '../components/CompanyLogo'
-import { Card, Meter, Page, revealProps, Ring, Stat } from '../components/Page'
+import { Card, Meter, Page, revealProps, Ring, Stat, Skeleton } from '../components/Page'
 import { completeness } from '../components/ProfileExtras'
 import { bucketMeta } from '../data/companies'
 import { useProfile } from '../lib/auth'
@@ -12,14 +12,14 @@ import { ctcText, isOpen, STATUS_META, useJobs } from '../lib/jobs'
 import { shortDate, useHistory } from '../lib/history'
 import { useApp } from '../lib/store'
 
-const tone = (v: number) => (v >= 75 ? '#12b76a' : v >= 60 ? '#f79009' : '#f04438')
+const tone = (v: number) => (v >= 75 ? '#0A7A5C' : v >= 60 ? '#B47B12' : '#A63A2A')
 
 export default function Dashboard() {
   const navigate = useNavigate()
   const { applied, saved, roadmapDone, openAssistant } = useApp()
   const student = useProfile()
   const { companies, byBucket } = useCompanies()
-  const { snapshots } = useHistory()
+  const { snapshots, loading: historyLoading } = useHistory()
   const strength = completeness(student).pct
   const readiness = readinessOf(companies)
   const counts = (['eligible', 'nearly', 'canBecome', 'notEligible'] as const).map((b) => ({ b, n: byBucket(b).length }))
@@ -37,24 +37,22 @@ export default function Dashboard() {
   return (
     <Page title={`Welcome back, ${first}`} subtitle="Your placement readiness, computed live from your profile, resume and coding activity." wide>
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.25fr_1fr]">
-        <motion.section {...revealProps} className="glass-dark relative overflow-hidden rounded-[22px] p-5 text-white sm:p-6">
-          <div className="pointer-events-none absolute -right-16 -top-20 h-72 w-72 rounded-full bg-[oklch(0.6_0.22_285)] opacity-45 blur-[80px]" />
-          <div className="pointer-events-none absolute -bottom-24 left-20 h-60 w-60 rounded-full bg-[oklch(0.75_0.12_200)] opacity-25 blur-[80px]" />
+        <motion.section {...revealProps} className="glass-dark relative overflow-hidden p-5 sm:p-6">
           <div className="relative flex flex-col items-center gap-5 text-center sm:flex-row sm:gap-7 sm:text-left">
-            <div className="rounded-full bg-white/95 p-2 shadow-[0_10px_40px_rgba(0,0,0,.25)]">
+            <div className="rounded-[2px] bg-surface-2 p-2">
               <Ring value={readiness} size={132} stroke={11} label="Readiness" sub={prev !== null ? `${readiness - prev >= 0 ? '+' : ''}${readiness - prev} vs yesterday` : 'Product-track companies'} />
             </div>
             <div className="flex-1">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/50">Next best step</p>
-              <p className="mt-2 text-[17px] font-semibold leading-[1.3] tracking-[-0.02em] sm:text-[19px]">
-                Lift <span className="text-[#8ef5d9]">{weakest[0]?.name}</span> from {weakest[0]?.level}% — it is the gap holding back the most companies.
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#FBF9F4]/55">Next best step</p>
+              <p className="mt-2 font-display text-[20px] font-medium leading-[1.3] sm:text-[23px]">
+                Lift <span className="underline decoration-[#FBF9F4]/40 underline-offset-4">{weakest[0]?.name}</span> from {weakest[0]?.level}%. It is the gap holding back the most companies.
               </p>
               <div className="mt-4 flex flex-wrap justify-center gap-2 sm:justify-start">
-                <button onClick={() => navigate('/skill-gap')} className="rounded-[11px] bg-white px-3.5 py-2 text-[12.5px] font-semibold text-[#2c2075] transition hover:bg-white/90 active:scale-[.98]">
+                <button onClick={() => navigate('/skill-gap')} className="rounded-[3px] bg-surface px-3.5 py-2 text-[12.5px] font-semibold text-[#173F33] hover:bg-surface-2">
                   Open Skill Gap
                 </button>
-                <button onClick={() => openAssistant(`Give me a 2-week plan to improve ${weakest[0]?.name}.`)} className="rounded-[11px] border border-white/20 bg-white/10 px-3.5 py-2 text-[12.5px] font-semibold text-white transition hover:bg-white/15">
-                  Ask AI for a plan
+                <button onClick={() => openAssistant(`Give me a 2-week plan to improve ${weakest[0]?.name}.`)} className="rounded-[3px] border border-[#FBF9F4]/30 px-3.5 py-2 text-[12.5px] font-semibold text-[#FBF9F4] hover:bg-[#FBF9F4]/10">
+                  Ask the assistant for a plan
                 </button>
               </div>
             </div>
@@ -62,7 +60,7 @@ export default function Dashboard() {
         </motion.section>
 
         <div className="grid grid-cols-2 gap-3">
-          <Stat label="Eligible companies" value={`${counts[0].n}`} sub={`of ${companies.length} tracked`} tone="text-[#0d9a5b]" />
+          <Stat label="Eligible companies" value={`${counts[0].n}`} sub={`of ${companies.length} tracked`} tone="text-[#0A6B50]" />
           <Stat label="Applications" value={`${applications.filter((a) => a.user_id === student.id).length + applied.length}`} sub={`Campus drives + tracked · ${saved.length} shortlisted`} />
           <Stat label="Profile strength" value={`${strength}%`} sub="Completeness & verification" tone="text-brand-dark" />
           <Stat label="Roadmap tasks" value={`${roadmapDone.length}`} sub="completed so far" />
@@ -70,10 +68,10 @@ export default function Dashboard() {
       </div>
 
       {drives.length > 0 && (
-        <Card title="Campus drives for you" action={<button onClick={() => navigate('/jobs')} className="text-[11.5px] font-semibold text-brand-dark hover:underline">All campus jobs →</button>}>
+        <Card title="Campus drives for you" action={<button onClick={() => navigate('/jobs')} className="text-[11.5px] font-semibold text-brand-dark hover:underline">All campus jobs</button>}>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {drives.map(({ job, ev, app }) => (
-              <button key={job.id} onClick={() => navigate(`/jobs?job=${job.id}`)} className="rounded-[16px] border border-white/80 bg-white/70 p-3.5 text-left transition hover:-translate-y-0.5 hover:bg-white hover:shadow-[var(--shadow-2)]">
+              <button key={job.id} onClick={() => navigate(`/jobs?job=${job.id}`)} className="rounded-[3px] border border-rule bg-surface-2 p-3.5 text-left hover:bg-surface-2">
                 <p className="truncate text-[13.5px] font-semibold text-ink">{job.company}</p>
                 <p className="truncate text-[11.5px] text-ink-mute">{job.role}</p>
                 <p className="mt-1 text-[11px] text-ink-faint">{ctcText(job)}</p>
@@ -82,7 +80,7 @@ export default function Dashboard() {
                   {app ? (
                     <span className={`rounded-md border px-1.5 py-0.5 text-[10.5px] font-semibold ${STATUS_META[app.status].cls}`}>{STATUS_META[app.status].label}</span>
                   ) : (
-                    <span className={`text-[11px] font-medium ${ev.eligibleToApply ? 'text-[#0d9a5b]' : 'text-[#d92d20]'}`}>{ev.eligibleToApply ? 'You can apply' : 'Not eligible'}</span>
+                    <span className={`text-[11px] font-medium ${ev.eligibleToApply ? 'text-[#0A6B50]' : 'text-[#9C3526]'}`}>{ev.eligibleToApply ? 'You can apply' : 'Not eligible'}</span>
                   )}
                 </p>
               </button>
@@ -92,7 +90,7 @@ export default function Dashboard() {
       )}
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_1.6fr]">
-        <Card title="Your stacks" action={<button onClick={() => navigate('/eligibility')} className="text-[11.5px] font-semibold text-brand-dark hover:underline">Open stacks →</button>}>
+        <Card title="Your stacks" action={<button onClick={() => navigate('/eligibility')} className="text-[11.5px] font-semibold text-brand-dark hover:underline">Open stacks</button>}>
           <Donut
             centerLabel="companies"
             data={counts.map(({ b, n }) => ({ name: bucketMeta[b].title, value: n, color: STATUS[b] }))}
@@ -108,7 +106,7 @@ export default function Dashboard() {
           </div>
         </Card>
 
-        <Card title="Readiness trend" action={<button onClick={() => navigate('/analytics')} className="text-[11.5px] font-semibold text-brand-dark hover:underline">All analytics →</button>}>
+        <Card title="Readiness trend" action={<button onClick={() => navigate('/analytics')} className="text-[11.5px] font-semibold text-brand-dark hover:underline">All analytics</button>}>
           {snapshots.length > 1 ? (
             <TrendChart
               data={snapshots.map((s) => ({ ...s, label: shortDate(s.day) }))}
@@ -117,20 +115,22 @@ export default function Dashboard() {
               height={250}
               domain={[0, 100]}
             />
+          ) : historyLoading ? (
+            <Skeleton className="h-[250px] w-full" />
           ) : (
-            <EmptyChart height={250}>Your trend appears here from tomorrow — PlacementIQ records one snapshot per day as you use it.</EmptyChart>
+            <EmptyChart height={250}>Your trend appears here from tomorrow. PlacementIQ records one snapshot per day as you use it.</EmptyChart>
           )}
         </Card>
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1.4fr_1fr]">
-        <Card title="Best matches right now" action={<button onClick={() => navigate('/drives')} className="text-[11.5px] font-semibold text-brand-dark hover:underline">All drives →</button>}>
+        <Card title="Best matches right now" action={<button onClick={() => navigate('/drives')} className="text-[11.5px] font-semibold text-brand-dark hover:underline">All drives</button>}>
           <div className="divide-y divide-line">
             {companies.slice(0, 6).map((c) => (
               <button key={c.id} onClick={() => navigate(`/eligibility?company=${c.id}`)} className="group flex w-full items-center gap-3 py-2.5 text-left">
                 <CompanyLogo company={c} size={26} />
                 <span className="flex-1">
-                  <span className="block text-[13px] font-semibold text-ink transition group-hover:text-brand-dark">{c.name}</span>
+                  <span className="block text-[13px] font-semibold text-ink group-hover:text-brand-dark">{c.name}</span>
                   <span className="block text-[11px] text-ink-mute">{c.role}</span>
                 </span>
                 <span className="hidden text-[12px] text-ink-mute sm:inline">₹{c.ctcAvg.toFixed(1)} LPA</span>
@@ -140,7 +140,7 @@ export default function Dashboard() {
           </div>
         </Card>
 
-        <Card title="Skill snapshot" action={<button onClick={() => navigate('/profile')} className="text-[11.5px] font-semibold text-brand-dark hover:underline">Edit →</button>}>
+        <Card title="Skill snapshot" action={<button onClick={() => navigate('/profile')} className="text-[11.5px] font-semibold text-brand-dark hover:underline">Edit</button>}>
           <div className="space-y-3">
             {student.skills.slice(0, 6).map((s) => <Meter key={s.name} label={s.name} value={s.level} tone={tone(s.level)} />)}
           </div>
@@ -150,7 +150,7 @@ export default function Dashboard() {
       <Card title="Apply next" action={<span className="text-[11px] text-ink-faint">Eligible or nearly eligible, not yet applied</span>}>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
           {toApply.map((c) => (
-            <button key={c.id} onClick={() => navigate(`/eligibility?company=${c.id}`)} className="rounded-[16px] border border-white/80 bg-white/70 p-3.5 text-left transition hover:-translate-y-0.5 hover:bg-white hover:shadow-[var(--shadow-2)]">
+            <button key={c.id} onClick={() => navigate(`/eligibility?company=${c.id}`)} className="rounded-[3px] border border-rule bg-surface-2 p-3.5 text-left hover:bg-surface-2">
               <CompanyLogo company={c} size={26} />
               <p className="mt-2.5 truncate text-[13px] font-semibold text-ink">{c.name}</p>
               <p className="text-[11px] text-ink-mute">₹{c.ctcAvg.toFixed(1)} LPA</p>

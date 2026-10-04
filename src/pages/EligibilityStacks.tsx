@@ -7,7 +7,6 @@ import type { Bucket, Company } from '../data/types'
 import CompanyLogo from '../components/CompanyLogo'
 import CompanyPanel from '../components/CompanyPanel'
 import StackColumn from '../components/StackColumn'
-import { IconBot, IconInfo } from '../components/Icons'
 import { useApp } from '../lib/store'
 
 
@@ -48,7 +47,6 @@ export default function EligibilityStacks() {
         <div className="mx-auto max-w-[676px]">
           <div className="flex items-center gap-2">
             <h1 className="text-[21px] font-bold tracking-[-.02em] text-ink">Company Eligibility Stacks</h1>
-            <IconInfo className="h-[15px] w-[15px] text-ink-faint" />
           </div>
           <p className="mt-1 text-[12.5px] text-ink-mute">
             AI analyzed your profile and categorized companies based on your eligibility.
@@ -73,7 +71,7 @@ export default function EligibilityStacks() {
               const m = bucketMeta[b]
               return (
                 <div key={b} className="flex items-start gap-2">
-                  <span className={`mt-[3px] h-[13px] w-[13px] shrink-0 rounded-full border-[3px] border-white ring-2 ${m.ring} ${m.dot}`} />
+                  <span className={`mt-[3px] h-[13px] w-[13px] shrink-0 rounded-[2px] border-[3px] border-white ring-2 ${m.ring} ${m.dot}`} />
                   <div className="leading-tight">
                     <p className={`text-[11.5px] font-semibold ${m.text}`}>{m.title}</p>
                     <p className="mt-[2px] text-[10px] text-ink-faint sm:whitespace-nowrap">{m.hint}</p>
@@ -86,7 +84,7 @@ export default function EligibilityStacks() {
           <div className="card mt-4 p-4">
             <p className="text-[14px] font-semibold text-ink">Overall Eligibility Summary</p>
             <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-              <div className="rounded-[11px] border border-line bg-[#fafbfc] px-3 py-3">
+              <div className="rounded-[3px] border border-line bg-[#F0EDE5] px-3 py-3">
                 <p className="text-[11px] font-medium text-ink-mute">Total Companies</p>
                 <p className="mt-1 text-[21px] font-bold text-ink">{total}</p>
               </div>
@@ -94,7 +92,7 @@ export default function EligibilityStacks() {
                 const m = bucketMeta[b]
                 const n = lists[b].length
                 return (
-                  <div key={b} className={`rounded-[11px] border px-3 py-3 ${m.head}`}>
+                  <div key={b} className={`rounded-[3px] border px-3 py-3 ${m.head}`}>
                     <p className={`text-[11px] font-semibold ${m.text}`}>{m.title}</p>
                     <p className="mt-1 text-[21px] font-bold text-ink">
                       {n}
@@ -113,7 +111,7 @@ export default function EligibilityStacks() {
             <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
               <button
                 onClick={() => select(top)}
-                className="rounded-xl2 border border-line bg-white px-4 py-4 text-left transition hover:border-[#d9dce2] hover:shadow-card"
+                className="rounded-xl2 border border-line bg-surface px-4 py-4 text-left hover:border-[#DCD6C9]"
               >
                 <div className="flex items-center gap-3">
                   <CompanyLogo company={top} size={32} />
@@ -130,23 +128,20 @@ export default function EligibilityStacks() {
                 </p>
               </button>
 
-              <div className="rounded-xl2 border border-[#e6e0ff] bg-[#f6f3ff] px-4 py-3.5">
+              <div className="rounded-xl2 border border-[#C8C0B0] bg-[#F0EDE5] px-4 py-3.5">
                 <div className="flex items-start gap-2.5">
-                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white text-brand-dark shadow-card">
-                    <IconBot className="h-[17px] w-[17px]" />
-                  </span>
                   <div>
-                    <p className="text-[12.5px] font-semibold text-ink">AI Suggestion</p>
+                    <p className="text-[12.5px] font-semibold text-ink">Suggested focus</p>
                     <p className="mt-1 text-[11.5px] leading-[1.6] text-ink-mute">
                       {blockers.length
-                        ? `Improving ${blockers.map(([s]) => s).join(' and ')} would move up to ${blockers[0][1]} companies from "Nearly" / "Can Become" towards Eligible.`
+                        ? `Improving ${blockers.map(([s]) => s).join(' and ')} would move up to ${blockers[0][1]} companies from Nearly or Can Become towards Eligible.`
                         : 'Complete your profile and connect your coding accounts to get a sharper analysis.'}
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={() => navigate('/roadmap')}
-                  className="mt-3 w-full rounded-[9px] border border-[#ded4ff] bg-white py-2 text-[12px] font-semibold text-brand-dark hover:bg-[#faf8ff]"
+                  className="mt-3 w-full rounded-[3px] border border-[#C8C0B0] bg-surface py-2 text-[12px] font-semibold text-brand-dark hover:bg-[#F0EDE5]"
                 >
                   View My Roadmap
                 </button>
@@ -158,7 +153,7 @@ export default function EligibilityStacks() {
             onClick={() => openAssistant()}
             className="mt-4 text-[11.5px] font-medium text-brand-dark hover:underline"
           >
-            Not sure where to start? Ask the AI Career Assistant →
+            Not sure where to start? Ask the career assistant
           </button>
         </div>
       </div>

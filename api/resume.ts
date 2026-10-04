@@ -2,7 +2,7 @@
 // POST { action: 'analyze', text, file_name }  -> parses the extracted resume text, scores it, saves to profile
 // POST { action: 'match', jd }                 -> matches the saved resume against a job description
 import { SKILLS } from '../src/lib/eligibility'
-import { bearer, deleteRows, groq, handle, HttpError, insertRows, json, loadProfile, parseJson, rest, saveProfile } from './_lib'
+import { bearer, deleteRows, groq, handle, HttpError, insertRows, json, loadProfile, parseJson, rest, saveProfile, STYLE_RULES, tidyDeep } from './_lib'
 
 export const config = { runtime: 'edge' }
 
@@ -119,13 +119,13 @@ Return ONLY a JSON object with exactly these keys:
  },
  "skill_levels": { estimate 0-100 for each of ${JSON.stringify(SKILLS)} based ONLY on evidence in the resume; use 0 when there is no evidence }
 }
-Never invent facts that are not in the resume.
+Never invent facts that are not in the resume. ${STYLE_RULES}
 
 RESUME:
 """
 ${text.slice(0, 14000)}
 """`
-  const ai = parseJson<AiAnalysis>(await groq([{ role: 'user', content: prompt }], { json: true, maxTokens: 2200, temperature: 0.2 }))
+  const ai = tidyDeep(parseJson<AiAnalysis>(await groq([{ role: 'user', content: prompt }], { json: true, maxTokens: 2200, temperature: 0.2 })))
 
   const checks = m.checks.map((c) => ({ ...c, tip: String(ai.tips?.[c.label] ?? '').slice(0, 300) }))
   const avg = checks.reduce((a, c) => a + c.score, 0) / checks.length
@@ -174,6 +174,7 @@ Return ONLY a JSON object:
  "suggestions": [up to 5 specific edits to tailor the resume to this JD],
  "tailored_bullets": [up to 3 rewritten resume bullets aligned to the JD, based only on real resume content]
 }
+${STYLE_RULES}
 
 JOB DESCRIPTION:
 """
@@ -184,7 +185,7 @@ RESUME:
 """
 ${resume.slice(0, 12000)}
 """`
-  const ai = parseJson<Record<string, unknown>>(await groq([{ role: 'user', content: prompt }], { json: true, maxTokens: 1500, temperature: 0.2 }))
+  const ai = tidyDeep(parseJson<Record<string, unknown>>(await groq([{ role: 'user', content: prompt }], { json: true, maxTokens: 1500, temperature: 0.2 })))
   return {
     score: Math.round(jdTech.length ? 0.4 * overlap * 100 + 0.6 * clampScore(ai.fit) : clampScore(ai.fit)),
     verdict: String(ai.verdict ?? '').slice(0, 500),

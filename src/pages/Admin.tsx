@@ -3,7 +3,7 @@ import { useMemo, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import Avatar from '../components/Avatar'
 import { BarList, Columns, EmptyChart, SERIES } from '../components/charts'
-import { Card, Meter, Page, Ring, Stat } from '../components/Page'
+import { Card, Meter, Page, Ring, RowsSkeleton, Skeleton, Stat } from '../components/Page'
 import { useStudents, type StudentRow } from '../lib/admin'
 import { useAuth } from '../lib/auth'
 import { evaluateJob, SKILL_SHORT, SKILLS, type JobPosting } from '../lib/eligibility'
@@ -11,12 +11,12 @@ import { ctcText, isOpen, STATUS_META, useJobs, type JobApplication, type JobSta
 import { useApp } from '../lib/store'
 import { errMsg, supabase } from '../lib/supabase'
 
-const tone = (v: number) => (v >= 75 ? '#12b76a' : v >= 55 ? '#f79009' : '#f04438')
+const tone = (v: number) => (v >= 75 ? '#0A7A5C' : v >= 55 ? '#B47B12' : '#A63A2A')
 
 function Denied() {
   return (
     <Page title="Admin" subtitle="This area is for the placement cell.">
-      <Card><p className="py-8 text-center text-[13px] text-ink-mute">You don't have admin access. Ask an existing admin to add you under Admin → Admins.</p></Card>
+      <Card><p className="py-8 text-center text-[13px] text-ink-mute">You don't have admin access. Ask an existing admin to add you on the Admins page.</p></Card>
     </Page>
   )
 }
@@ -50,12 +50,12 @@ export function AdminOverview() {
         <Stat label="Avg. readiness" value={`${avg((r) => r.readiness)}`} sub="Product-track companies" tone="text-brand-dark" />
         <Stat label="Avg. resume score" value={`${avg((r) => r.resume ?? 0)}`} sub="Across analyzed resumes" />
         <Stat label="Open drives" value={`${jobs.filter(isOpen).length}`} sub={`${jobs.length} posted in total`} />
-        <Stat label="Offers" value={`${applications.filter((a) => a.status === 'offer').length}`} sub={`${applications.length} applications`} tone="text-[#0d9a5b]" />
+        <Stat label="Offers" value={`${applications.filter((a) => a.status === 'offer').length}`} sub={`${applications.length} applications`} tone="text-[#0A6B50]" />
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card title="Readiness distribution">
-          {students.length ? <Columns data={bands} x="band" y="n" name="Students" height={220} /> : <EmptyChart>{loading ? 'Loading…' : 'No students yet.'}</EmptyChart>}
+          {students.length ? <Columns data={bands} x="band" y="n" name="Students" height={220} /> : loading ? <Skeleton className="h-[220px] w-full" /> : <EmptyChart>No students yet.</EmptyChart>}
         </Card>
         <Card title="Students by branch">
           {branches.length ? <BarList data={branches.slice(0, 6)} color={SERIES[0]} /> : <EmptyChart>No students yet.</EmptyChart>}
@@ -65,7 +65,7 @@ export function AdminOverview() {
         </Card>
       </div>
 
-      <Card title="Top students" action={<button onClick={() => navigate('/admin/students')} className="text-[11.5px] font-semibold text-brand-dark hover:underline">All students →</button>}>
+      <Card title="Top students" action={<button onClick={() => navigate('/admin/students')} className="text-[11.5px] font-semibold text-brand-dark hover:underline">All students</button>}>
         <div className="divide-y divide-line">
           {students.slice(0, 8).map((r) => (
             <div key={r.profile.id} className="flex items-center gap-3 py-2.5">
@@ -73,13 +73,13 @@ export function AdminOverview() {
               <Avatar src={r.profile.avatar_url ?? undefined} name={r.profile.full_name || r.profile.email} size={30} />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[13px] font-semibold text-ink">{r.profile.full_name || r.profile.email}</span>
-                <span className="block truncate text-[11px] text-ink-mute">{r.profile.branch || '—'} · {r.profile.batch || '—'} · CGPA {r.profile.cgpa || '—'}</span>
+                <span className="block truncate text-[11px] text-ink-mute">{r.profile.branch || 'n/a'} · {r.profile.batch || 'n/a'} · CGPA {r.profile.cgpa || 'n/a'}</span>
               </span>
               <span className="hidden text-[12px] text-ink-mute sm:inline">Readiness {r.readiness}</span>
               <span className="w-[48px] text-right text-[14px] font-semibold text-brand-dark sm:w-[70px]">{r.score}</span>
             </div>
           ))}
-          {!students.length && <p className="py-6 text-center text-[12px] text-ink-faint">{loading ? 'Loading…' : 'No students have signed up yet.'}</p>}
+          {!students.length && (loading ? <RowsSkeleton rows={5} /> : <p className="py-6 text-center text-[12px] text-ink-faint">No students have signed up yet.</p>)}
         </div>
       </Card>
     </Page>
@@ -103,19 +103,19 @@ function StudentDrawer({ row, applications, jobs, onClose }: { row: StudentRow; 
   }
   const apps = applications.filter((a) => a.user_id === p.id)
   return (
-    <motion.div className="fixed inset-0 z-50 flex justify-end bg-[oklch(0.2_0.05_285/0.18)] p-2 sm:p-3" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onMouseDown={onClose}>
+    <motion.div className="fixed inset-0 z-50 flex justify-end bg-[#1E1D1A]/25 p-2 sm:p-3" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onMouseDown={onClose}>
       <motion.aside
-        className="glass-strong scroll-thin h-full w-full max-w-[560px] overflow-y-auto rounded-[24px] p-4 sm:p-6"
-        initial={{ x: 60, opacity: 0 }}
-        animate={{ x: 0, opacity: 1 }}
-        exit={{ x: 40, opacity: 0 }}
-        transition={{ type: 'spring', stiffness: 380, damping: 34 }}
+        className="glass-strong scroll-thin h-full w-full max-w-[560px] overflow-y-auto rounded-[3px] p-4 sm:p-6"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.15 }}
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="flex flex-wrap items-start gap-4">
           <Avatar src={p.avatar_url ?? undefined} name={p.full_name || p.email} size={56} />
           <div className="min-w-0 flex-1">
-            <p className="text-[19px] font-semibold tracking-[-0.02em] text-ink">{p.full_name || '—'}</p>
+            <p className="text-[19px] font-semibold tracking-[-0.02em] text-ink">{p.full_name || 'n/a'}</p>
             <p className="text-[12px] text-ink-mute">{p.branch} · Batch {p.batch} · {p.college}</p>
             <p className="text-[12px] text-ink-mute">{p.email} · {p.phone}</p>
             <div className="mt-2 flex flex-wrap gap-2 text-[11.5px] font-semibold">
@@ -129,8 +129,8 @@ function StudentDrawer({ row, applications, jobs, onClose }: { row: StudentRow; 
         </div>
 
         <div className="mt-5 grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
-          {[['CGPA', p.cgpa || '—'], ['Backlogs', p.backlogs], ['Class X', `${p.class_x || '—'}%`], ['Class XII', `${p.class_xii || '—'}%`]].map(([k, v]) => (
-            <div key={k as string} className="rounded-[12px] border border-white/80 bg-white/70 px-2 py-2.5">
+          {[['CGPA', p.cgpa || 'n/a'], ['Backlogs', p.backlogs], ['Class X', `${p.class_x || 'n/a'}%`], ['Class XII', `${p.class_xii || 'n/a'}%`]].map(([k, v]) => (
+            <div key={k as string} className="rounded-[3px] border border-rule bg-surface-2 px-2 py-2.5">
               <p className="text-[10.5px] text-ink-mute">{k}</p>
               <p className="text-[15px] font-semibold text-ink">{v}</p>
             </div>
@@ -145,14 +145,14 @@ function StudentDrawer({ row, applications, jobs, onClose }: { row: StudentRow; 
         <p className="mt-5 text-[12px] font-semibold text-ink">Coding & resume</p>
         <div className="mt-2 grid grid-cols-1 gap-2 text-[12px] sm:grid-cols-2">
           {[
-            ['Resume score', row.resume ?? '—'],
-            ['LeetCode', i.leetcode ? `${i.leetcode.solved} solved${i.leetcode.contest_rating ? ` · ${i.leetcode.contest_rating}` : ''}` : '—'],
-            ['Codeforces', i.codeforces ? `${i.codeforces.rating ?? 'unrated'} · ${i.codeforces.solved} solved` : '—'],
-            ['CodeChef', i.codechef ? `${i.codechef.rating ?? 'unrated'} · ${i.codechef.solved} solved` : '—'],
-            ['GitHub', i.github ? `${i.github.original_repos} repos · ${i.github.languages.slice(0, 3).map((l) => l.name).join(', ')}` : '—'],
+            ['Resume score', row.resume ?? 'n/a'],
+            ['LeetCode', i.leetcode ? `${i.leetcode.solved} solved${i.leetcode.contest_rating ? ` · ${i.leetcode.contest_rating}` : ''}` : 'n/a'],
+            ['Codeforces', i.codeforces ? `${i.codeforces.rating ?? 'unrated'} · ${i.codeforces.solved} solved` : 'n/a'],
+            ['CodeChef', i.codechef ? `${i.codechef.rating ?? 'unrated'} · ${i.codechef.solved} solved` : 'n/a'],
+            ['GitHub', i.github ? `${i.github.original_repos} repos · ${i.github.languages.slice(0, 3).map((l) => l.name).join(', ')}` : 'n/a'],
             ['Profile strength', `${row.strength}%`],
           ].map(([k, v]) => (
-            <div key={k as string} className="rounded-[12px] border border-white/80 bg-white/70 px-3 py-2">
+            <div key={k as string} className="rounded-[3px] border border-rule bg-surface-2 px-3 py-2">
               <p className="text-[10.5px] text-ink-mute">{k}</p>
               <p className="font-semibold text-ink">{v}</p>
             </div>
@@ -175,7 +175,7 @@ function StudentDrawer({ row, applications, jobs, onClose }: { row: StudentRow; 
             const j = jobs.find((x) => x.id === a.job_id)
             return (
               <p key={a.job_id} className="flex items-center gap-2 text-[12px] text-ink-soft">
-                <span className="flex-1">{j?.company} — {j?.role}</span>
+                <span className="flex-1">{j?.company} · {j?.role}</span>
                 <span className={`rounded-md border px-2 py-0.5 text-[10.5px] font-semibold ${STATUS_META[a.status].cls}`}>{STATUS_META[a.status].label}</span>
               </p>
             )
@@ -238,16 +238,17 @@ export function AdminStudents() {
             <option value="solved">Sort: Problems solved</option>
           </select>
         </div>
-        {error && <p className="mt-3 text-[12px] text-[#d92d20]">{error}</p>}
+        {error && <p className="mt-3 text-[12px] text-[#9C3526]">{error}</p>}
         <div className="mt-3 space-y-2 md:hidden">
+          {loading && !shown.length && <RowsSkeleton rows={6} />}
           {shown.map((r) => (
-            <button key={r.profile.id} onClick={() => setOpen(r)} className="flex w-full items-center gap-3 rounded-[14px] border border-white/80 bg-white/70 p-3 text-left">
+            <button key={r.profile.id} onClick={() => setOpen(r)} className="flex w-full items-center gap-3 rounded-[3px] border border-rule bg-surface-2 p-3 text-left">
               <span className="w-6 text-[12px] font-semibold text-ink-faint">#{r.rank}</span>
               <Avatar src={r.profile.avatar_url ?? undefined} name={r.profile.full_name || r.profile.email} size={34} />
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-[13px] font-semibold text-ink">{r.profile.full_name || '—'}</span>
-                <span className="block truncate text-[11px] text-ink-mute">{r.profile.branch || '—'} · {r.profile.batch || '—'} · CGPA {r.profile.cgpa || '—'}</span>
-                <span className="block text-[11px] text-ink-faint">Readiness {r.readiness} · Resume {r.resume ?? '—'} · DSA {r.dsa}</span>
+                <span className="block truncate text-[13px] font-semibold text-ink">{r.profile.full_name || 'n/a'}</span>
+                <span className="block truncate text-[11px] text-ink-mute">{r.profile.branch || 'n/a'} · {r.profile.batch || 'n/a'} · CGPA {r.profile.cgpa || 'n/a'}</span>
+                <span className="block text-[11px] text-ink-faint">Readiness {r.readiness} · Resume {r.resume ?? 'n/a'} · DSA {r.dsa}</span>
               </span>
               <span className="text-[16px] font-semibold tabular-nums text-brand-dark">{r.score}</span>
             </button>
@@ -262,22 +263,22 @@ export function AdminStudents() {
             </thead>
             <tbody>
               {shown.map((r) => (
-                <tr key={r.profile.id} onClick={() => setOpen(r)} className="cursor-pointer border-b border-line/70 transition hover:bg-white/70">
+                <tr key={r.profile.id} onClick={() => setOpen(r)} className="cursor-pointer border-b border-line/70 hover:bg-surface-2">
                   <td className="px-2 py-2.5 font-semibold text-ink-faint">{r.rank}</td>
                   <td className="px-2 py-2.5">
                     <span className="flex items-center gap-2">
                       <Avatar src={r.profile.avatar_url ?? undefined} name={r.profile.full_name || r.profile.email} size={26} />
                       <span>
-                        <span className="block font-semibold text-ink">{r.profile.full_name || '—'}</span>
+                        <span className="block font-semibold text-ink">{r.profile.full_name || 'n/a'}</span>
                         <span className="block text-[11px] text-ink-faint">{r.profile.onboarded_at ? r.profile.email : 'Onboarding incomplete'}</span>
                       </span>
                     </span>
                   </td>
-                  <td className="px-2 py-2.5 text-ink-soft">{r.profile.branch || '—'}</td>
-                  <td className="px-2 py-2.5 text-ink-soft">{r.profile.batch || '—'}</td>
-                  <td className="px-2 py-2.5 tabular-nums">{r.profile.cgpa || '—'}</td>
+                  <td className="px-2 py-2.5 text-ink-soft">{r.profile.branch || 'n/a'}</td>
+                  <td className="px-2 py-2.5 text-ink-soft">{r.profile.batch || 'n/a'}</td>
+                  <td className="px-2 py-2.5 tabular-nums">{r.profile.cgpa || 'n/a'}</td>
                   <td className="px-2 py-2.5 tabular-nums">{r.readiness}</td>
-                  <td className="px-2 py-2.5 tabular-nums">{r.resume ?? '—'}</td>
+                  <td className="px-2 py-2.5 tabular-nums">{r.resume ?? 'n/a'}</td>
                   <td className="px-2 py-2.5 tabular-nums">{r.dsa}</td>
                   <td className="px-2 py-2.5 tabular-nums">{r.solved}</td>
                   <td className="px-2 py-2.5 tabular-nums">{r.strength}%</td>
@@ -286,7 +287,7 @@ export function AdminStudents() {
               ))}
             </tbody>
           </table>
-          {!shown.length && <p className="py-8 text-center text-[12px] text-ink-faint">{loading ? 'Loading students…' : 'No students match.'}</p>}
+          {!shown.length && (loading ? <RowsSkeleton rows={8} /> : <p className="py-8 text-center text-[12px] text-ink-faint">No students match.</p>)}
         </div>
       </Card>
       <AnimatePresence>{open && <StudentDrawer row={open} jobs={jobs} applications={applications} onClose={() => setOpen(null)} />}</AnimatePresence>
@@ -324,7 +325,7 @@ function JobForm({ initial, onDone }: { initial?: JobPosting; onDone: () => void
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     if (!f.company.trim() || !f.role.trim()) return showToast('Company and role are required.')
-    if (f.description.trim().length < 80) return showToast('Paste the full job description (at least a few lines) — students are matched against it.')
+    if (f.description.trim().length < 80) return showToast('Paste the full job description (at least a few lines). Students are matched against it.')
     setBusy(true)
     const row = {
       company: f.company.trim(), role: f.role.trim(), location: f.location.trim(), job_type: f.job_type,
@@ -339,7 +340,7 @@ function JobForm({ initial, onDone }: { initial?: JobPosting; onDone: () => void
       : await supabase.from('job_postings').insert({ ...row, created_by: session?.user.id })
     setBusy(false)
     if (error) return showToast(`Could not save: ${error.message}`)
-    showToast(initial ? 'Drive updated.' : row.status === 'open' ? 'Drive posted — students have been notified.' : 'Draft saved.')
+    showToast(initial ? 'Drive updated.' : row.status === 'open' ? 'Drive posted. Students have been notified.' : 'Draft saved.')
     onDone()
   }
 
@@ -394,7 +395,7 @@ function JobForm({ initial, onDone }: { initial?: JobPosting; onDone: () => void
         {SKILLS.map((s) => (
           <label key={s} className="block">
             <span className="flex justify-between text-[11.5px] text-ink-soft"><span>{s}</span><b className="tabular-nums">{f.skills[s]}</b></span>
-            <input type="range" min={0} max={100} step={5} value={f.skills[s]} onChange={(e) => setF({ ...f, skills: { ...f.skills, [s]: Number(e.target.value) } })} className="w-full accent-[#6d4aff]" />
+            <input type="range" min={0} max={100} step={5} value={f.skills[s]} onChange={(e) => setF({ ...f, skills: { ...f.skills, [s]: Number(e.target.value) } })} className="w-full accent-[#0F5A45]" />
           </label>
         ))}
       </div>
@@ -430,7 +431,7 @@ export function AdminJobs() {
   const setStatus = async (a: JobApplication, status: JobStatus) => {
     const { error } = await supabase.from('job_applications').update({ status }).eq('job_id', a.job_id).eq('user_id', a.user_id)
     if (error) return showToast(`Could not update: ${error.message}`)
-    showToast(`Marked ${STATUS_META[status].label.toLowerCase()} — the student has been notified.`)
+    showToast(`Marked ${STATUS_META[status].label.toLowerCase()}. The student has been notified.`)
     reload()
   }
   const toggle = async (j: JobPosting) => {
@@ -459,7 +460,7 @@ export function AdminJobs() {
   return (
     <Page title="Job postings" subtitle="Post drives, see ranked applicants and move them through the pipeline." wide actions={<button onClick={() => setMode('new')} className="btn-primary">+ Post a drive</button>}>
       {jobs.length === 0 ? (
-        <Card><p className="py-10 text-center text-[13px] text-ink-mute">No drives yet. Post your first one — every student is notified and scored against it instantly.</p></Card>
+        <Card><p className="py-10 text-center text-[13px] text-ink-mute">No drives yet. When you post one, every student is notified and scored against it instantly.</p></Card>
       ) : (
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[340px_1fr]">
           <Card className="self-start">
@@ -467,12 +468,12 @@ export function AdminJobs() {
               {jobs.map((j) => {
                 const n = applications.filter((a) => a.job_id === j.id).length
                 return (
-                  <button key={j.id} onClick={() => setSelectedId(j.id)} className={`w-full rounded-[16px] border p-3 text-left transition ${selected?.id === j.id ? 'border-brand bg-white shadow-[var(--shadow-2)]' : 'border-white/80 bg-white/60 hover:bg-white'}`}>
+                  <button key={j.id} onClick={() => setSelectedId(j.id)} className={`w-full rounded-[3px] border p-3 text-left ${selected?.id === j.id ? 'border-brand bg-surface' : 'border-rule bg-surface-2 hover:bg-surface-2'}`}>
                     <p className="text-[13px] font-semibold text-ink">{j.company}</p>
                     <p className="text-[11.5px] text-ink-mute">{j.role}</p>
                     <p className="mt-1.5 flex gap-1.5 text-[10.5px]">
-                      <span className={`rounded-md px-1.5 py-0.5 font-semibold ${j.status === 'open' ? 'bg-[#ecfdf3] text-[#0d9a5b]' : j.status === 'draft' ? 'bg-white text-ink-mute' : 'bg-[#fef3f2] text-[#d92d20]'}`}>{j.status}</span>
-                      <span className="rounded-md bg-white px-1.5 py-0.5 text-ink-soft">{n} applicant{n === 1 ? '' : 's'}</span>
+                      <span className={`rounded-md px-1.5 py-0.5 font-semibold ${j.status === 'open' ? 'bg-[#F0EDE5] text-[#0A6B50]' : j.status === 'draft' ? 'bg-surface text-ink-mute' : 'bg-[#F0EDE5] text-[#9C3526]'}`}>{j.status}</span>
+                      <span className="rounded-md bg-surface px-1.5 py-0.5 text-ink-soft">{n} applicant{n === 1 ? '' : 's'}</span>
                     </p>
                   </button>
                 )
@@ -485,7 +486,7 @@ export function AdminJobs() {
               <div className="card p-5">
                 <div className="flex flex-wrap items-start gap-2 sm:gap-3">
                   <div className="min-w-[220px] flex-1">
-                    <p className="text-[18px] font-semibold tracking-[-0.03em] sm:text-[20px]">{selected.company} — {selected.role}</p>
+                    <p className="text-[18px] font-semibold tracking-[-0.03em] sm:text-[20px]">{selected.company} · {selected.role}</p>
                     <p className="text-[12.5px] text-ink-mute">{ctcText(selected)} · {selected.location || 'Location TBA'} · {selected.deadline ? `apply by ${selected.deadline}` : 'no deadline'}</p>
                     <p className="mt-1 text-[12px] text-ink-mute">
                       Min CGPA {selected.min_cgpa} · backlogs ≤ {selected.max_backlogs} · {selected.branches.join(', ') || 'all branches'} · {selected.batches.join(', ') || 'all batches'}
@@ -493,16 +494,16 @@ export function AdminJobs() {
                   </div>
                   <button onClick={() => setMode('edit')} className="btn-glass py-1.5 text-[12px]">Edit</button>
                   <button onClick={() => toggle(selected)} className="btn-glass py-1.5 text-[12px]">{selected.status === 'open' ? 'Close' : 'Open'}</button>
-                  <button onClick={() => remove(selected)} className="btn-glass py-1.5 text-[12px] text-[#d92d20]">Delete</button>
+                  <button onClick={() => remove(selected)} className="btn-glass py-1.5 text-[12px] text-[#9C3526]">Delete</button>
                 </div>
                 <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
                   <Stat label="Applicants" value={`${applicants.length}`} />
-                  <Stat label="Eligible, not applied" value={`${eligibleNotApplied}`} tone="text-[#b45309]" />
-                  <Stat label="Offers" value={`${applicants.filter((x) => x.a.status === 'offer').length}`} tone="text-[#0d9a5b]" />
+                  <Stat label="Eligible, not applied" value={`${eligibleNotApplied}`} tone="text-[#8A5A0B]" />
+                  <Stat label="Offers" value={`${applicants.filter((x) => x.a.status === 'offer').length}`} tone="text-[#0A6B50]" />
                 </div>
               </div>
 
-              <Card title="Applicants — ranked by profile match and AI resume fit">
+              <Card title="Applicants, ranked by profile match and AI resume fit">
                 <div className="divide-y divide-line">
                   {applicants.map(({ a, r, ev }, idx) => (
                     <div key={a.user_id} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-2.5">
@@ -510,10 +511,10 @@ export function AdminJobs() {
                       <Avatar src={r?.profile.avatar_url ?? undefined} name={r?.profile.full_name || 'Student'} size={30} />
                       <span className="min-w-[140px] flex-1">
                         <span className="block truncate text-[13px] font-semibold text-ink">{r?.profile.full_name ?? 'Student'}</span>
-                        <span className="block text-[11px] text-ink-mute">{r?.profile.branch} · CGPA {r?.profile.cgpa} · resume {r?.resume ?? '—'}</span>
+                        <span className="block text-[11px] text-ink-mute">{r?.profile.branch} · CGPA {r?.profile.cgpa} · resume {r?.resume ?? 'n/a'}</span>
                       </span>
-                      <span className="text-center text-[11px] text-ink-mute">Match<b className="block text-[14px] text-ink">{ev?.match ?? a.match ?? '—'}%</b></span>
-                      <span className="text-center text-[11px] text-ink-mute">AI fit<b className="block text-[14px] text-ink">{a.ai_fit ?? '—'}</b></span>
+                      <span className="text-center text-[11px] text-ink-mute">Match<b className="block text-[14px] text-ink">{ev?.match ?? a.match ?? 'n/a'}%</b></span>
+                      <span className="text-center text-[11px] text-ink-mute">AI fit<b className="block text-[14px] text-ink">{a.ai_fit ?? 'n/a'}</b></span>
                       <select value={a.status} onChange={(e) => setStatus(a, e.target.value as JobStatus)} className="field h-[32px] w-full py-0 text-[12px] sm:w-[130px]" aria-label={`Status for ${r?.profile.full_name}`}>
                         {(Object.keys(STATUS_META) as JobStatus[]).map((s) => <option key={s} value={s}>{STATUS_META[s].label}</option>)}
                       </select>
@@ -554,7 +555,7 @@ export function AdminTeam() {
           <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Their PlacementIQ sign-in email" className="field" type="email" />
           <button className="btn-primary shrink-0">Grant admin</button>
         </form>
-        <p className="mt-2 text-[11.5px] text-ink-faint">They must have signed up first. Admin access is enforced by the database, not just the UI.</p>
+        <p className="mt-2 text-[11.5px] text-ink-faint">They must have signed up first. The database enforces admin access.</p>
       </Card>
       <Card title={`Current admins (${admins.length})`}>
         <div className="divide-y divide-line">
@@ -563,7 +564,7 @@ export function AdminTeam() {
               <Avatar src={r.profile.avatar_url ?? undefined} name={r.profile.full_name || r.profile.email} size={30} />
               <span className="min-w-0 flex-1 text-[13px] font-semibold text-ink">{r.profile.full_name || r.profile.email}<span className="block truncate font-normal text-ink-faint sm:ml-2 sm:inline">{r.profile.email}</span></span>
               {r.profile.id !== session?.user.id && (
-                <button onClick={() => change(r.profile.id, false)} className="text-[11.5px] font-medium text-[#d92d20] hover:underline">Remove</button>
+                <button onClick={() => change(r.profile.id, false)} className="text-[11.5px] font-medium text-[#9C3526] hover:underline">Remove</button>
               )}
             </div>
           ))}

@@ -4,10 +4,10 @@ import { useApp } from '../lib/store'
 
 const faqs = [
   ['How is my eligibility calculated?', 'PlacementIQ scores your academics, skills, experience and projects against each company\'s published criteria, then buckets the company into one of four stacks. The match percentage is the weighted average of those four sub-scores.'],
-  ['Why am I "Nearly Eligible" for a company?', 'You meet most criteria but miss one or two — usually a skill depth or a specific round requirement. Open the company and check the Eligibility Criteria tab to see exactly which row is marked as a gap.'],
+  ['Why am I "Nearly Eligible" for a company?', 'You meet most criteria but miss one or two, usually a skill depth or a specific round requirement. Open the company and check the Eligibility Criteria tab to see exactly which row is marked as a gap.'],
   ['Can I move from "Can Become Eligible" to "Eligible"?', 'Yes. Follow the generated Learning Roadmap; each completed phase re-scores your profile and can move companies between stacks.'],
   ['How often is company data refreshed?', 'Drive data, CTC ranges and criteria are refreshed whenever the placement cell updates them, and at least once per recruitment season.'],
-  ['Who can see my profile?', 'By default only your placement cell and college alumni. You can change this under Settings → Profile visibility.'],
+  ['Who can see my profile?', 'By default only your placement cell and college alumni. You can change this in Settings, under Profile visibility.'],
 ]
 
 export default function Help() {
@@ -35,7 +35,7 @@ export default function Help() {
           <p className="flex-1 text-[12.5px] text-ink-mute">
             Reach the placement cell at <a href="mailto:placements@college.edu" className="font-semibold text-ink hover:underline">placements@college.edu</a>, or ask the AI assistant anything about your profile.
           </p>
-          <button onClick={() => openAssistant()} className="rounded-[9px] border border-[#d5cbff] bg-white px-4 py-2 text-[12.5px] font-semibold text-brand-dark hover:bg-[#faf8ff]">
+          <button onClick={() => openAssistant()} className="rounded-[3px] border border-[#C8C0B0] bg-surface px-4 py-2 text-[12.5px] font-semibold text-brand-dark hover:bg-[#F0EDE5]">
             Ask AI Assistant
           </button>
         </div>

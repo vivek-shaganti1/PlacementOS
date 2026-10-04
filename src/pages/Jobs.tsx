@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { Card, Meter, Page, Ring, Stat } from '../components/Page'
+import { Card, CardSkeleton, Meter, Page, Ring, RowsSkeleton, Stat } from '../components/Page'
 import { bucketMeta } from '../data/companies'
 import { callApi } from '../lib/api'
 import { useProfile } from '../lib/auth'
@@ -78,15 +78,20 @@ export default function Jobs() {
   const fit = selectedId ? fits[selectedId] : null
 
   return (
-    <Page title="Campus Jobs" subtitle="Drives posted by your placement cell, scored against your profile. Apply in one click — the cell sees your verified profile." wide>
+    <Page title="Campus Jobs" subtitle="Drives posted by your placement cell, scored against your profile. Apply in one click and the cell sees your verified profile." wide>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Open drives" value={`${scored.filter(({ job }) => isOpen(job)).length}`} />
-        <Stat label="You can apply to" value={`${eligibleCount}`} tone="text-[#0d9a5b]" />
+        <Stat label="You can apply to" value={`${eligibleCount}`} tone="text-[#0A6B50]" />
         <Stat label="Applications" value={`${mine.size}`} tone="text-brand-dark" />
-        <Stat label="Offers" value={`${offers}`} tone="text-[#0d9a5b]" />
+        <Stat label="Offers" value={`${offers}`} tone="text-[#0A6B50]" />
       </div>
 
-      {!loading && scored.length === 0 ? (
+      {loading ? (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[340px_minmax(0,1fr)]">
+          <div className="card p-4"><RowsSkeleton rows={4} /></div>
+          <CardSkeleton lines={8} />
+        </div>
+      ) : scored.length === 0 ? (
         <Card>
           <p className="py-10 text-center text-[13px] text-ink-mute">No drives posted yet. You'll get a notification the moment your placement cell posts one.</p>
         </Card>
@@ -95,7 +100,7 @@ export default function Jobs() {
           <Card className="self-start">
             <div className="mb-3 flex gap-1.5">
               {(['all', 'eligible', 'applied'] as const).map((f) => (
-                <button key={f} onClick={() => setFilter(f)} className={`rounded-full px-3 py-1 text-[11.5px] font-semibold capitalize transition ${filter === f ? 'bg-brand text-white' : 'bg-white/70 text-ink-soft hover:bg-white'}`}>
+                <button key={f} onClick={() => setFilter(f)} className={`rounded-[2px] px-3 py-1 text-[11.5px] font-semibold capitalize ${filter === f ? 'bg-brand text-white' : 'bg-surface-2 text-ink-soft hover:bg-surface-2'}`}>
                   {f === 'eligible' ? 'Can apply' : f}
                 </button>
               ))}
@@ -112,7 +117,7 @@ export default function Jobs() {
                       // Stacked layout: bring the details into view.
                       if (window.innerWidth < 1024) window.setTimeout(() => document.getElementById('job-detail')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 80)
                     }}
-                    className={`relative w-full rounded-[16px] border p-3.5 text-left transition ${active ? 'border-brand bg-white shadow-[var(--shadow-2)]' : 'border-white/80 bg-white/60 hover:bg-white'}`}
+                    className={`relative w-full rounded-[3px] border p-3.5 text-left ${active ? 'border-brand bg-surface' : 'border-rule bg-surface-2 hover:bg-surface-2'}`}
                   >
                     <div className="flex items-start gap-2">
                       <div className="min-w-0 flex-1">
@@ -122,9 +127,9 @@ export default function Jobs() {
                       <span className={`text-[14px] font-semibold tabular-nums ${bucketMeta[ev.bucket].text}`}>{ev.match}%</span>
                     </div>
                     <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[10.5px]">
-                      <span className="rounded-md bg-white/80 px-1.5 py-0.5 text-ink-soft">{ctcText(job)}</span>
-                      {job.deadline && <span className="rounded-md bg-white/80 px-1.5 py-0.5 text-ink-soft">Apply by {new Date(job.deadline).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</span>}
-                      {!isOpen(job) && <span className="rounded-md bg-[#fef3f2] px-1.5 py-0.5 text-[#d92d20]">Closed</span>}
+                      <span className="rounded-md bg-surface-2 px-1.5 py-0.5 text-ink-soft">{ctcText(job)}</span>
+                      {job.deadline && <span className="rounded-md bg-surface-2 px-1.5 py-0.5 text-ink-soft">Apply by {new Date(job.deadline).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</span>}
+                      {!isOpen(job) && <span className="rounded-md bg-[#F0EDE5] px-1.5 py-0.5 text-[#9C3526]">Closed</span>}
                       {app && <span className={`rounded-md border px-1.5 py-0.5 font-semibold ${STATUS_META[app.status].cls}`}>{STATUS_META[app.status].label}</span>}
                     </div>
                   </button>
@@ -136,10 +141,10 @@ export default function Jobs() {
 
           <AnimatePresence mode="wait">
             {selected && (
-              <motion.div key={selected.job.id} initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }} className="space-y-4">
+              <motion.div key={selected.job.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }} className="space-y-4">
                 <div id="job-detail" className="card scroll-mt-4 p-4 sm:p-6">
                   <div className="flex flex-wrap items-start gap-4 sm:gap-5">
-                    <Ring value={selected.ev.match} size={104} stroke={9} label="Profile match" color={selected.ev.eligibleToApply ? '#6d4aff' : '#f04438'} />
+                    <Ring value={selected.ev.match} size={104} stroke={9} label="Profile match" color={selected.ev.eligibleToApply ? '#0F5A45' : '#A63A2A'} />
                     <div className="min-w-[200px] flex-1">
                       <p className="text-[22px] font-semibold tracking-[-0.03em] text-ink">{selected.job.company}</p>
                       <p className="text-[13px] text-ink-mute">{selected.job.role} · {selected.job.job_type} · {selected.job.location || 'Location TBA'}</p>
@@ -150,8 +155,8 @@ export default function Jobs() {
                           if (app)
                             return (
                               <>
-                                <span className={`rounded-[10px] border px-3 py-1.5 text-[12px] font-semibold ${STATUS_META[app.status].cls}`}>{STATUS_META[app.status].label}</span>
-                                {app.status === 'applied' && <button onClick={() => withdraw(selected.job)} className="btn-glass py-1.5 text-[12px] text-[#d92d20]">Withdraw</button>}
+                                <span className={`rounded-[3px] border px-3 py-1.5 text-[12px] font-semibold ${STATUS_META[app.status].cls}`}>{STATUS_META[app.status].label}</span>
+                                {app.status === 'applied' && <button onClick={() => withdraw(selected.job)} className="btn-glass py-1.5 text-[12px] text-[#9C3526]">Withdraw</button>}
                               </>
                             )
                           if (!isOpen(selected.job)) return <span className="text-[12px] text-ink-faint">Applications are closed.</span>
@@ -178,13 +183,13 @@ export default function Jobs() {
                     )}
                   </div>
                   {fit && (
-                    <div className="mt-4 rounded-[14px] border border-white/80 bg-white/70 p-3.5 text-[12px]">
+                    <div className="mt-4 rounded-[3px] border border-rule bg-surface-2 p-3.5 text-[12px]">
                       <p className="text-ink-soft">{fit.verdict}</p>
                       <div className="mt-2 flex flex-wrap gap-1.5">
-                        {fit.matched_skills.slice(0, 8).map((s) => <span key={s} className="rounded-full border border-[#c9f0d9] bg-[#ecfdf3] px-2 py-0.5 text-[11px] font-semibold text-[#0d9a5b]">✓ {s}</span>)}
-                        {fit.missing_skills.slice(0, 8).map((s) => <span key={s} className="rounded-full border border-[#fbd5d1] bg-[#fef3f2] px-2 py-0.5 text-[11px] font-semibold text-[#d92d20]">+ {s}</span>)}
+                        {fit.matched_skills.slice(0, 8).map((s) => <span key={s} className="rounded-[2px] border border-[#C8C0B0] bg-[#F0EDE5] px-2 py-0.5 text-[11px] font-semibold text-[#0A6B50]">{s}</span>)}
+                        {fit.missing_skills.slice(0, 8).map((s) => <span key={s} className="rounded-[2px] border border-[#C8C0B0] bg-[#F0EDE5] px-2 py-0.5 text-[11px] font-semibold text-[#9C3526]">+ {s}</span>)}
                       </div>
-                      {fit.suggestions.length > 0 && <ul className="mt-2 space-y-1 text-ink-mute">{fit.suggestions.slice(0, 3).map((s) => <li key={s}>→ {s}</li>)}</ul>}
+                      {fit.suggestions.length > 0 && <ul className="mt-2 space-y-1 text-ink-mute">{fit.suggestions.slice(0, 3).map((s) => <li key={s}>{s}</li>)}</ul>}
                     </div>
                   )}
                 </div>
@@ -192,7 +197,7 @@ export default function Jobs() {
                 <Card title="Eligibility criteria">
                   <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     {selected.ev.criteria.map((c) => (
-                      <div key={c.label} className={`rounded-[12px] border px-3 py-2.5 ${c.met ? 'border-[#c9f0d9] bg-[#f6fef9]/80' : 'border-[#fbd5d1] bg-[#fef8f7]/80'}`}>
+                      <div key={c.label} className={`rounded-[3px] border px-3 py-2.5 ${c.met ? 'border-[#C8C0B0] bg-[#F0EDE5]/80' : 'border-[#C8C0B0] bg-[#F0EDE5]/80'}`}>
                         <p className="text-[11px] text-ink-mute">{c.label}</p>
                         <p className="text-[12.5px] font-semibold text-ink">{c.yours} <span className="font-normal text-ink-faint">/ needs {c.required}</span></p>
                       </div>
@@ -201,7 +206,7 @@ export default function Jobs() {
                   {selected.ev.gaps.length > 0 && (
                     <div className="mt-4 space-y-2.5">
                       <p className="text-[12px] font-semibold text-ink">Skill gaps for this role</p>
-                      {selected.ev.gaps.map((g) => <Meter key={g.skill} label={`${g.skill} — needs ${g.need}%`} value={g.have} tone="#f79009" />)}
+                      {selected.ev.gaps.map((g) => <Meter key={g.skill} label={`${g.skill} (needs ${g.need}%)`} value={g.have} tone="#B47B12" />)}
                     </div>
                   )}
                 </Card>

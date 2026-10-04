@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react'
 import type { Company } from '../data/types'
 import Avatar from './Avatar'
 import CompanyLogo from './CompanyLogo'
-import { IconArrowRight, IconBookmark, IconBot, IconChevronDown, IconClose, IconLinkedIn, IconMessage, IconSpark } from './Icons'
+import { IconChevronDown, IconClose, IconLinkedIn } from './Icons'
 import { useApp } from '../lib/store'
 import { linkedInSearch } from '../lib/links'
 
@@ -13,13 +13,13 @@ type Tab = (typeof TABS)[number]
 const pill = (c: Company) => {
   switch (c.bucket) {
     case 'eligible':
-      return { text: `Eligible (${c.match}% Match)`, cls: 'bg-[#ecfdf3] text-[#0d9a5b] border-[#c9f0d9]' }
+      return { text: `Eligible (${c.match}% Match)`, cls: 'bg-[#F0EDE5] text-[#0A6B50] border-[#C8C0B0]' }
     case 'nearly':
-      return { text: `Nearly Eligible (${c.match}% Match)`, cls: 'bg-[#fff8ec] text-[#d97706] border-[#fbe3bd]' }
+      return { text: `Nearly Eligible (${c.match}% Match)`, cls: 'bg-[#F0EDE5] text-[#8A5A0B] border-[#C8C0B0]' }
     case 'canBecome':
-      return { text: `Can Become Eligible (${c.match}% Match)`, cls: 'bg-[#eef6ff] text-[#1570cd] border-[#cfe4fb]' }
+      return { text: `Can Become Eligible (${c.match}% Match)`, cls: 'bg-[#F0EDE5] text-[#2D5FA0] border-[#C8C0B0]' }
     default:
-      return { text: `Not Eligible (${c.match}% Match)`, cls: 'bg-[#fef3f2] text-[#d92d20] border-[#fbd5d1]' }
+      return { text: `Not Eligible (${c.match}% Match)`, cls: 'bg-[#F0EDE5] text-[#9C3526] border-[#C8C0B0]' }
   }
 }
 
@@ -27,8 +27,8 @@ function Bar({ label, value }: { label: string; value: number }) {
   return (
     <div className="flex items-center gap-3">
       <span className="w-[74px] shrink-0 text-[11.5px] text-ink-mute">{label}</span>
-      <span className="h-[6px] flex-1 overflow-hidden rounded-full bg-[#eef0f3]">
-        <span className="block h-full rounded-full bg-[#12b76a] transition-[width] duration-500" style={{ width: `${value}%` }} />
+      <span className="h-[6px] flex-1 overflow-hidden rounded-[2px] bg-[#E6E1D6]">
+        <span className="block h-full rounded-[2px] bg-[#0A7A5C]" style={{ width: `${value}%` }} />
       </span>
       <span className="w-[30px] shrink-0 text-right text-[11.5px] font-semibold text-ink-soft">{value}%</span>
     </div>
@@ -56,16 +56,16 @@ export default function CompanyPanel({ company, onClose, overlay }: { company: C
   const section = (
     <motion.section
       key={company.id}
-      initial={{ opacity: 0, x: 28 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ type: 'spring', stiffness: 320, damping: 32 }}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.15 }}
       onMouseDown={overlay ? (e) => e.stopPropagation() : undefined}
-      className={`glass-strong scroll-thin relative flex flex-col overflow-y-auto rounded-[24px] ${overlay ? 'h-full w-full max-w-[592px] !bg-[oklch(0.975_0.008_285)]' : 'my-3 mr-3 w-[592px] shrink-0'}`}
+      className={`glass-strong scroll-thin relative flex flex-col overflow-y-auto rounded-[3px] ${overlay ? 'h-full w-full max-w-[592px] ' : 'my-3 mr-3 w-[592px] shrink-0'}`}
     >
       <button
         onClick={onClose}
         aria-label="Close panel"
-        className="absolute right-4 top-4 grid h-8 w-8 place-items-center rounded-lg text-ink-mute hover:bg-[#f3f4f6]"
+        className="absolute right-4 top-4 grid h-8 w-8 place-items-center rounded-lg text-ink-mute hover:bg-[#F0EDE5]"
       >
         <IconClose className="h-[18px] w-[18px]" />
       </button>
@@ -86,28 +86,27 @@ export default function CompanyPanel({ company, onClose, overlay }: { company: C
             <button
               onClick={() => apply(company.id)}
               disabled={isApplied}
-              className={`flex-1 rounded-[9px] border py-[7px] text-[12.5px] font-semibold transition sm:w-[124px] sm:flex-none ${
+              className={`flex-1 rounded-[3px] border py-[7px] text-[12.5px] font-semibold sm:w-[124px] sm:flex-none ${
                 isApplied
-                  ? 'border-[#c9f0d9] bg-[#ecfdf3] text-[#0d9a5b]'
-                  : 'border-[#d5cbff] bg-white text-brand-dark hover:bg-[#faf8ff]'
+                  ? 'border-[#C8C0B0] bg-[#F0EDE5] text-[#0A6B50]'
+                  : 'border-[#C8C0B0] bg-surface text-brand-dark hover:bg-[#F0EDE5]'
               }`}
             >
-              {isApplied ? 'Applied ✓' : 'Apply Now'}
+              {isApplied ? 'Applied' : 'Apply now'}
             </button>
             <button
               onClick={() => toggleSave(company.id)}
-              className={`flex flex-1 items-center justify-center gap-1.5 rounded-[9px] border py-[7px] text-[12.5px] font-medium transition sm:w-[124px] sm:flex-none ${
-                isSaved ? 'border-brand bg-brand-tint text-brand-dark' : 'border-line bg-white text-ink-soft hover:bg-[#f7f8fa]'
+              className={`flex flex-1 items-center justify-center gap-1.5 rounded-[3px] border py-[7px] text-[12.5px] font-medium sm:w-[124px] sm:flex-none ${
+                isSaved ? 'border-brand bg-brand-tint text-brand-dark' : 'border-line bg-surface text-ink-soft hover:bg-[#F0EDE5]'
               }`}
             >
-              <IconBookmark className="h-[15px] w-[15px]" />
               {isSaved ? 'Saved' : 'Save Company'}
             </button>
           </div>
         </div>
       </div>
 
-      <div className="sticky top-0 z-10 flex shrink-0 gap-5 overflow-x-auto whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden border-b border-line bg-white/85 px-4 backdrop-blur-xl sm:gap-6 sm:px-6">
+      <div className="sticky top-0 z-10 flex shrink-0 gap-5 overflow-x-auto whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden border-b border-line bg-surface-2 px-4 backdrop-blur-xl sm:gap-6 sm:px-6">
         {TABS.map((t) => {
           const label = t === 'Alumni' ? `Alumni (${company.alumni.length})` : t
           const active = tab === t
@@ -115,18 +114,18 @@ export default function CompanyPanel({ company, onClose, overlay }: { company: C
             <button
               key={t}
               onClick={() => setTab(t)}
-              className={`relative -mb-px pb-2.5 pt-1 text-[12.5px] transition ${
+              className={`relative -mb-px pb-2.5 pt-1 text-[12.5px] ${
                 active ? 'font-semibold text-ink' : 'font-medium text-ink-mute hover:text-ink-soft'
               }`}
             >
               {label}
-              {active && <motion.span layoutId="panel-tab" className="absolute inset-x-0 -bottom-px h-[2px] rounded-full bg-brand" transition={{ type: 'spring', stiffness: 500, damping: 38 }} />}
+              {active && <span className="absolute inset-x-0 -bottom-px h-[2px] bg-brand" />}
             </button>
           )
         })}
       </div>
 
-      <div className="flex-1 space-y-4 bg-white/30 px-3 py-4 sm:px-6 sm:py-5">
+      <div className="flex-1 space-y-4 bg-surface-2 px-3 py-4 sm:px-6 sm:py-5">
         {tab === 'Overview' && (
           <>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -157,7 +156,7 @@ export default function CompanyPanel({ company, onClose, overlay }: { company: C
                   rel="noreferrer"
                   className="mt-3 inline-flex items-center gap-1.5 text-[11.5px] font-medium text-brand-dark hover:underline"
                 >
-                  Visit Careers Page <IconArrowRight className="h-3.5 w-3.5" />
+                  Visit Careers Page
                 </a>
               </div>
 
@@ -170,7 +169,7 @@ export default function CompanyPanel({ company, onClose, overlay }: { company: C
                   <Bar label="Projects" value={b.projects} />
                   <div className="flex items-center gap-3 pt-0.5">
                     <span className="w-[74px] shrink-0 text-[11.5px] font-semibold text-ink">Overall</span>
-                    <span className="h-[6px] flex-1 rounded-full bg-transparent" />
+                    <span className="h-[6px] flex-1 rounded-[2px] bg-transparent" />
                     <span className="w-[30px] shrink-0 text-right text-[11.5px] font-bold text-ink">{overall}%</span>
                   </div>
                 </div>
@@ -186,7 +185,7 @@ export default function CompanyPanel({ company, onClose, overlay }: { company: C
                   onClick={() => setTab('Alumni')}
                   className="inline-flex items-center gap-1.5 text-[11.5px] font-medium text-brand-dark hover:underline"
                 >
-                  View All Alumni <IconArrowRight className="h-3.5 w-3.5" />
+                  View All Alumni
                 </button>
               </div>
 
@@ -211,15 +210,14 @@ export default function CompanyPanel({ company, onClose, overlay }: { company: C
                       href={linkedInSearch(a.name, company.name)}
                       target="_blank"
                       rel="noreferrer"
-                      className="grid h-7 w-7 place-items-center rounded-md border border-line text-[#0A66C2] hover:bg-[#f7f8fa]"
+                      className="grid h-7 w-7 place-items-center rounded-md border border-line text-[#4A4741] hover:bg-[#F0EDE5]"
                     >
                       <IconLinkedIn className="h-[15px] w-[15px]" />
                     </a>
                     <button
                       onClick={() => openAssistant(`Draft a short intro message to ${a.name}, ${a.title}.`)}
-                      className="flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[11.5px] font-medium text-ink-soft hover:bg-[#f7f8fa]"
+                      className="flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[11.5px] font-medium text-ink-soft hover:bg-[#F0EDE5]"
                     >
-                      <IconMessage className="h-[14px] w-[14px]" />
                       Message
                     </button>
                   </div>
@@ -229,10 +227,10 @@ export default function CompanyPanel({ company, onClose, overlay }: { company: C
               {company.alumni.length > 4 && (
                 <button
                   onClick={() => setShowAllAlumni((v) => !v)}
-                  className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-[9px] border border-line py-2 text-[11.5px] font-medium text-ink-soft hover:bg-[#f7f8fa]"
+                  className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-[3px] border border-line py-2 text-[11.5px] font-medium text-ink-soft hover:bg-[#F0EDE5]"
                 >
                   {showAllAlumni ? 'Show less' : `Show ${company.alumni.length - 4} more alumni`}
-                  <IconChevronDown className={`h-3.5 w-3.5 transition ${showAllAlumni ? 'rotate-180' : ''}`} />
+                  <IconChevronDown className={`h-3.5 w-3.5 ${showAllAlumni ? 'rotate-180' : ''}`} />
                 </button>
               )}
             </div>
@@ -241,7 +239,7 @@ export default function CompanyPanel({ company, onClose, overlay }: { company: C
 
         {tab === 'Eligibility Criteria' && (
           <div className="card overflow-x-auto">
-            <div className="grid min-w-[460px] grid-cols-[1.3fr_1fr_1fr_auto] gap-3 border-b border-line bg-[#fafbfc] px-4 py-2.5 text-[11px] font-semibold text-ink-mute">
+            <div className="grid min-w-[460px] grid-cols-[1.3fr_1fr_1fr_auto] gap-3 border-b border-line bg-[#F0EDE5] px-4 py-2.5 text-[11px] font-semibold text-ink-mute">
               <span>Criteria</span>
               <span>Required</span>
               <span>Your Profile</span>
@@ -254,7 +252,7 @@ export default function CompanyPanel({ company, onClose, overlay }: { company: C
                 <span className="text-ink-soft">{c.yours}</span>
                 <span
                   className={`rounded-md border px-2 py-[3px] text-[11px] font-semibold ${
-                    c.met ? 'border-[#c9f0d9] bg-[#ecfdf3] text-[#0d9a5b]' : 'border-[#fbd5d1] bg-[#fef3f2] text-[#d92d20]'
+                    c.met ? 'border-[#C8C0B0] bg-[#F0EDE5] text-[#0A6B50]' : 'border-[#C8C0B0] bg-[#F0EDE5] text-[#9C3526]'
                   }`}
                 >
                   {c.met ? 'Met' : 'Gap'}
@@ -271,7 +269,7 @@ export default function CompanyPanel({ company, onClose, overlay }: { company: C
               {company.process.map((s, i) => (
                 <li key={s.stage} className="relative flex gap-3.5 pb-5 last:pb-0">
                   {i < company.process.length - 1 && <span className="absolute left-[13px] top-7 h-full w-px bg-line" />}
-                  <span className="z-10 grid h-[27px] w-[27px] shrink-0 place-items-center rounded-full bg-brand-tint text-[12px] font-bold text-brand-dark ring-4 ring-white">
+                  <span className="z-10 grid h-[27px] w-[27px] shrink-0 place-items-center rounded-[2px] bg-brand-tint text-[12px] font-bold text-brand-dark ring-4 ring-white">
                     {i + 1}
                   </span>
                   <div className="pt-0.5">
@@ -301,9 +299,8 @@ export default function CompanyPanel({ company, onClose, overlay }: { company: C
                   <span className="hidden w-[80px] text-[11.5px] text-ink-mute sm:inline">{a.location}</span>
                   <button
                     onClick={() => openAssistant(`Draft a short intro message to ${a.name}, ${a.title}.`)}
-                    className="flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[11.5px] font-medium text-ink-soft hover:bg-[#f7f8fa]"
+                    className="flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[11.5px] font-medium text-ink-soft hover:bg-[#F0EDE5]"
                   >
-                    <IconMessage className="h-[14px] w-[14px]" />
                     Message
                   </button>
                 </div>
@@ -323,23 +320,17 @@ export default function CompanyPanel({ company, onClose, overlay }: { company: C
           </div>
         )}
 
-        <div className="rounded-xl2 border border-[#e6e0ff] bg-[#f6f3ff] p-4">
-          <div className="flex items-center gap-3">
-            <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-white text-brand-dark shadow-card">
-              <IconBot className="h-[19px] w-[19px]" />
-            </span>
-            <div className="flex-1">
-              <p className="text-[12.5px] font-semibold text-ink">Need Help?</p>
-              <p className="mt-0.5 text-[11.5px] text-ink-mute">
-                Talk to our AI Career Assistant for personalized guidance about this company.
-              </p>
+        <div className="rounded-xl2 border border-[#C8C0B0] bg-[#F0EDE5] p-4">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="min-w-[200px] flex-1">
+              <p className="text-[12.5px] font-semibold text-ink">Preparing for {company.name}?</p>
+              <p className="mt-0.5 text-[11.5px] text-ink-mute">The career assistant can plan your preparation using this company's gaps.</p>
             </div>
             <button
               onClick={() => openAssistant(`Tell me how to prepare for ${company.name} ${company.role}.`)}
-              className="flex shrink-0 items-center gap-1.5 rounded-[9px] border border-[#d5cbff] bg-white px-3.5 py-2 text-[12px] font-semibold text-brand-dark hover:bg-[#faf8ff]"
+              className="flex shrink-0 items-center gap-1.5 rounded-[3px] border border-[#C8C0B0] bg-surface px-3.5 py-2 text-[12px] font-semibold text-brand-dark hover:bg-[#F0EDE5]"
             >
-              <IconSpark className="h-[15px] w-[15px]" />
-              Ask AI Assistant
+              Ask the assistant
             </button>
           </div>
         </div>
@@ -349,7 +340,7 @@ export default function CompanyPanel({ company, onClose, overlay }: { company: C
 
   if (!overlay) return section
   return (
-    <motion.div className="fixed inset-0 z-50 flex justify-end bg-[oklch(0.2_0.05_285/0.2)] p-2 sm:p-3" initial={{ opacity: 0 }} animate={{ opacity: 1 }} onMouseDown={onClose}>
+    <motion.div className="fixed inset-0 z-50 flex justify-end bg-[#1E1D1A]/25 p-2 sm:p-3" initial={{ opacity: 0 }} animate={{ opacity: 1 }} onMouseDown={onClose}>
       {section}
     </motion.div>
   )

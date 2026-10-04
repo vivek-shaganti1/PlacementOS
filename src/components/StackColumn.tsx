@@ -34,10 +34,10 @@ export default function StackColumn({
           <button
             key={c.id}
             onClick={() => onSelect(c)}
-            className={`flex items-center gap-2.5 rounded-xl2 border bg-white px-2.5 py-2.5 text-left transition ${
+            className={`flex items-center gap-2.5 rounded-xl2 border bg-surface px-2.5 py-2.5 text-left ${
               active
                 ? 'border-brand ring-1 ring-brand shadow-card'
-                : 'border-line shadow-card hover:border-[#d9dce2] hover:shadow-pop'
+                : 'border-line hover:border-[#DCD6C9] hover:shadow-pop'
             }`}
           >
             <span className="grid h-6 w-6 shrink-0 place-items-center">

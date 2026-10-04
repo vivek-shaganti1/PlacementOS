@@ -94,7 +94,7 @@ export default function Practice() {
     <Page title="Practice Arena" subtitle="Targeted problem sets based on the rounds your companies actually run.">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Problems solved" value={`${solvedIds.size}`} sub={`of ${allQs.length} in the bank`} />
-        <Stat label="Current streak" value={`${streak} day${streak === 1 ? '' : 's'}`} sub="Practice daily to grow it" tone="text-[#0d9a5b]" />
+        <Stat label="Current streak" value={`${streak} day${streak === 1 ? '' : 's'}`} sub="Practice daily to grow it" tone="text-[#0A6B50]" />
         <Stat label="Attempts" value={`${attempts.length}`} sub="All time" />
         <Stat label="Accuracy" value={`${accuracy}%`} sub="Correct / attempts" tone="text-brand-dark" />
       </div>
@@ -109,11 +109,11 @@ export default function Practice() {
               <div key={t} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-3">
                 <span className="min-w-0 flex-1 text-[12.5px] font-semibold text-ink sm:w-[180px] sm:flex-none">{t}<span className="block text-[11px] font-normal text-ink-mute sm:hidden">{bank[t].level}</span></span>
                 <span className="hidden w-[110px] text-[11.5px] text-ink-mute sm:inline">{bank[t].level}</span>
-                <span className="order-last h-[7px] w-full overflow-hidden rounded-full bg-[#eef0f3] sm:order-none sm:w-auto sm:flex-1">
-                  <span className="block h-full rounded-full bg-brand transition-[width] duration-500" style={{ width: `${pct}%` }} />
+                <span className="order-last h-[7px] w-full overflow-hidden rounded-[2px] bg-[#E6E1D6] sm:order-none sm:w-auto sm:flex-1">
+                  <span className="block h-full rounded-[2px] bg-brand" style={{ width: `${pct}%` }} />
                 </span>
                 <span className="w-[70px] text-right text-[11.5px] font-semibold text-ink-soft">{solved}/{qs.length}</span>
-                <button onClick={() => start(t)} className="rounded-md border border-line px-3 py-1.5 text-[11.5px] font-medium text-ink-soft hover:bg-[#f7f8fa]">Practice</button>
+                <button onClick={() => start(t)} className="rounded-md border border-line px-3 py-1.5 text-[11.5px] font-medium text-ink-soft hover:bg-[#F0EDE5]">Practice</button>
               </div>
             )
           })}
@@ -123,14 +123,14 @@ export default function Practice() {
       <div id="practice-question">
         <Card
           title={topic ? `Practice · ${topic}` : 'Question of the day'}
-          action={picked !== null && topic ? <button onClick={() => start(topic)} className="text-[11.5px] font-medium text-brand-dark hover:underline">Next question →</button> : undefined}
+          action={picked !== null && topic ? <button onClick={() => start(topic)} className="text-[11.5px] font-medium text-brand-dark hover:underline">Next question</button> : undefined}
         >
           <p className="text-[12.5px] text-ink-soft">{current.q}</p>
           <div className="mt-3 space-y-2">
             {current.options.map((o, i) => {
-              const state = picked === null ? '' : i === current.answer ? 'border-[#c9f0d9] bg-[#ecfdf3] text-[#0d9a5b]' : picked === i ? 'border-[#fbd5d1] bg-[#fef3f2] text-[#d92d20]' : ''
+              const state = picked === null ? '' : i === current.answer ? 'border-[#C8C0B0] bg-[#F0EDE5] text-[#0A6B50]' : picked === i ? 'border-[#C8C0B0] bg-[#F0EDE5] text-[#9C3526]' : ''
               return (
-                <button key={o} onClick={() => pick(i)} className={`block w-full rounded-[9px] border px-3 py-2 text-left text-[12.5px] transition ${state || 'border-line text-ink-soft hover:bg-[#f7f8fa]'}`}>
+                <button key={o} onClick={() => pick(i)} className={`block w-full rounded-[3px] border px-3 py-2 text-left text-[12.5px] ${state || 'border-line text-ink-soft hover:bg-[#F0EDE5]'}`}>
                   {o}
                 </button>
               )
@@ -138,7 +138,7 @@ export default function Practice() {
           </div>
           {picked !== null && (
             <p className="mt-3 text-[12px] font-medium text-ink-mute">
-              {picked === current.answer ? 'Correct — ' : 'Not quite. '}
+              {picked === current.answer ? 'Correct. ' : 'Not quite. '}
               {current.why}
             </p>
           )}

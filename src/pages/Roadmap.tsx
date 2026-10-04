@@ -20,8 +20,8 @@ export default function Roadmap() {
         <div className="flex items-center gap-4">
           <div className="flex-1">
             <p className="text-[12.5px] font-medium text-ink-soft">Overall progress</p>
-            <span className="mt-2 block h-[8px] overflow-hidden rounded-full bg-[#eef0f3]">
-              <span className="block h-full rounded-full bg-brand transition-[width] duration-500" style={{ width: `${pct}%` }} />
+            <span className="mt-2 block h-[8px] overflow-hidden rounded-[2px] bg-[#E6E1D6]">
+              <span className="block h-full rounded-[2px] bg-brand" style={{ width: `${pct}%` }} />
             </span>
           </div>
           <p className="text-[22px] font-bold text-brand-dark">{pct}%</p>
@@ -32,12 +32,12 @@ export default function Roadmap() {
         <Card key={p.title} title={p.title} action={<span className="text-[11.5px] text-ink-faint">{p.weeks}</span>}>
           <div className="space-y-2">
             {p.items.map((i) => (
-              <label key={i} className="flex cursor-pointer items-center gap-2.5 rounded-[9px] px-2 py-1.5 hover:bg-[#f7f8fa]">
+              <label key={i} className="flex cursor-pointer items-center gap-2.5 rounded-[3px] px-2 py-1.5 hover:bg-[#F0EDE5]">
                 <input
                   type="checkbox"
                   checked={!!done[i]}
                   onChange={() => toggleRoadmap(i)}
-                  className="h-[15px] w-[15px] accent-[#6d4aff]"
+                  className="h-[15px] w-[15px] accent-[#0F5A45]"
                 />
                 <span className={`text-[12.5px] ${done[i] ? 'text-ink-faint line-through' : 'text-ink-soft'}`}>{i}</span>
               </label>

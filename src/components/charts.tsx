@@ -6,22 +6,22 @@ import {
   PolarRadiusAxis, Radar, RadarChart, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis, ZAxis,
 } from 'recharts'
 
-export const SERIES = ['#2a78d6', '#eb6834', '#1baf7a'] // validated categorical order (slots 1-3)
-export const BRAND = '#6d4aff'
-export const STATUS = { eligible: '#12b76a', nearly: '#f79009', canBecome: '#2e90fa', notEligible: '#f04438' } as const
-const INK = { primary: '#14112a', secondary: '#6b6784', faint: '#9a97ad', grid: 'rgba(120,110,170,0.14)' }
+export const SERIES = ['#2D5FA0', '#B47B12', '#0A7A5C'] // slate, ochre, green: validated for CVD on the paper surface
+export const BRAND = '#0F5A45'
+export const STATUS = { eligible: '#0A7A5C', nearly: '#B47B12', canBecome: '#2D5FA0', notEligible: '#A63A2A' } as const
+const INK = { primary: '#1E1D1A', secondary: '#6D685F', faint: '#948E82', grid: '#E3DDD1' }
 const axis = { tick: { fill: INK.faint, fontSize: 11 }, axisLine: false, tickLine: false } as const
 
 function TooltipBox({ active, payload, label, format }: { active?: boolean; payload?: any[]; label?: ReactNode; format?: (v: number, name: string) => string }) {
   if (!active || !payload?.length) return null
   return (
-    <div className="glass-strong rounded-[12px] px-3 py-2 text-[11.5px]">
+    <div className="rounded-[3px] border border-rule-strong bg-surface px-3 py-2 text-[11.5px]">
       {label !== undefined && label !== '' && <p className="mb-1 font-semibold text-ink">{label}</p>}
       {payload.map((p) => (
         <p key={p.dataKey ?? p.name} className="flex items-center gap-2 text-ink-soft">
-          <span className="h-2 w-2 rounded-full" style={{ background: p.color ?? p.payload?.fill }} />
+          <span className="h-2 w-2" style={{ background: p.color ?? p.payload?.fill }} />
           <span>{p.name}</span>
-          <span className="ml-auto pl-3 font-semibold tabular-nums text-ink">{format ? format(p.value, p.name) : p.value}</span>
+          <span className="figure ml-auto pl-3 font-medium text-ink">{format ? format(p.value, p.name) : p.value}</span>
         </p>
       ))}
     </div>
@@ -30,7 +30,7 @@ function TooltipBox({ active, payload, label, format }: { active?: boolean; payl
 
 export function EmptyChart({ children, height = 220 }: { children: ReactNode; height?: number }) {
   return (
-    <div className="grid place-items-center rounded-[14px] border border-dashed border-line text-center text-[12px] text-ink-faint" style={{ height }}>
+    <div className="grid place-items-center rounded-[3px] border border-dashed border-rule-strong text-center text-[12px] text-ink-faint" style={{ height }}>
       <div className="max-w-[280px] px-4">{children}</div>
     </div>
   )
@@ -49,14 +49,6 @@ export function TrendChart({
   return (
     <ResponsiveContainer width="100%" height={height}>
       <AreaChart data={data} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
-        <defs>
-          {series.map((s) => (
-            <linearGradient key={s.key} id={`g-${s.key}`} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stopColor={s.color} stopOpacity={series.length > 1 ? 0.12 : 0.28} />
-              <stop offset="1" stopColor={s.color} stopOpacity={0} />
-            </linearGradient>
-          ))}
-        </defs>
         <CartesianGrid stroke={INK.grid} vertical={false} />
         <XAxis dataKey={x} {...axis} minTickGap={24} />
         <YAxis {...axis} domain={domain ?? ['auto', 'auto']} width={44} />
@@ -70,10 +62,11 @@ export function TrendChart({
             name={s.name}
             stroke={s.color}
             strokeWidth={2}
-            fill={`url(#g-${s.key})`}
+            fill={s.color}
+            fillOpacity={series.length > 1 ? 0 : 0.1}
             dot={false}
-            activeDot={{ r: 4.5, strokeWidth: 2, stroke: '#fff' }}
-            animationDuration={900}
+            activeDot={{ r: 4.5, strokeWidth: 2, stroke: '#FBF9F4' }}
+            isAnimationActive={false}
           />
         ))}
       </AreaChart>
@@ -88,7 +81,7 @@ export function Donut({ data, height = 200, centerLabel }: { data: { name: strin
     <div className="relative" style={{ height }}>
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
-          <Pie data={data} dataKey="value" nameKey="name" innerRadius="64%" outerRadius="92%" paddingAngle={2} cornerRadius={5} stroke="none" animationDuration={900}>
+          <Pie data={data} dataKey="value" nameKey="name" innerRadius="64%" outerRadius="92%" paddingAngle={1.5} cornerRadius={1} stroke="none" isAnimationActive={false}>
             {data.map((d) => <Cell key={d.name} fill={d.color} />)}
           </Pie>
           <Tooltip content={<TooltipBox format={(v) => `${v} (${Math.round((v / Math.max(1, total)) * 100)}%)`} />} />
@@ -96,7 +89,7 @@ export function Donut({ data, height = 200, centerLabel }: { data: { name: strin
       </ResponsiveContainer>
       <div className="pointer-events-none absolute inset-0 grid place-items-center text-center">
         <div>
-          <p className="text-[26px] font-semibold leading-none tracking-[-0.03em] text-ink">{total}</p>
+          <p className="figure text-[26px] font-medium leading-none text-ink">{total}</p>
           {centerLabel && <p className="mt-1 text-[10.5px] text-ink-mute">{centerLabel}</p>}
         </div>
       </div>
@@ -112,8 +105,8 @@ export function SkillRadar({ data, height = 300, aName, bName }: { data: { skill
         <PolarGrid stroke={INK.grid} />
         <PolarAngleAxis dataKey="skill" tick={{ fill: INK.secondary, fontSize: 10.5 }} />
         <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
-        <Radar name={bName} dataKey="b" stroke={SERIES[1]} strokeWidth={2} fill={SERIES[1]} fillOpacity={0.08} strokeDasharray="5 4" animationDuration={900} />
-        <Radar name={aName} dataKey="a" stroke={BRAND} strokeWidth={2} fill={BRAND} fillOpacity={0.22} animationDuration={900} />
+        <Radar name={bName} dataKey="b" stroke={SERIES[1]} strokeWidth={2} fill={SERIES[1]} fillOpacity={0.08} strokeDasharray="5 4" isAnimationActive={false} />
+        <Radar name={aName} dataKey="a" stroke={BRAND} strokeWidth={2} fill={BRAND} fillOpacity={0.12} isAnimationActive={false} />
         <Tooltip content={<TooltipBox format={(v) => `${v}%`} />} />
         <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11.5, color: INK.secondary }} />
       </RadarChart>
@@ -129,8 +122,8 @@ export function BarList({ data, height, unit = '', color = BRAND, max }: { data:
         <CartesianGrid stroke={INK.grid} horizontal={false} />
         <XAxis type="number" {...axis} domain={[0, max ?? 'auto']} hide />
         <YAxis type="category" dataKey="name" {...axis} tick={{ fill: INK.secondary, fontSize: 11.5 }} width={170} tickFormatter={(v: string) => (v.length > 26 ? `${v.slice(0, 25)}…` : v)} />
-        <Tooltip content={<TooltipBox format={(v) => `${v}${unit}`} />} cursor={{ fill: 'rgba(109,74,255,0.06)' }} />
-        <Bar dataKey="value" name="Value" radius={[0, 6, 6, 0]} maxBarSize={22} animationDuration={900} label={{ position: 'right', fill: INK.secondary, fontSize: 11, formatter: (v: unknown) => `${v}${unit}` }}>
+        <Tooltip content={<TooltipBox format={(v) => `${v}${unit}`} />} cursor={{ fill: 'rgba(15,90,69,0.06)' }} />
+        <Bar dataKey="value" name="Value" radius={[0, 2, 2, 0]} maxBarSize={22} isAnimationActive={false} label={{ position: 'right', fill: INK.secondary, fontSize: 11, formatter: (v: unknown) => `${v}${unit}` }}>
           {data.map((d) => <Cell key={d.name} fill={d.color ?? color} />)}
         </Bar>
       </BarChart>
@@ -146,8 +139,8 @@ export function Columns({ data, x, y, name, height = 200, color = BRAND, unit = 
         <CartesianGrid stroke={INK.grid} vertical={false} />
         <XAxis dataKey={x} {...axis} />
         <YAxis {...axis} width={44} domain={domain ?? [0, 'auto']} allowDecimals={false} />
-        <Tooltip content={<TooltipBox format={(v) => `${v}${unit}`} />} cursor={{ fill: 'rgba(109,74,255,0.06)' }} />
-        <Bar dataKey={y} name={name} fill={color} radius={[6, 6, 0, 0]} maxBarSize={44} animationDuration={900} />
+        <Tooltip content={<TooltipBox format={(v) => `${v}${unit}`} />} cursor={{ fill: 'rgba(15,90,69,0.06)' }} />
+        <Bar dataKey={y} name={name} fill={color} radius={[2, 2, 0, 0]} maxBarSize={44} isAnimationActive={false} />
       </BarChart>
     </ResponsiveContainer>
   )
@@ -167,7 +160,7 @@ export function CompanyScatter({ data, height = 320 }: { data: { name: string; m
           cursor={{ strokeDasharray: '3 3', stroke: INK.faint }}
           content={({ active, payload }) =>
             active && payload?.length ? (
-              <div className="glass-strong rounded-[12px] px-3 py-2 text-[11.5px]">
+              <div className="rounded-[3px] border border-rule-strong bg-surface px-3 py-2 text-[11.5px]">
                 <p className="font-semibold text-ink">{payload[0].payload.name}</p>
                 <p className="text-ink-soft">{payload[0].payload.label} · {payload[0].payload.match}% match · ₹{payload[0].payload.ctc} LPA</p>
               </div>
@@ -176,7 +169,7 @@ export function CompanyScatter({ data, height = 320 }: { data: { name: string; m
         />
         <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11.5, color: INK.secondary }} />
         {groups.map(({ b, rows }) => (
-          <Scatter key={b} name={rows[0]?.label ?? b} data={rows} fill={STATUS[b]} stroke="#fff" strokeWidth={1.5} animationDuration={900} />
+          <Scatter key={b} name={rows[0]?.label ?? b} data={rows} fill={STATUS[b]} stroke="#FBF9F4" strokeWidth={1.5} isAnimationActive={false} />
         ))}
       </ScatterChart>
     </ResponsiveContainer>

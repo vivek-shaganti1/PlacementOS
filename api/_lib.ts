@@ -134,6 +134,31 @@ export async function groq(messages: ChatMessage[], opts: { json?: boolean; maxT
   throw new HttpError(502, lastStatus === 429 ? 'The AI is at its usage limit right now. Try again in a minute.' : 'The AI service returned an error.')
 }
 
+/** House style for AI text: no emojis, em dashes, arrows or checkmark bullets. */
+export const STYLE_RULES =
+  'Write in plain, professional English. Do not use emojis, em dashes, arrows or checkmark symbols. Do not use the construction "it is not X, it is Y". Use commas, colons or full stops instead of dashes.'
+
+export function tidy(text: string): string {
+  return text
+    .replace(/\p{Extended_Pictographic}\uFE0F?/gu, '')
+    .replace(/\s*—\s*/g, ', ')
+    .replace(/\s*–\s*(?=\D)/g, ', ')
+    .replace(/\s*(→|->|⇒)\s*/g, ' to ')
+    .replace(/^[ \t]*[✓✔✅☑]\s*/gm, '- ')
+    .replace(/[✓✔✅☑★]/g, '')
+    .replace(/,\s*,/g, ',')
+    .replace(/[ \t]{2,}/g, ' ')
+    .trim()
+}
+
+/** Applies tidy() to every string inside a JSON-like value. */
+export function tidyDeep<T>(value: T): T {
+  if (typeof value === 'string') return tidy(value) as T
+  if (Array.isArray(value)) return value.map(tidyDeep) as T
+  if (value && typeof value === 'object') return Object.fromEntries(Object.entries(value).map(([k, v]) => [k, tidyDeep(v)])) as T
+  return value
+}
+
 export function parseJson<T>(text: string): T {
   try {
     return JSON.parse(text) as T

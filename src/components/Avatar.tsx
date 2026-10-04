@@ -20,13 +20,12 @@ export default function Avatar({
     .join('')
     .toUpperCase()
 
-  const hue = [...name].reduce((a, c) => a + c.charCodeAt(0), 0) % 360
 
   if (!src || failed)
     return (
       <span
-        className={`inline-flex shrink-0 items-center justify-center rounded-full font-semibold text-white ${className ?? ''}`}
-        style={{ width: size, height: size, background: `hsl(${hue} 52% 52%)`, fontSize: size * 0.38 }}
+        className={`inline-flex shrink-0 items-center justify-center rounded-full border border-rule-strong bg-surface-2 font-semibold text-ink-soft ${className ?? ''}`}
+        style={{ width: size, height: size, fontSize: size * 0.36 }}
       >
         {initials}
       </span>

@@ -201,7 +201,7 @@ export const branchMatches = (jobBranches: string[], branch: string) =>
 /** Scores a student against one posted job. Branch and batch are hard requirements. */
 export function evaluateJob(job: JobPosting, p: StudentLike & { branch?: string; batch?: string }) {
   const base: CompanyBase = {
-    id: job.id, name: job.company, role: job.role, brand: '#6d4aff', ctcAvg: Number(job.ctc_max ?? job.ctc_min ?? 0),
+    id: job.id, name: job.company, role: job.role, brand: '#0F5A45', ctcAvg: Number(job.ctc_max ?? job.ctc_min ?? 0),
     ctcMin: Number(job.ctc_min ?? 0), ctcMax: Number(job.ctc_max ?? 0), location: job.location, jobType: job.job_type,
     tenure: '', batches: job.batches.join(', '), about: '', careers: '', process: [], stats: [], alumni: [],
   }

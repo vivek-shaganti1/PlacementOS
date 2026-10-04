@@ -18,7 +18,7 @@ const catalog = [
   { name: 'Grokking the System Design Interview', skill: 'System Design', weeks: 4, url: 'https://www.designgurus.io/course/grokking-the-system-design-interview' },
 ]
 
-const input = 'h-[34px] w-full rounded-[9px] border border-line bg-white px-3 text-[12.5px] outline-none focus:border-[#d5cbff]'
+const input = 'h-[34px] w-full rounded-[3px] border border-line bg-surface px-3 text-[12.5px] outline-none focus:border-[#C8C0B0]'
 
 export default function Certifications() {
   const p = useProfile()
@@ -53,7 +53,7 @@ export default function Certifications() {
     <Page title="Certifications" subtitle="Credentials you hold and the ones that move your eligibility the most.">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Stat label="Certifications held" value={`${p.certifications.length}`} />
-        <Stat label="In progress" value={`${enrolled.length}`} tone="text-[#d97706]" />
+        <Stat label="In progress" value={`${enrolled.length}`} tone="text-[#8A5A0B]" />
         <Stat label="Recommended" value={`${recommended.length}`} tone="text-brand-dark" />
       </div>
 
@@ -68,7 +68,7 @@ export default function Certifications() {
               {c.credential_url && (
                 <a href={c.credential_url} target="_blank" rel="noreferrer" className="text-[11.5px] font-medium text-brand-dark hover:underline">Credential</a>
               )}
-              <button onClick={() => save(p.certifications.filter((_, j) => j !== i), 'Certification removed.')} className="text-[11px] text-ink-faint opacity-0 hover:text-[#d92d20] group-hover:opacity-100">Remove</button>
+              <button onClick={() => save(p.certifications.filter((_, j) => j !== i), 'Certification removed.')} className="text-[11px] text-ink-faint opacity-0 hover:text-[#9C3526] group-hover:opacity-100">Remove</button>
             </div>
           ))}
           {p.certifications.length === 0 && <p className="py-3 text-[12px] text-ink-faint">No certifications yet. Add one below or import them from your resume.</p>}
@@ -87,7 +87,7 @@ export default function Certifications() {
           <input value={d.issuer} onChange={(e) => setD({ ...d, issuer: e.target.value })} placeholder="Issuer" className={input} />
           <input value={d.date} onChange={(e) => setD({ ...d, date: e.target.value })} placeholder="Jun 2025" className={input} />
           <input value={d.credential_url} onChange={(e) => setD({ ...d, credential_url: e.target.value })} placeholder="Credential URL (optional)" className={input} />
-          <button className="rounded-md border border-line px-3 text-[11.5px] font-medium text-ink-soft hover:bg-[#f7f8fa]">Add</button>
+          <button className="rounded-md border border-line px-3 text-[11.5px] font-medium text-ink-soft hover:bg-[#F0EDE5]">Add</button>
         </form>
       </Card>
 
@@ -104,8 +104,8 @@ export default function Certifications() {
               <span className="text-[11.5px] text-ink-faint">~{c.weeks} weeks</span>
               <button
                 onClick={() => toggleEnrollment(c.name)}
-                className={`w-[92px] rounded-[9px] border py-[7px] text-[12px] font-semibold ${
-                  enrolled.includes(c.name) ? 'border-[#fbe3bd] bg-[#fff8ec] text-[#d97706]' : 'border-[#d5cbff] text-brand-dark hover:bg-[#faf8ff]'
+                className={`w-[92px] rounded-[3px] border py-[7px] text-[12px] font-semibold ${
+                  enrolled.includes(c.name) ? 'border-[#C8C0B0] bg-[#F0EDE5] text-[#8A5A0B]' : 'border-[#C8C0B0] text-brand-dark hover:bg-[#F0EDE5]'
                 }`}
               >
                 {enrolled.includes(c.name) ? 'Enrolled' : 'Enroll'}
