@@ -1,10 +1,16 @@
-import { AnimatePresence, motion, useMotionValue, useReducedMotion, useScroll, useSpring, useTransform, type Variants } from 'motion/react'
-import { useEffect, useState, type ReactNode } from 'react'
+import { AnimatePresence, motion, useMotionValue, useReducedMotion, useSpring, useTransform, type Variants } from 'motion/react'
+import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import { Logo, LogoMark } from '../components/Logo'
 import { AnimatedValue, Aurora, trackSpotlight } from '../components/Page'
 import { companyCatalog } from '../data/companies'
+import { Glow } from '../components/effects'
+import { CursorFollower, Magnetic, ScrollProgress, SmoothScroll, TextReveal } from '../components/motion'
+import { intensity, useMotionTier } from '../lib/motion'
 import { inr, PLANS } from '../lib/pricing'
+
+// three.js loads only on devices that get WebGL, after the page is interactive.
+const HeroScene = lazy(() => import('../components/3d/HeroScene'))
 
 const ease = [0.16, 1, 0.3, 1] as const
 const reveal: Variants = { hidden: { opacity: 0, y: 24 }, show: { opacity: 1, y: 0, transition: { duration: 0.7, ease } } }
@@ -258,15 +264,16 @@ export default function Landing() {
       /* private mode */
     }
   }
-  const { scrollYProgress } = useScroll()
-  const progress = useSpring(scrollYProgress, { stiffness: 120, damping: 24 })
   const names = companyCatalog.map((c) => c.name)
+  const tier = useMotionTier()
 
   return (
+    <SmoothScroll>
     <div className="relative min-h-screen overflow-x-hidden">
       <Aurora />
+      <CursorFollower />
       <AnimatePresence>{intro && <LaunchIntro onDone={finishIntro} />}</AnimatePresence>
-      <motion.div style={{ scaleX: progress }} className="fixed inset-x-0 top-0 z-50 h-[2px] origin-left bg-gradient-to-r from-[#6d4aff] via-[#38bdf8] to-[#8ef5d9]" />
+      <ScrollProgress />
 
       {/* nav */}
       <div className="sticky top-0 z-40 px-4 pt-4">
@@ -280,14 +287,24 @@ export default function Landing() {
           </div>
           <div className="ml-auto flex items-center gap-2">
             <Link to="/login" className="whitespace-nowrap rounded-[11px] px-3 py-2 text-[12.5px] font-semibold text-ink-soft hover:bg-white/70">Sign in</Link>
-            <Link to="/signup" className="btn-primary whitespace-nowrap">Get started</Link>
+            <Magnetic strength={0.2}><Link to="/signup" className="btn-primary whitespace-nowrap">Get started</Link></Magnetic>
           </div>
         </nav>
       </div>
 
       <main className="relative z-10">
         {/* hero */}
-        <section className="mx-auto grid max-w-[1160px] grid-cols-1 items-center gap-14 px-6 pb-24 pt-16 lg:grid-cols-[0.85fr_1.15fr]">
+        <section className="relative mx-auto grid max-w-[1160px] grid-cols-1 items-center gap-14 px-6 pb-24 pt-16 lg:grid-cols-[0.85fr_1.15fr]">
+          {/* 3D brand orb behind the product preview; a static glow everywhere WebGL is off. */}
+          <div aria-hidden className="pointer-events-none absolute inset-y-0 right-[-8%] -z-10 hidden w-[70%] lg:block">
+            {!intro && intensity[tier].webgl ? (
+              <Suspense fallback={<Glow size={560} className="right-[10%] top-[10%]" />}>
+                <HeroScene className="h-full w-full" />
+              </Suspense>
+            ) : (
+              <Glow size={560} className="right-[10%] top-[10%]" />
+            )}
+          </div>
           <motion.div initial="hidden" animate={intro ? 'hidden' : 'show'} variants={stagger}>
             <motion.span variants={reveal} className="glass inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11.5px] font-semibold text-brand-dark">
               <span className="h-1.5 w-1.5 rounded-full bg-[#12b76a] shadow-[0_0_0_4px_rgba(18,183,106,.18)]" />
@@ -303,7 +320,7 @@ export default function Landing() {
               platforms and tells you the one thing to fix next for each company.
             </motion.p>
             <motion.div variants={reveal} className="mt-8 flex flex-wrap items-center gap-3">
-              <Link to="/signup" className="btn-primary h-[46px] px-6 text-[14px]">Start free — it takes 2 minutes</Link>
+              <Magnetic><Link to="/signup" className="btn-primary h-[46px] px-6 text-[14px]">Start free — it takes 2 minutes</Link></Magnetic>
               <a href="#how" className="btn-glass h-[46px] px-5 text-[14px]">See how it works</a>
             </motion.div>
             <motion.div variants={reveal} className="mt-10 flex items-center gap-6 text-[12px] text-ink-mute">
@@ -391,7 +408,7 @@ export default function Landing() {
         {/* how it works */}
         <Section id="how" className="pb-28">
           <motion.p variants={reveal} className="text-[12px] font-semibold uppercase tracking-[0.18em] text-brand">How it works</motion.p>
-          <motion.h2 variants={reveal} className="mt-3 text-[clamp(2rem,1.4rem+2vw,3.2rem)] font-semibold leading-[1.05] tracking-[-0.04em]">From sign-up to offer, in four moves.</motion.h2>
+          <TextReveal className="mt-3 text-[clamp(2rem,1.4rem+2vw,3.2rem)] font-semibold leading-[1.05] tracking-[-0.04em]">From sign-up to offer, in four moves.</TextReveal>
           <div className="relative mt-14 grid grid-cols-1 gap-5 md:grid-cols-4">
             <motion.span
               variants={{ hidden: { scaleX: 0 }, show: { scaleX: 1, transition: { duration: 1.4, ease } } }}
@@ -455,5 +472,6 @@ export default function Landing() {
         </footer>
       </main>
     </div>
+    </SmoothScroll>
   )
 }

@@ -6,6 +6,7 @@ import { LogoMark } from './components/Logo'
 import { Aurora } from './components/Page'
 import Sidebar from './components/Sidebar'
 import Topbar from './components/Topbar'
+import { PageTransition } from './components/motion/PageTransition'
 import { AuthProvider, HOME, useAuth } from './lib/auth'
 import { AppProvider, useApp } from './lib/store'
 import { supabaseConfigured } from './lib/supabase'
@@ -116,7 +117,6 @@ function Shell() {
   const [sidebarOpen, setSidebarOpen] = useState(() => !window.matchMedia('(max-width: 1023px)').matches)
   const { openAssistant, toast } = useApp()
   const { role } = useAuth()
-  const location = useLocation()
 
   // Switching between phone and desktop layouts: drawer starts closed on phones, rail starts open on desktop.
   useEffect(() => setSidebarOpen(!isMobile), [isMobile])
@@ -129,20 +129,11 @@ function Shell() {
         <div className="flex min-h-0 flex-1">
           <Sidebar open={sidebarOpen} onChat={() => openAssistant()} mobile={isMobile} onClose={() => setSidebarOpen(false)} />
           <main className="flex min-w-0 flex-1">
-            <AnimatePresence mode="wait">
-              <motion.div
-                key={location.pathname}
-                className="flex min-w-0 flex-1"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -6, transition: { duration: 0.14 } }}
-                transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
-              >
-                <Suspense fallback={<Loader />}>
-                  <RoleRoutes />
-                </Suspense>
-              </motion.div>
-            </AnimatePresence>
+            <PageTransition kind="rise" className="flex min-w-0 flex-1">
+              <Suspense fallback={<Loader />}>
+                <RoleRoutes />
+              </Suspense>
+            </PageTransition>
           </main>
         </div>
       </div>

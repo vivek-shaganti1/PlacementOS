@@ -45,6 +45,14 @@ export default defineConfig({
           react: ['react', 'react-dom', 'react-router-dom'],
           supabase: ['@supabase/supabase-js'],
         },
+        // three.js, GSAP and Lenis are left to Rollup's automatic splitting (forcing them into manual chunks drags shared
+        // dependencies along and ends up preloading 3D code on every page). Their chunks are only renamed for readability.
+        chunkFileNames(chunk) {
+          if (chunk.facadeModuleId && !chunk.facadeModuleId.includes('node_modules')) return 'assets/[name]-[hash].js'
+          if (chunk.moduleIds.some((id) => id.includes('/node_modules/three/'))) return 'assets/three-[hash].js'
+          if (chunk.moduleIds.some((id) => id.includes('/node_modules/gsap/'))) return 'assets/scroll-[hash].js'
+          return 'assets/[name]-[hash].js'
+        },
       },
     },
   },
