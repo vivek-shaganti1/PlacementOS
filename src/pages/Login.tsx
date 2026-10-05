@@ -16,6 +16,7 @@ export default function Login({ initialMode = 'signin' }: { initialMode?: Mode }
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [roll, setRoll] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [info, setInfo] = useState('')
@@ -37,16 +38,17 @@ export default function Login({ initialMode = 'signin' }: { initialMode?: Mode }
         if (error) throw error
       } else if (mode === 'signup') {
         if (password.length < 8) throw new Error('Use at least 8 characters for your password.')
-        const { data, error } = await supabase.auth.signUp({
-          email: email.trim(),
-          password,
-          options: { data: { full_name: name.trim() }, emailRedirectTo: window.location.origin },
+        // Registration happens on the server: only students on a college roster (with a matching roll number)
+        // can register, and the account is ready immediately, with no confirmation email.
+        const res = await fetch('/api/signup', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ email: email.trim(), password, full_name: name.trim(), roll_number: roll.trim() }),
         })
+        const body = (await res.json().catch(() => ({}))) as { error?: string }
+        if (!res.ok) throw new Error(body.error || `Sign-up failed (${res.status})`)
+        const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
         if (error) throw error
-        if (!data.session) {
-          setInfo('Account created. Check your inbox and click the confirmation link, then sign in.')
-          setMode('signin')
-        }
       } else if (mode === 'forgot') {
         const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
           redirectTo: `${window.location.origin}/reset-password`,
@@ -69,7 +71,7 @@ export default function Login({ initialMode = 'signin' }: { initialMode?: Mode }
 
   const titles: Record<Mode, [string, string, string]> = {
     signin: ['Welcome back', 'Sign in to see your eligibility stacks.', 'Sign in'],
-    signup: ['Create your account', 'Your profile powers every match on PlacementIQ.', 'Create account'],
+    signup: ['Create your account', 'For students your college has added to PlacementIQ.', 'Create account'],
     forgot: ['Reset your password', 'We will email you a link to choose a new one.', 'Send reset link'],
     reset: ['Choose a new password', 'Enter a new password for your account.', 'Update password'],
   }
@@ -134,9 +136,16 @@ export default function Login({ initialMode = 'signin' }: { initialMode?: Mode }
               </label>
             )}
 
+            {mode === 'signup' && (
+              <label className="block">
+                <span className="text-[11.5px] font-medium text-ink-mute">Roll number</span>
+                <input required value={roll} onChange={(e) => setRoll(e.target.value)} placeholder="As registered with your college" className={input} />
+              </label>
+            )}
+
             {mode !== 'reset' && (
               <label className="block">
-                <span className="text-[11.5px] font-medium text-ink-mute">Email</span>
+                <span className="text-[11.5px] font-medium text-ink-mute">{mode === 'signup' ? 'College email' : 'Email'}</span>
                 <input required type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" className={input} />
               </label>
             )}

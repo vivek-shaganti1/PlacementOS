@@ -241,23 +241,58 @@ export function AdminStudents() {
   const [q, setQ] = useState('')
   const [branch, setBranch] = useState('all')
   const [batch, setBatch] = useState('all')
-  const [sort, setSort] = useState<'score' | 'readiness' | 'cgpa' | 'resume' | 'dsa' | 'solved'>('score')
+  const [sort, setSort] = useState<'score' | 'readiness' | 'cgpa' | 'resume' | 'dsa' | 'solved' | 'projects' | 'internships' | 'applications'>('score')
   const [open, setOpen] = useState<StudentRow | null>(null)
+  // Numeric thresholds (blank = no filter) and application filters
+  const [minCgpa, setMinCgpa] = useState('')
+  const [maxBacklogs, setMaxBacklogs] = useState('')
+  const [minProjects, setMinProjects] = useState('')
+  const [minScore, setMinScore] = useState('')
+  const [minSolved, setMinSolved] = useState('')
+  const [drive, setDrive] = useState('any')
+  const [appStatus, setAppStatus] = useState('any')
+  const [onboarding, setOnboarding] = useState('any')
   const branches = [...new Set(rows.map((r) => r.profile.branch).filter(Boolean))]
   const batches = [...new Set(rows.map((r) => r.profile.batch).filter(Boolean))]
+  const appsOf = useMemo(() => {
+    const m = new Map<string, JobApplication[]>()
+    for (const a of applications) m.set(a.user_id, [...(m.get(a.user_id) ?? []), a])
+    return m
+  }, [applications])
+  const num = (v: string) => (v.trim() === '' ? null : Number(v))
+  const filtersOn = [minCgpa, maxBacklogs, minProjects, minScore, minSolved].some((v) => v !== '') || drive !== 'any' || appStatus !== 'any' || onboarding !== 'any'
+  const clearFilters = () => {
+    setMinCgpa(''); setMaxBacklogs(''); setMinProjects(''); setMinScore(''); setMinSolved(''); setDrive('any'); setAppStatus('any'); setOnboarding('any')
+  }
   const shown = useMemo(() => {
-    const val = (r: StudentRow) => (sort === 'cgpa' ? r.profile.cgpa : sort === 'resume' ? r.resume ?? -1 : r[sort])
+    const val = (r: StudentRow) =>
+      sort === 'cgpa' ? r.profile.cgpa
+        : sort === 'resume' ? r.resume ?? -1
+          : sort === 'projects' ? r.profile.projects.length
+            : sort === 'internships' ? r.profile.internships.length
+              : sort === 'applications' ? appsOf.get(r.profile.id)?.length ?? 0
+                : r[sort]
+    const [cg, bl, pr, sc, so] = [num(minCgpa), num(maxBacklogs), num(minProjects), num(minScore), num(minSolved)]
     return rows
       .filter((r) => (r.profile.full_name + r.profile.email + r.profile.college + (r.profile.roll_number ?? '')).toLowerCase().includes(q.toLowerCase()))
       .filter((r) => (branch === 'all' || r.profile.branch === branch) && (batch === 'all' || r.profile.batch === batch))
       .filter((r) => org === 'all' || (org === 'none' ? !r.profile.org_id : r.profile.org_id === org))
+      .filter((r) => (cg == null || r.profile.cgpa >= cg) && (bl == null || r.profile.backlogs <= bl) && (pr == null || r.profile.projects.length >= pr))
+      .filter((r) => (sc == null || r.score >= sc) && (so == null || r.solved >= so))
+      .filter((r) => onboarding === 'any' || (onboarding === 'done' ? !!r.profile.onboarded_at : !r.profile.onboarded_at))
+      .filter((r) => {
+        const apps = appsOf.get(r.profile.id) ?? []
+        if (drive === 'any' && appStatus === 'any') return true
+        if (appStatus === 'none') return drive === 'any' ? apps.length === 0 : !apps.some((a) => a.job_id === drive)
+        return apps.some((a) => (drive === 'any' || a.job_id === drive) && (appStatus === 'any' || a.status === appStatus))
+      })
       .sort((a, b) => val(b) - val(a))
-  }, [rows, q, branch, batch, sort, org])
+  }, [rows, q, branch, batch, sort, org, minCgpa, maxBacklogs, minProjects, minScore, minSolved, drive, appStatus, onboarding, appsOf])
   if (!isAdmin) return <Denied />
 
   const exportCsv = () => {
-    const head = ['Rank', 'Name', 'Roll number', 'College', 'Email', 'Phone', 'Branch', 'Batch', 'CGPA', 'Backlogs', 'Readiness', 'Resume', 'DSA', 'Problems solved', 'Profile strength', 'Score']
-    const lines = shown.map((r) => [r.rank, r.profile.full_name, r.profile.roll_number ?? '', orgName(r.profile.org_id), r.profile.email, r.profile.phone, r.profile.branch, r.profile.batch, r.profile.cgpa, r.profile.backlogs, r.readiness, r.resume ?? '', r.dsa, r.solved, r.strength, r.score])
+    const head = ['Rank', 'Name', 'Roll number', 'College', 'Email', 'Phone', 'Branch', 'Batch', 'CGPA', 'Backlogs', 'Projects', 'Internships', 'Applications', 'Readiness', 'Resume', 'DSA', 'Problems solved', 'Profile strength', 'Score']
+    const lines = shown.map((r) => [r.rank, r.profile.full_name, r.profile.roll_number ?? '', orgName(r.profile.org_id), r.profile.email, r.profile.phone, r.profile.branch, r.profile.batch, r.profile.cgpa, r.profile.backlogs, r.profile.projects.length, r.profile.internships.length, appsOf.get(r.profile.id)?.length ?? 0, r.readiness, r.resume ?? '', r.dsa, r.solved, r.strength, r.score])
     const csv = [head, ...lines].map((l) => l.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n')
     const a = document.createElement('a')
     a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
@@ -292,7 +327,51 @@ export function AdminStudents() {
             <option value="resume">Sort: Resume</option>
             <option value="dsa">Sort: DSA</option>
             <option value="solved">Sort: Problems solved</option>
+            <option value="projects">Sort: Projects</option>
+            <option value="internships">Sort: Internships</option>
+            <option value="applications">Sort: Applications</option>
           </select>
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-[repeat(5,minmax(0,1fr))_1.4fr_1fr_1fr]">
+          {([
+            ['Min CGPA', minCgpa, setMinCgpa, 'e.g. 7.5'],
+            ['Max backlogs', maxBacklogs, setMaxBacklogs, 'e.g. 0'],
+            ['Min projects', minProjects, setMinProjects, 'e.g. 2'],
+            ['Min score', minScore, setMinScore, '0 to 100'],
+            ['Min solved', minSolved, setMinSolved, 'problems'],
+          ] as const).map(([label, v, set, ph]) => (
+            <label key={label} className="block">
+              <span className="text-[11px] font-medium text-ink-mute">{label}</span>
+              <input type="number" step="any" min="0" value={v} onChange={(e) => set(e.target.value)} placeholder={ph} className="field mt-1 h-[36px]" />
+            </label>
+          ))}
+          <label className="block">
+            <span className="text-[11px] font-medium text-ink-mute">Drive</span>
+            <select value={drive} onChange={(e) => setDrive(e.target.value)} className="field mt-1 h-[36px]">
+              <option value="any">Any drive</option>
+              {jobs.map((j) => <option key={j.id} value={j.id}>{j.company} · {j.role}</option>)}
+            </select>
+          </label>
+          <label className="block">
+            <span className="text-[11px] font-medium text-ink-mute">Application</span>
+            <select value={appStatus} onChange={(e) => setAppStatus(e.target.value)} className="field mt-1 h-[36px]">
+              <option value="any">Any</option>
+              <option value="none">Not applied</option>
+              {(Object.keys(STATUS_META) as JobStatus[]).map((s) => <option key={s} value={s}>{STATUS_META[s].label}</option>)}
+            </select>
+          </label>
+          <label className="block">
+            <span className="text-[11px] font-medium text-ink-mute">Onboarding</span>
+            <select value={onboarding} onChange={(e) => setOnboarding(e.target.value)} className="field mt-1 h-[36px]">
+              <option value="any">Any</option>
+              <option value="done">Completed</option>
+              <option value="pending">Incomplete</option>
+            </select>
+          </label>
+        </div>
+        <div className="mt-2 flex items-center justify-between text-[12px] text-ink-mute">
+          <span>{shown.length} of {rows.length} students</span>
+          {filtersOn && <button onClick={clearFilters} className="font-semibold text-brand-dark hover:underline">Clear filters</button>}
         </div>
         {error && <p className="mt-3 text-[12px] text-[#d92d20]">{error}</p>}
         <div className="mt-3 space-y-2 md:hidden">
@@ -313,7 +392,7 @@ export function AdminStudents() {
           <table className="w-full text-left text-[12.5px]">
             <thead>
               <tr className="border-b border-line text-[11px] font-semibold text-ink-mute">
-                {['#', 'Student', 'Roll no.', ...(isSuperAdmin ? ['College'] : []), 'Branch', 'Batch', 'CGPA', 'Readiness', 'Resume', 'DSA', 'Solved', 'Profile', 'Score'].map((h) => <th key={h} className="px-2 py-2">{h}</th>)}
+                {['#', 'Student', 'Roll no.', ...(isSuperAdmin ? ['College'] : []), 'Branch', 'Batch', 'CGPA', 'Backlogs', 'Projects', 'Apps', 'Readiness', 'Resume', 'DSA', 'Solved', 'Profile', 'Score'].map((h) => <th key={h} className="px-2 py-2">{h}</th>)}
               </tr>
             </thead>
             <tbody>
@@ -334,6 +413,9 @@ export function AdminStudents() {
                   <td className="px-2 py-2.5 text-ink-soft">{r.profile.branch || 'n/a'}</td>
                   <td className="px-2 py-2.5 text-ink-soft">{r.profile.batch || 'n/a'}</td>
                   <td className="px-2 py-2.5 tabular-nums">{r.profile.cgpa || 'n/a'}</td>
+                  <td className="px-2 py-2.5 tabular-nums">{r.profile.backlogs}</td>
+                  <td className="px-2 py-2.5 tabular-nums">{r.profile.projects.length}</td>
+                  <td className="px-2 py-2.5 tabular-nums">{appsOf.get(r.profile.id)?.length ?? 0}</td>
                   <td className="px-2 py-2.5 tabular-nums">{r.readiness}</td>
                   <td className="px-2 py-2.5 tabular-nums">{r.resume ?? '—'}</td>
                   <td className="px-2 py-2.5 tabular-nums">{r.dsa}</td>

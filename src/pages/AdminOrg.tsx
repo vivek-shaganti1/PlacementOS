@@ -148,7 +148,7 @@ export function AdminRoster() {
   const joined = rows.filter((r) => r.user_id).length
 
   return (
-    <Page title="Student roster" subtitle="Only students on this list can use PlacementIQ. Add their college email; they get an invite and are linked to your college when they sign in." wide actions={picker}>
+    <Page title="Student roster" subtitle="Only students on this list can use PlacementIQ. Students register themselves with their college email and roll number, or you create their login with a temporary password." wide actions={picker}>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="On roster" value={`${rows.length}`} />
         <Stat label="Joined PlacementIQ" value={`${joined}`} />
@@ -168,7 +168,7 @@ export function AdminRoster() {
         >
           <input required type="email" value={single.email} onChange={(e) => setSingle({ ...single, email: e.target.value })} placeholder={`student@${org?.email_domains[0] ?? 'college.edu'}`} className="field" />
           <input value={single.full_name} onChange={(e) => setSingle({ ...single, full_name: e.target.value })} placeholder="Full name" className="field" />
-          <input value={single.roll_number} onChange={(e) => setSingle({ ...single, roll_number: e.target.value })} placeholder="Roll number" className="field" />
+          <input required value={single.roll_number} onChange={(e) => setSingle({ ...single, roll_number: e.target.value })} placeholder="Roll number" className="field" />
           <input value={single.branch} onChange={(e) => setSingle({ ...single, branch: e.target.value })} placeholder="Branch" className="field" />
           <input value={single.batch} onChange={(e) => setSingle({ ...single, batch: e.target.value })} placeholder="Batch" className="field" />
           <button disabled={busy || !orgId} className="btn-primary">{password ? 'Save and create login' : 'Save and invite'}</button>
@@ -392,7 +392,8 @@ export function SuperOrgs() {
     const admins = list(f.admin_emails)
     const domains = list(f.email_domains).map((d) => d.replace(/^@/, ''))
     if (f.name.trim().length < 2) return showToast('Enter the college name.')
-    if (!admins.length) return showToast('Add at least one admin login email for the college, for example admin1@gmail.com.')
+    if (!admins.length) return showToast('Add the placement cell login email for this college.')
+    if (password && password.length < 8) return showToast('Temporary password must be at least 8 characters.')
     if (admins.some((x) => !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x))) return showToast('Admin emails must be valid email addresses.')
     if (domains.some((d) => !/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(d))) return showToast('Email domains must look like college.edu.in')
     const row = {
@@ -459,9 +460,16 @@ export function SuperOrgs() {
             {input('official_code', 'Official college code', 'e.g. AICTE or university code')}
             {input('city', 'City', 'Hyderabad')}
           </div>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {input('admin_emails', 'Admin login emails (placement cell)', 'admin1@gmail.com, admin2@gmail.com')}
-            {input('email_domains', 'Student email domain (optional, checks roster emails)', 'anurag.edu.in')}
+          <div className="rounded-[16px] border border-[#d5cbff] bg-brand-tint p-4">
+            <p className="text-[13px] font-semibold text-ink">Placement cell login</p>
+            <p className="mt-0.5 text-[12px] text-ink-mute">
+              The email the college's placement team signs in with. That account sees only this college: every student, their details, filters, rankings and applications.
+            </p>
+            <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {input('admin_emails', 'Placement cell email(s)', 'placement@anurag.edu.in, tpo@gmail.com')}
+              {input('email_domains', 'Student email domain (optional, checks roster emails)', 'anurag.edu.in')}
+            </div>
+            <div className="mt-3"><LoginMethod password={password} setPassword={setPassword} /></div>
           </div>
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
             <label className="block">
@@ -482,9 +490,8 @@ export function SuperOrgs() {
             {input('renews_on', 'Renews on', '', 'date')}
           </div>
           {input('notes', 'Notes', 'Contact person, payment terms…')}
-          <LoginMethod password={password} setPassword={setPassword} />
           <div className="flex gap-2">
-            <button disabled={busy} className="btn-primary">{busy ? 'Saving…' : editing ? 'Save changes' : 'Create college and invite admins'}</button>
+            <button disabled={busy} className="btn-primary">{busy ? 'Saving…' : editing ? 'Save changes' : password ? 'Create college and its login' : 'Create college and invite admins'}</button>
             {editing && <button type="button" onClick={() => startEdit(null)} className="btn-glass">Cancel</button>}
           </div>
         </form>
