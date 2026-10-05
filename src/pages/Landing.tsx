@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { Logo, LogoMark } from '../components/Logo'
 import { AnimatedValue, Aurora, trackSpotlight } from '../components/Page'
 import { companyCatalog } from '../data/companies'
+import { inr, PLANS } from '../lib/pricing'
 
 const ease = [0.16, 1, 0.3, 1] as const
 const reveal: Variants = { hidden: { opacity: 0, y: 24 }, show: { opacity: 1, y: 0, transition: { duration: 0.7, ease } } }
@@ -11,38 +12,6 @@ const stagger: Variants = { show: { transition: { staggerChildren: 0.08 } } }
 
 /* ---------------------------------------------------------------- pricing */
 
-/** Plans for colleges. Students never pay. Edit prices here; seat limits are set per college by the platform admin. */
-const PLANS: { name: string; price: string; unit: string; blurb: string; features: string[]; featured?: boolean }[] = [
-  {
-    name: 'Trial',
-    price: '₹0',
-    unit: '30 days',
-    blurb: 'Try PlacementIQ with one batch before you commit.',
-    features: ['Up to 150 students', 'Every student feature included', 'Placement cell login', 'Roster import and invites'],
-  },
-  {
-    name: 'Basic',
-    price: '₹349',
-    unit: 'per student / year',
-    blurb: 'For a college running its first season on PlacementIQ.',
-    features: ['Eligibility engine and resume analyzer', 'Campus drives and applications', 'Student rankings, filters and CSV export', 'Email support'],
-  },
-  {
-    name: 'Pro',
-    price: '₹499',
-    unit: 'per student / year',
-    blurb: 'For placement cells that run every drive through one place.',
-    features: ['Everything in Basic', 'AI career assistant and JD matching', 'GitHub, LeetCode, Codeforces and CodeChef sync', 'Priority onboarding and support'],
-    featured: true,
-  },
-  {
-    name: 'Enterprise',
-    price: 'Custom',
-    unit: 'multi-campus',
-    blurb: 'For universities with several campuses or large batches.',
-    features: ['Custom seat counts and billing', 'Multiple placement cell logins', 'Usage and storage reporting', 'Dedicated onboarding'],
-  },
-]
 const SALES_EMAIL = import.meta.env.VITE_SALES_EMAIL
 
 function Pricing() {
@@ -56,15 +25,19 @@ function Pricing() {
         Each college gets its own private placement cell, its own roster and its own drives. Only students your college adds can sign in.
       </motion.p>
       <div className="mt-12 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {PLANS.map((p) => (
+        {Object.values(PLANS).map((p) => (
           <motion.div key={p.name} variants={reveal} className={p.featured ? 'gradient-border rounded-[24px]' : ''}>
             <div className={`${p.featured ? 'glass-strong' : 'glass'} flex h-full flex-col rounded-[24px] p-6`}>
               <div className="flex items-center justify-between">
                 <p className="text-[15px] font-semibold tracking-[-0.02em] text-ink">{p.name}</p>
                 {p.featured && <span className="rounded-full bg-brand-tint px-2.5 py-1 text-[11px] font-semibold text-brand-dark">Most chosen</span>}
               </div>
-              <p className="mt-4 text-[34px] font-semibold tracking-[-0.04em] text-ink">{p.price}</p>
-              <p className="text-[12px] text-ink-faint">{p.unit}</p>
+              <p className="mt-4 text-[34px] font-semibold tracking-[-0.04em] text-ink">
+                {p.key === 'enterprise' && <span className="mr-1 text-[15px] font-medium text-ink-mute">from</span>}
+                {inr(p.pricePerSeat)}
+              </p>
+              <p className="text-[12px] text-ink-faint">{p.key === 'trial' ? '30 days' : 'per student / year'}</p>
+              <p className="mt-1 text-[12px] text-ink-mute">{p.platformFee ? `+ ${inr(p.platformFee)} platform fee / year` : 'No platform fee'} · {p.seats}</p>
               <p className="mt-3 text-[13px] leading-[1.55] text-ink-mute">{p.blurb}</p>
               <ul className="mt-5 flex-1 space-y-2 text-[13px] text-ink-soft">
                 {p.features.map((f) => (
@@ -87,7 +60,10 @@ function Pricing() {
           </motion.div>
         ))}
       </div>
-      <motion.p variants={reveal} className="mt-5 text-[12px] text-ink-faint">Prices exclude GST. Seats are counted by students on your roster.</motion.p>
+      <motion.p variants={reveal} className="mt-5 text-[12px] text-ink-faint">
+        Prices exclude 18% GST. Seats are counted by students on your roster. The platform fee covers hosting, security, backups and onboarding for your college.
+        AI actions are assistant replies, resume analyses and job-description matches.
+      </motion.p>
     </Section>
   )
 }

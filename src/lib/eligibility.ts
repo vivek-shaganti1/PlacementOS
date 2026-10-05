@@ -196,6 +196,8 @@ const branchCodes = (s: string) => {
   const codes = BRANCH_ALIASES.filter(([, re]) => re.test(s)).map(([c]) => c)
   return codes.length ? codes : [s.trim().toUpperCase()]
 }
+/** One short code for grouping students by branch (CSE, ECE, EEE, ...); unknown branches keep their own name. */
+export const branchCode = (s: string) => (s.trim() ? branchCodes(s)[0] : 'Unassigned')
 export const branchMatches = (jobBranches: string[], branch: string) =>
   !jobBranches.length || (!!branch && jobBranches.some((b) => branchCodes(b).some((c) => branchCodes(branch).includes(c))))
 

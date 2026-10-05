@@ -57,6 +57,8 @@ export type Profile = {
   onboarded_at: string | null
   org_id: string | null
   roll_number: string | null
+  section: string
+  program: string
 }
 
 export type GithubStats = {
@@ -144,6 +146,8 @@ export type Organization = {
   plan: 'trial' | 'basic' | 'pro' | 'enterprise'
   seat_limit: number | null
   price_per_seat: number
+  platform_fee: number
+  ai_monthly_limit: number | null
   billing_cycle: 'monthly' | 'yearly'
   renews_on: string | null
   notes: string

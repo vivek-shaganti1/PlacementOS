@@ -6,7 +6,7 @@ import { bearer, env, handle, HttpError, json, rest, SUPABASE_URL } from './_lib
 
 export const config = { runtime: 'edge' }
 
-type Person = { email: string; full_name?: string; roll_number?: string; branch?: string; batch?: string }
+type Person = { email: string; full_name?: string; roll_number?: string; branch?: string; batch?: string; section?: string; program?: string }
 type Result = { email: string; status: 'invited' | 'created' | 'existing' | 'failed' | 'saved'; detail?: string }
 
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
@@ -69,6 +69,8 @@ export default handle(async (req) => {
     roll_number: clip(p.roll_number, 40),
     branch: clip(p.branch, 120),
     batch: clip(p.batch, 10),
+    section: clip(p.section, 20).toUpperCase(),
+    program: clip(p.program, 40) || 'B.Tech',
   }))
   if (!people.length) throw new HttpError(400, 'Add at least one person.')
   const bad = people.filter((p) => !EMAIL.test(p.email)).map((p) => p.email || '(blank)')

@@ -6,7 +6,8 @@ import { BarList, Columns, EmptyChart, SERIES } from '../components/charts'
 import { Card, Meter, Page, Ring, Stat } from '../components/Page'
 import { useAdminOrgs, useStudents, type StudentRow } from '../lib/admin'
 import { useAuth } from '../lib/auth'
-import { evaluateJob, SKILL_SHORT, SKILLS, type JobPosting } from '../lib/eligibility'
+import { sectionLabel, yearLabel, yearOfStudy } from '../lib/academics'
+import { branchCode, evaluateJob, SKILL_SHORT, SKILLS, type JobPosting } from '../lib/eligibility'
 import { ctcText, isOpen, STATUS_META, useJobs, type JobApplication, type JobStatus } from '../lib/jobs'
 import { useApp } from '../lib/store'
 import { supabase } from '../lib/supabase'
@@ -116,7 +117,7 @@ function StudentDrawer({ row, applications, jobs, orgName, onClose }: { row: Stu
           <Avatar src={p.avatar_url ?? undefined} name={p.full_name || p.email} size={56} />
           <div className="min-w-0 flex-1">
             <p className="text-[19px] font-semibold tracking-[-0.02em] text-ink">{p.full_name || 'n/a'}</p>
-            <p className="text-[12px] text-ink-mute">{p.branch} · Batch {p.batch} · {orgName ?? p.college}</p>
+            <p className="text-[12px] text-ink-mute">{yearLabel(yearOfStudy(p.batch, p.program))} · {p.branch}{p.section ? ` · Section ${p.section}` : ''} · Class of {p.batch || 'n/a'} · {orgName ?? p.college}</p>
             <p className="text-[12px] text-ink-mute">Roll number: <span className="tabular-nums text-ink">{p.roll_number || 'not set'}</span></p>
             <p className="text-[12px] text-ink-mute">{[p.email, p.phone].filter(Boolean).join(' · ')}</p>
             <div className="mt-2 flex flex-wrap gap-2 text-[11.5px] font-semibold">
@@ -239,8 +240,10 @@ export function AdminStudents() {
   const orgName = (id: string | null) => orgs.find((o) => o.id === id)?.short_name || orgs.find((o) => o.id === id)?.name || 'No college'
   const { jobs, applications } = useJobs()
   const [q, setQ] = useState('')
-  const [branch, setBranch] = useState('all')
+  const [branch, setBranch] = useState(params.get('branch') ?? 'all')
   const [batch, setBatch] = useState('all')
+  const [year, setYear] = useState(params.get('year') ?? 'all')
+  const [section, setSection] = useState(params.get('section') ?? 'all')
   const [sort, setSort] = useState<'score' | 'readiness' | 'cgpa' | 'resume' | 'dsa' | 'solved' | 'projects' | 'internships' | 'applications'>('score')
   const [open, setOpen] = useState<StudentRow | null>(null)
   // Numeric thresholds (blank = no filter) and application filters
@@ -252,7 +255,8 @@ export function AdminStudents() {
   const [drive, setDrive] = useState('any')
   const [appStatus, setAppStatus] = useState('any')
   const [onboarding, setOnboarding] = useState('any')
-  const branches = [...new Set(rows.map((r) => r.profile.branch).filter(Boolean))]
+  const branches = [...new Set(rows.map((r) => branchCode(r.profile.branch)))].sort()
+  const sections = [...new Set(rows.map((r) => r.profile.section || ''))].sort()
   const batches = [...new Set(rows.map((r) => r.profile.batch).filter(Boolean))]
   const appsOf = useMemo(() => {
     const m = new Map<string, JobApplication[]>()
@@ -275,7 +279,9 @@ export function AdminStudents() {
     const [cg, bl, pr, sc, so] = [num(minCgpa), num(maxBacklogs), num(minProjects), num(minScore), num(minSolved)]
     return rows
       .filter((r) => (r.profile.full_name + r.profile.email + r.profile.college + (r.profile.roll_number ?? '')).toLowerCase().includes(q.toLowerCase()))
-      .filter((r) => (branch === 'all' || r.profile.branch === branch) && (batch === 'all' || r.profile.batch === batch))
+      .filter((r) => (branch === 'all' || branchCode(r.profile.branch) === branch) && (batch === 'all' || r.profile.batch === batch))
+      .filter((r) => year === 'all' || String(yearOfStudy(r.profile.batch, r.profile.program)) === year)
+      .filter((r) => section === 'all' || (r.profile.section || '') === section)
       .filter((r) => org === 'all' || (org === 'none' ? !r.profile.org_id : r.profile.org_id === org))
       .filter((r) => (cg == null || r.profile.cgpa >= cg) && (bl == null || r.profile.backlogs <= bl) && (pr == null || r.profile.projects.length >= pr))
       .filter((r) => (sc == null || r.score >= sc) && (so == null || r.solved >= so))
@@ -287,12 +293,12 @@ export function AdminStudents() {
         return apps.some((a) => (drive === 'any' || a.job_id === drive) && (appStatus === 'any' || a.status === appStatus))
       })
       .sort((a, b) => val(b) - val(a))
-  }, [rows, q, branch, batch, sort, org, minCgpa, maxBacklogs, minProjects, minScore, minSolved, drive, appStatus, onboarding, appsOf])
+  }, [rows, q, branch, batch, year, section, sort, org, minCgpa, maxBacklogs, minProjects, minScore, minSolved, drive, appStatus, onboarding, appsOf])
   if (!isAdmin) return <Denied />
 
   const exportCsv = () => {
-    const head = ['Rank', 'Name', 'Roll number', 'College', 'Email', 'Phone', 'Branch', 'Batch', 'CGPA', 'Backlogs', 'Projects', 'Internships', 'Applications', 'Readiness', 'Resume', 'DSA', 'Problems solved', 'Profile strength', 'Score']
-    const lines = shown.map((r) => [r.rank, r.profile.full_name, r.profile.roll_number ?? '', orgName(r.profile.org_id), r.profile.email, r.profile.phone, r.profile.branch, r.profile.batch, r.profile.cgpa, r.profile.backlogs, r.profile.projects.length, r.profile.internships.length, appsOf.get(r.profile.id)?.length ?? 0, r.readiness, r.resume ?? '', r.dsa, r.solved, r.strength, r.score])
+    const head = ['Rank', 'Name', 'Roll number', 'College', 'Email', 'Phone', 'Year', 'Branch', 'Section', 'Batch', 'CGPA', 'Backlogs', 'Projects', 'Internships', 'Applications', 'Readiness', 'Resume', 'DSA', 'Problems solved', 'Profile strength', 'Score']
+    const lines = shown.map((r) => [r.rank, r.profile.full_name, r.profile.roll_number ?? '', orgName(r.profile.org_id), r.profile.email, r.profile.phone, yearLabel(yearOfStudy(r.profile.batch, r.profile.program)), r.profile.branch, r.profile.section, r.profile.batch, r.profile.cgpa, r.profile.backlogs, r.profile.projects.length, r.profile.internships.length, appsOf.get(r.profile.id)?.length ?? 0, r.readiness, r.resume ?? '', r.dsa, r.solved, r.strength, r.score])
     const csv = [head, ...lines].map((l) => l.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n')
     const a = document.createElement('a')
     a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
@@ -316,8 +322,17 @@ export function AdminStudents() {
             <option value="all">All branches</option>
             {branches.map((b) => <option key={b}>{b}</option>)}
           </select>
+          <select value={year} onChange={(e) => setYear(e.target.value)} className="field w-full sm:w-auto" aria-label="Year">
+            <option value="all">All years</option>
+            {[1, 2, 3, 4].map((y) => <option key={y} value={String(y)}>{yearLabel(y)}</option>)}
+            <option value="0">Graduated</option>
+          </select>
+          <select value={section} onChange={(e) => setSection(e.target.value)} className="field w-full sm:w-auto" aria-label="Section">
+            <option value="all">All sections</option>
+            {sections.map((x) => <option key={x} value={x}>{sectionLabel(x)}</option>)}
+          </select>
           <select value={batch} onChange={(e) => setBatch(e.target.value)} className="field min-w-0 flex-1 sm:w-auto sm:flex-none" aria-label="Batch">
-            <option value="all">All batches</option>
+            <option value="all">All graduation years</option>
             {batches.map((b) => <option key={b}>{b}</option>)}
           </select>
           <select value={sort} onChange={(e) => setSort(e.target.value as typeof sort)} className="field min-w-0 flex-1 sm:ml-auto sm:w-auto sm:flex-none" aria-label="Sort">
@@ -392,7 +407,7 @@ export function AdminStudents() {
           <table className="w-full text-left text-[12.5px]">
             <thead>
               <tr className="border-b border-line text-[11px] font-semibold text-ink-mute">
-                {['#', 'Student', 'Roll no.', ...(isSuperAdmin ? ['College'] : []), 'Branch', 'Batch', 'CGPA', 'Backlogs', 'Projects', 'Apps', 'Readiness', 'Resume', 'DSA', 'Solved', 'Profile', 'Score'].map((h) => <th key={h} className="px-2 py-2">{h}</th>)}
+                {['#', 'Student', 'Roll no.', ...(isSuperAdmin ? ['College'] : []), 'Class', 'CGPA', 'Backlogs', 'Projects', 'Apps', 'Readiness', 'Resume', 'DSA', 'Solved', 'Profile', 'Score'].map((h) => <th key={h} className="px-2 py-2">{h}</th>)}
               </tr>
             </thead>
             <tbody>
@@ -410,8 +425,10 @@ export function AdminStudents() {
                   </td>
                   <td className="tabular-nums px-2 py-2.5 text-ink-soft">{r.profile.roll_number || 'n/a'}</td>
                   {isSuperAdmin && <td className="px-2 py-2.5 text-ink-soft">{orgName(r.profile.org_id)}</td>}
-                  <td className="px-2 py-2.5 text-ink-soft">{r.profile.branch || 'n/a'}</td>
-                  <td className="px-2 py-2.5 text-ink-soft">{r.profile.batch || 'n/a'}</td>
+                  <td className="whitespace-nowrap px-2 py-2.5 text-ink-soft">
+                    {yearLabel(yearOfStudy(r.profile.batch, r.profile.program))}
+                    <span className="block text-[11px] text-ink-faint">{branchCode(r.profile.branch)}{r.profile.section ? ` · Sec ${r.profile.section}` : ''}</span>
+                  </td>
                   <td className="px-2 py-2.5 tabular-nums">{r.profile.cgpa || 'n/a'}</td>
                   <td className="px-2 py-2.5 tabular-nums">{r.profile.backlogs}</td>
                   <td className="px-2 py-2.5 tabular-nums">{r.profile.projects.length}</td>

@@ -56,6 +56,7 @@ type Group = { label: string; items: { to: string; label: string; Icon: (p: { cl
 const placementItems = [
   { to: '/admin', label: 'Overview', Icon: IconDashboard },
   { to: '/admin/students', label: 'Students', Icon: IconUsers },
+  { to: '/admin/classes', label: 'Classes', Icon: IconChart },
   { to: '/admin/roster', label: 'Roster', Icon: IconFileText },
   { to: '/admin/jobs', label: 'Job postings', Icon: IconDrives },
   { to: '/admin/team', label: 'Admins', Icon: IconUser },

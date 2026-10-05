@@ -1,13 +1,17 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Card, Page, RowsSkeleton, Stat } from '../components/Page'
-import { useAdminOrgs } from '../lib/admin'
+import { sectionLabel, yearLabel, yearOfStudy } from '../lib/academics'
+import { useAdminOrgs, useStudents } from '../lib/admin'
+import { branchCode } from '../lib/eligibility'
 import { callApi } from '../lib/api'
 import { useAuth } from '../lib/auth'
+import { useJobs } from '../lib/jobs'
 import { useApp } from '../lib/store'
+import { collegeEconomics, COSTS, inr, PLANS, type PlanKey } from '../lib/pricing'
 import { errMsg, supabase, type Organization } from '../lib/supabase'
 
-type RosterRow = { id: number; email: string; full_name: string; roll_number: string; branch: string; batch: string; user_id: string | null; invited_at: string | null; created_at: string }
+type RosterRow = { id: number; email: string; full_name: string; roll_number: string; branch: string; batch: string; section: string; program: string; user_id: string | null; invited_at: string | null; created_at: string }
 type InviteResult = { email: string; status: 'invited' | 'created' | 'existing' | 'failed' | 'saved'; detail?: string }
 type AdminRow = { email: string; user_id: string | null; full_name: string; joined: boolean }
 
@@ -38,13 +42,13 @@ function useOrgPicker() {
   return { orgs, org, orgId, picker, loading, reload }
 }
 
-/** Parses pasted CSV or tab-separated rows: email, full name, roll number, branch, batch. */
+/** Parses pasted CSV or tab-separated rows: email, full name, roll number, branch, batch (graduation year), section. */
 function parseRoster(text: string) {
   return text
     .split(/\r?\n/)
     .map((line) => line.split(/\t|,/).map((c) => c.trim()))
     .filter((cols) => cols[0] && cols[0].includes('@'))
-    .map(([email, full_name = '', roll_number = '', branch = '', batch = '']) => ({ email: email.toLowerCase(), full_name, roll_number, branch, batch }))
+    .map(([email, full_name = '', roll_number = '', branch = '', batch = '', section = '']) => ({ email: email.toLowerCase(), full_name, roll_number, branch, batch, section: section.toUpperCase() }))
 }
 
 function ResultList({ results }: { results: InviteResult[] }) {
@@ -93,7 +97,7 @@ export function AdminRoster() {
   const [rows, setRows] = useState<RosterRow[]>([])
   const [loading, setLoading] = useState(true)
   const [paste, setPaste] = useState('')
-  const [single, setSingle] = useState({ email: '', full_name: '', roll_number: '', branch: '', batch: '' })
+  const [single, setSingle] = useState({ email: '', full_name: '', roll_number: '', branch: '', batch: '', section: '' })
   const [busy, setBusy] = useState(false)
   const [results, setResults] = useState<InviteResult[]>([])
   const [password, setPassword] = useState('')
@@ -112,7 +116,14 @@ export function AdminRoster() {
   }, [load])
 
   const parsed = useMemo(() => parseRoster(paste), [paste])
-  const shown = rows.filter((r) => (r.email + r.full_name + r.roll_number).toLowerCase().includes(q.toLowerCase()))
+  const [cls, setCls] = useState({ year: 'all', branch: 'all', section: 'all' })
+  const shown = rows
+    .filter((r) => (r.email + r.full_name + r.roll_number).toLowerCase().includes(q.toLowerCase()))
+    .filter((r) => cls.year === 'all' || String(yearOfStudy(r.batch, r.program)) === cls.year)
+    .filter((r) => cls.branch === 'all' || branchCode(r.branch) === cls.branch)
+    .filter((r) => cls.section === 'all' || (r.section || '') === cls.section)
+  const rosterBranches = [...new Set(rows.map((r) => branchCode(r.branch)))].sort()
+  const rosterSections = [...new Set(rows.map((r) => r.section || ''))].sort()
 
   const submit = async (people: ReturnType<typeof parseRoster>, send: boolean) => {
     if (!people.length || !orgId) return
@@ -128,13 +139,22 @@ export function AdminRoster() {
       setResults(results)
       showToast(`${results.length} student record${results.length === 1 ? '' : 's'} processed.`)
       setPaste('')
-      setSingle({ email: '', full_name: '', roll_number: '', branch: '', batch: '' })
+      setSingle({ email: '', full_name: '', roll_number: '', branch: '', batch: '', section: '' })
       load()
     } catch (e) {
       showToast(errMsg(e))
     } finally {
       setBusy(false)
     }
+  }
+
+  const updateSection = async (r: RosterRow, value: string) => {
+    const section = value.trim().toUpperCase().slice(0, 20)
+    if (section === r.section) return
+    const { error } = await supabase.from('org_students').update({ section }).eq('id', r.id)
+    if (error) return showToast(errMsg(error))
+    setRows((all) => all.map((x) => (x.id === r.id ? { ...x, section } : x)))
+    showToast(`${r.full_name || r.email} moved to ${section ? `section ${section}` : 'no section'}.`)
   }
 
   const remove = async (r: RosterRow) => {
@@ -160,7 +180,7 @@ export function AdminRoster() {
 
       <Card title="Add one student">
         <form
-          className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-[1.4fr_1.2fr_0.9fr_1fr_0.6fr_auto]"
+          className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-[1.4fr_1.2fr_0.9fr_0.9fr_0.7fr_0.6fr_auto]"
           onSubmit={(e: FormEvent) => {
             e.preventDefault()
             submit([{ ...single, email: single.email.trim().toLowerCase() }], true)
@@ -170,16 +190,18 @@ export function AdminRoster() {
           <input value={single.full_name} onChange={(e) => setSingle({ ...single, full_name: e.target.value })} placeholder="Full name" className="field" />
           <input required value={single.roll_number} onChange={(e) => setSingle({ ...single, roll_number: e.target.value })} placeholder="Roll number" className="field" />
           <input value={single.branch} onChange={(e) => setSingle({ ...single, branch: e.target.value })} placeholder="Branch" className="field" />
-          <input value={single.batch} onChange={(e) => setSingle({ ...single, batch: e.target.value })} placeholder="Batch" className="field" />
+          <input value={single.batch} onChange={(e) => setSingle({ ...single, batch: e.target.value })} placeholder="Grad. year" inputMode="numeric" className="field" />
+          <input value={single.section} onChange={(e) => setSingle({ ...single, section: e.target.value.toUpperCase() })} placeholder="Section" className="field" />
           <button disabled={busy || !orgId} className="btn-primary">{password ? 'Save and create login' : 'Save and invite'}</button>
         </form>
       </Card>
 
       <Card title="Import many students">
         <p className="text-[12.5px] text-ink-mute">
-          Paste rows from a spreadsheet, one student per line: <span className="tabular-nums text-ink">email, full name, roll number, branch, batch</span>. Commas or tabs both work.
+          Paste rows from a spreadsheet, one student per line: <span className="tabular-nums text-ink">email, full name, roll number, branch, graduation year, section</span>.
+          Commas or tabs both work. Year of study (1st to 4th) is worked out from the graduation year. Re-importing a student updates their record.
         </p>
-        <textarea value={paste} onChange={(e) => setPaste(e.target.value)} rows={6} className="field mt-2 h-auto py-2 font-mono text-[12px]" placeholder={'23eg105a01@anurag.edu.in, Asha Reddy, 23EG105A01, CSE, 2027'} />
+        <textarea value={paste} onChange={(e) => setPaste(e.target.value)} rows={6} className="field mt-2 h-auto py-2 font-mono text-[12px]" placeholder={'23eg105a01@anurag.edu.in, Asha Reddy, 23EG105A01, CSE, 2027, A'} />
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <span className="text-[12px] text-ink-mute">{parsed.length} valid row{parsed.length === 1 ? '' : 's'}</span>
           <button disabled={busy || !parsed.length} onClick={() => submit(parsed, true)} className="btn-primary">{password ? 'Save and create logins' : 'Save and send invites'}</button>
@@ -188,7 +210,27 @@ export function AdminRoster() {
         <ResultList results={results} />
       </Card>
 
-      <Card title={`Roster (${rows.length})`} action={<input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search" className="field h-[32px] w-[200px]" />}>
+      <Card
+        title={`Roster (${shown.length} of ${rows.length})`}
+        action={
+          <div className="flex flex-wrap gap-2">
+            <select value={cls.year} onChange={(e) => setCls({ ...cls, year: e.target.value })} className="field h-[32px] w-auto text-[12px]" aria-label="Year">
+              <option value="all">All years</option>
+              {[1, 2, 3, 4].map((y) => <option key={y} value={String(y)}>{yearLabel(y)}</option>)}
+              <option value="0">Graduated</option>
+            </select>
+            <select value={cls.branch} onChange={(e) => setCls({ ...cls, branch: e.target.value })} className="field h-[32px] w-auto text-[12px]" aria-label="Branch">
+              <option value="all">All branches</option>
+              {rosterBranches.map((b) => <option key={b}>{b}</option>)}
+            </select>
+            <select value={cls.section} onChange={(e) => setCls({ ...cls, section: e.target.value })} className="field h-[32px] w-auto text-[12px]" aria-label="Section">
+              <option value="all">All sections</option>
+              {rosterSections.map((x) => <option key={x} value={x}>{sectionLabel(x)}</option>)}
+            </select>
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search" className="field h-[32px] w-[180px]" />
+          </div>
+        }
+      >
         {loading || orgsLoading ? (
           <RowsSkeleton rows={5} />
         ) : shown.length === 0 ? (
@@ -198,7 +240,7 @@ export function AdminRoster() {
             <table className="w-full min-w-[640px] text-left text-[12.5px]">
               <thead>
                 <tr className="border-b border-line text-[11px] font-semibold text-ink-mute">
-                  {['Roll no.', 'Name', 'Email', 'Branch', 'Batch', 'Status', ''].map((h) => <th key={h} className="px-2 py-2">{h}</th>)}
+                  {['Roll no.', 'Name', 'Email', 'Year', 'Branch', 'Section', 'Status', ''].map((h) => <th key={h} className="px-2 py-2">{h}</th>)}
                 </tr>
               </thead>
               <tbody>
@@ -207,12 +249,21 @@ export function AdminRoster() {
                     <td className="tabular-nums px-2 py-2">{r.roll_number || 'n/a'}</td>
                     <td className="px-2 py-2 font-medium text-ink">{r.full_name || 'n/a'}</td>
                     <td className="px-2 py-2 text-ink-soft">{r.email}</td>
+                    <td className="px-2 py-2 text-ink-soft">{yearLabel(yearOfStudy(r.batch, r.program), r.program)}<span className="block text-[11px] text-ink-faint">{r.batch ? `Class of ${r.batch}` : ''}</span></td>
                     <td className="px-2 py-2 text-ink-soft">{r.branch || 'n/a'}</td>
-                    <td className="px-2 py-2 text-ink-soft">{r.batch || 'n/a'}</td>
+                    <td className="px-2 py-2">
+                      <input
+                        defaultValue={r.section}
+                        onBlur={(e) => updateSection(r, e.target.value)}
+                        placeholder="Set"
+                        aria-label={`Section for ${r.email}`}
+                        className="field h-[30px] w-[64px] px-2 text-center text-[12px] uppercase"
+                      />
+                    </td>
                     <td className={`px-2 py-2 ${r.user_id ? 'text-[#067647]' : 'text-ink-mute'}`}>{r.user_id ? 'Joined' : r.invited_at ? 'Invited' : 'Not invited'}</td>
                     <td className="px-2 py-2 text-right">
                       {!r.user_id && (
-                        <button onClick={() => submit([{ email: r.email, full_name: r.full_name, roll_number: r.roll_number, branch: r.branch, batch: r.batch }], true)} className="mr-3 text-[12px] font-semibold text-brand underline" disabled={busy}>
+                        <button onClick={() => submit([{ email: r.email, full_name: r.full_name, roll_number: r.roll_number, branch: r.branch, batch: r.batch, section: r.section }], true)} className="mr-3 text-[12px] font-semibold text-brand underline" disabled={busy}>
                           {r.invited_at ? 'Resend' : 'Invite'}
                         </button>
                       )}
@@ -320,16 +371,15 @@ export function AdminTeam() {
 type Usage = {
   org_id: string; rostered: number; joined: number; onboarded: number; active_7d: number; active_30d: number; last_active: string | null
   storage_bytes: number; resumes: number; resume_analyses: number; jd_matches: number; ai_messages: number; coding_profiles: number
-  drives: number; applications: number; admins: number
+  drives: number; applications: number; admins: number; ai_actions_month: number; ai_actions_total: number
 }
 
 const blankOrg = {
   name: '', short_name: '', official_code: '', city: '', admin_emails: '', email_domains: '',
-  plan: 'trial', seat_limit: '', price_per_seat: '0', billing_cycle: 'yearly', renews_on: '', notes: '',
+  plan: 'trial', seat_limit: '150', price_per_seat: '0', platform_fee: '0', ai_monthly_limit: '', billing_cycle: 'yearly', renews_on: '', notes: '',
 }
 
 const bytes = (n: number) => (n < 1024 ? `${n} B` : n < 1048576 ? `${(n / 1024).toFixed(1)} KB` : n < 1073741824 ? `${(n / 1048576).toFixed(1)} MB` : `${(n / 1073741824).toFixed(2)} GB`)
-const inr = (n: number) => `₹${Math.round(n).toLocaleString('en-IN')}`
 const ago = (iso: string | null) => {
   if (!iso) return 'never'
   const m = Math.round((Date.now() - new Date(iso).getTime()) / 60000)
@@ -337,7 +387,97 @@ const ago = (iso: string | null) => {
 }
 /** Billable seats: the seat limit when set, otherwise the students actually on the roster. */
 const seatsOf = (o: Organization, u?: Usage) => o.seat_limit ?? u?.rostered ?? 0
-const yearly = (o: Organization, u?: Usage) => seatsOf(o, u) * Number(o.price_per_seat) * (o.billing_cycle === 'monthly' ? 12 : 1)
+const yearly = (o: Organization, u?: Usage) => seatsOf(o, u) * Number(o.price_per_seat) * (o.billing_cycle === 'monthly' ? 12 : 1) + Number(o.platform_fee ?? 0)
+const aiCapOf = (o: Organization) => o.ai_monthly_limit ?? PLANS[o.plan as PlanKey]?.aiPerMonth ?? 15
+
+/** Yearly revenue, estimated cost and margin per college, from the pricing model and real AI usage. */
+function ProfitCard({ orgs, usage }: { orgs: Organization[]; usage: Record<string, Usage> }) {
+  const [stack, setStack] = useState<'lean' | 'aws'>(() => {
+    try {
+      return localStorage.getItem('piq-infra') === 'aws' ? 'aws' : 'lean'
+    } catch {
+      return 'lean'
+    }
+  })
+  const pick = (v: 'lean' | 'aws') => {
+    setStack(v)
+    try {
+      localStorage.setItem('piq-infra', v)
+    } catch {
+      /* per-viewer preference only */
+    }
+  }
+  const paying = orgs.filter((o) => o.plan !== 'trial').length || 1
+  const rows = orgs.map((o) => {
+    const u = usage[o.id]
+    const seats = seatsOf(o, u)
+    const e = collegeEconomics({
+      seats,
+      pricePerSeat: Number(o.price_per_seat) * (o.billing_cycle === 'monthly' ? 12 : 1),
+      platformFee: Number(o.platform_fee ?? 0),
+      aiPerMonth: aiCapOf(o),
+      // Project this month's real AI actions over a 10-month academic year.
+      aiActionsPerYear: u ? u.ai_actions_month * (o.plan === 'trial' ? 1 : 10) : null,
+      colleges: o.plan === 'trial' ? orgs.length : paying,
+      infraMonthly: COSTS.infraMonthlyInr[stack],
+      months: o.plan === 'trial' ? 1 : 12,
+    })
+    return { o, seats, e }
+  })
+  const sum = (k: keyof ReturnType<typeof collegeEconomics>) => rows.reduce((a, r) => a + r.e[k], 0)
+  const revenue = sum('revenue')
+  const profit = sum('profit')
+  const tone = (m: number) => (m >= 50 ? 'text-[#067647]' : m >= 30 ? 'text-[#b45309]' : 'text-[#d92d20]')
+  return (
+    <Card
+      title="Profit and costs (yearly estimate)"
+      action={
+        <select value={stack} onChange={(e) => pick(e.target.value as 'lean' | 'aws')} className="field h-[34px] w-auto text-[12px]" aria-label="Infrastructure">
+          <option value="lean">Current stack: Supabase + Vercel ({inr(COSTS.infraMonthlyInr.lean)} / month)</option>
+          <option value="aws">AWS production stack ({inr(COSTS.infraMonthlyInr.aws)} / month)</option>
+        </select>
+      }
+    >
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Stat label="Revenue / year" value={inr(revenue)} sub="seats + platform fees" />
+        <Stat label="Estimated cost / year" value={inr(sum('cost'))} sub="AI, hosting, support, payments" />
+        <Stat label="Profit / year" value={inr(profit)} sub={revenue ? `${((profit / revenue) * 100).toFixed(1)}% margin` : 'no paying colleges yet'} />
+        <Stat label="Worst case profit" value={inr(revenue - sum('costWorst'))} sub="every student uses the full AI cap" />
+      </div>
+      <div className="mt-4 overflow-x-auto">
+        <table className="w-full min-w-[920px] text-left text-[12.5px]">
+          <thead>
+            <tr className="border-b border-line text-[11px] font-semibold text-ink-mute">
+              {['College', 'Seats', 'Revenue', 'AI (projected)', 'AI (full cap)', 'Hosting share', 'Support', 'Payments + sales', 'Profit', 'Margin', 'Worst case'].map((h) => <th key={h} className="px-2 py-2">{h}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(({ o, seats, e }) => (
+              <tr key={o.id} className="border-b border-line/70 tabular-nums">
+                <td className="px-2 py-2.5 font-semibold text-ink">{o.short_name || o.name}<span className="ml-1.5 text-[11px] font-normal capitalize text-ink-faint">{o.plan}</span></td>
+                <td className="px-2 py-2.5">{seats}</td>
+                <td className="px-2 py-2.5">{inr(e.revenue)}</td>
+                <td className="px-2 py-2.5">{inr(e.ai)}</td>
+                <td className="px-2 py-2.5 text-ink-mute">{inr(e.aiWorst)}</td>
+                <td className="px-2 py-2.5">{inr(e.infra)}</td>
+                <td className="px-2 py-2.5">{inr(e.support)}</td>
+                <td className="px-2 py-2.5">{inr(e.variable)}</td>
+                <td className="px-2 py-2.5 font-semibold">{inr(e.profit)}</td>
+                <td className={`px-2 py-2.5 font-semibold ${tone(e.margin)}`}>{e.revenue ? `${e.margin.toFixed(1)}%` : 'trial'}</td>
+                <td className={`px-2 py-2.5 ${tone(e.marginWorst)}`}>{e.revenue ? `${e.marginWorst.toFixed(1)}%` : 'n/a'}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="mt-3 text-[11.5px] leading-relaxed text-ink-faint">
+        Assumptions: one AI action costs about {inr(COSTS.aiActionInr * 100)} per 100 (Groq gpt-oss-120b, 5,000 input and 1,500 output tokens, plus 25% for retries);
+        hosting is shared across paying colleges; support {inr(COSTS.supportPerCollegeYear)} per college per year; payments 2% and sales 10% of revenue; storage and email
+        {' '}{inr(COSTS.storageEmailPerStudentYear)} per student per year. Projected AI uses this month's real usage over a 10-month year. GST is charged on top and not counted.
+      </p>
+    </Card>
+  )
+}
 
 export function SuperOrgs() {
   const { isSuperAdmin } = useAuth()
@@ -379,7 +519,7 @@ export function SuperOrgs() {
         ? {
             name: o.name, short_name: o.short_name, official_code: o.official_code ?? '', city: o.city, admin_emails: o.admin_emails.join(', '),
             email_domains: o.email_domains.join(', '), plan: o.plan, seat_limit: o.seat_limit == null ? '' : String(o.seat_limit),
-            price_per_seat: String(o.price_per_seat), billing_cycle: o.billing_cycle, renews_on: o.renews_on ?? '', notes: o.notes,
+            price_per_seat: String(o.price_per_seat), platform_fee: String(o.platform_fee ?? 0), ai_monthly_limit: o.ai_monthly_limit == null ? '' : String(o.ai_monthly_limit), billing_cycle: o.billing_cycle, renews_on: o.renews_on ?? '', notes: o.notes,
           }
         : blankOrg,
     )
@@ -399,7 +539,8 @@ export function SuperOrgs() {
     const row = {
       name: f.name.trim(), short_name: f.short_name.trim(), official_code: f.official_code.trim() || null, city: f.city.trim(),
       admin_emails: admins, email_domains: domains, plan: f.plan, seat_limit: f.seat_limit === '' ? null : Math.max(0, Number(f.seat_limit)),
-      price_per_seat: Math.max(0, Number(f.price_per_seat) || 0), billing_cycle: f.billing_cycle, renews_on: f.renews_on || null, notes: f.notes.trim(),
+      price_per_seat: Math.max(0, Number(f.price_per_seat) || 0), platform_fee: Math.max(0, Number(f.platform_fee) || 0),
+      ai_monthly_limit: f.ai_monthly_limit === '' ? null : Math.max(0, Math.round(Number(f.ai_monthly_limit))), billing_cycle: f.billing_cycle, renews_on: f.renews_on || null, notes: f.notes.trim(),
     }
     setBusy(true)
     const res = editing
@@ -471,15 +612,25 @@ export function SuperOrgs() {
             </div>
             <div className="mt-3"><LoginMethod password={password} setPassword={setPassword} /></div>
           </div>
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <label className="block">
               <span className="text-[11.5px] font-medium text-ink-mute">Plan</span>
-              <select value={f.plan} onChange={(e) => setF({ ...f, plan: e.target.value })} className="field mt-1">
-                {['trial', 'basic', 'pro', 'enterprise'].map((x) => <option key={x} value={x}>{x[0].toUpperCase() + x.slice(1)}</option>)}
+              <select
+                value={f.plan}
+                onChange={(e) => {
+                  // Picking a plan fills in its list price, platform fee and seat default; all stay editable.
+                  const p = PLANS[e.target.value as PlanKey]
+                  setF({ ...f, plan: p.key, price_per_seat: String(p.pricePerSeat), platform_fee: String(p.platformFee), seat_limit: p.key === 'trial' ? '150' : f.seat_limit === '150' ? '' : f.seat_limit })
+                }}
+                className="field mt-1"
+              >
+                {Object.values(PLANS).map((p) => <option key={p.key} value={p.key}>{p.name}{p.pricePerSeat ? ` (${inr(p.pricePerSeat)} / seat)` : ''}</option>)}
               </select>
             </label>
             {input('seat_limit', 'Student seats', 'unlimited', 'number')}
-            {input('price_per_seat', 'Price per seat (₹)', '0', 'number')}
+            {input('price_per_seat', 'Price per seat / year (₹)', '0', 'number')}
+            {input('platform_fee', 'Platform fee / year (₹)', '0', 'number')}
+            {input('ai_monthly_limit', `AI actions / student / month (plan: ${PLANS[f.plan as PlanKey]?.aiPerMonth ?? 15})`, 'plan default', 'number')}
             <label className="block">
               <span className="text-[11.5px] font-medium text-ink-mute">Billing</span>
               <select value={f.billing_cycle} onChange={(e) => setF({ ...f, billing_cycle: e.target.value })} className="field mt-1">
@@ -500,6 +651,8 @@ export function SuperOrgs() {
         </p>
         <ResultList results={results} />
       </Card>
+
+      <ProfitCard orgs={orgs} usage={usage} />
 
       <Card title={`Colleges (${orgs.length})`}>
         {loading ? (
@@ -550,7 +703,8 @@ export function SuperOrgs() {
                       </td>
                       <td className="px-2 py-2.5">
                         <span className="block font-semibold capitalize text-ink">{o.plan}</span>
-                        <span className="block text-[11.5px] text-ink-mute">{inr(Number(o.price_per_seat))} / seat / {o.billing_cycle === 'monthly' ? 'month' : 'year'}</span>
+                        <span className="block text-[11.5px] text-ink-mute">{inr(Number(o.price_per_seat))} / seat / {o.billing_cycle === 'monthly' ? 'month' : 'year'}{Number(o.platform_fee) ? ` + ${inr(Number(o.platform_fee))} fee` : ''}</span>
+                        <span className="block text-[11px] text-ink-faint">{aiCapOf(o)} AI actions / student / month</span>
                         <span className="block text-[11.5px] text-ink-mute">{inr(yearly(o, u))} per year</span>
                         {o.renews_on && <span className="block text-[11px] text-ink-faint">Renews {o.renews_on}</span>}
                       </td>
@@ -654,6 +808,191 @@ export function SuperAdmins() {
           </div>
         )}
       </Card>
+    </Page>
+  )
+}
+
+/* ================================================================ classes: year -> branch -> section */
+type ClassStats = {
+  key: string
+  year: number | null
+  branch: string
+  section: string
+  rostered: number
+  joined: number
+  onboarded: number
+  cgpa: number | null
+  readiness: number | null
+  score: number | null
+  dsa: number | null
+  resume: number | null
+  applied: number
+  offers: number
+  attention: number
+  top: string
+}
+
+const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : null)
+const fmt = (n: number | null, d = 0) => (n == null ? 'n/a' : n.toFixed(d))
+
+/** Monitoring for the placement cell by year of study, branch and section. */
+export function AdminClasses() {
+  const { isAdmin } = useAuth()
+  const navigate = useNavigate()
+  const { org, orgId, picker } = useOrgPicker()
+  const { rows: students, loading } = useStudents()
+  const { applications } = useJobs()
+  const [roster, setRoster] = useState<RosterRow[]>([])
+  const [year, setYear] = useState<number | 'all'>('all')
+
+  useEffect(() => {
+    if (!orgId) return
+    supabase.from('org_students').select('*').eq('org_id', orgId).then(({ data }) => setRoster((data ?? []) as RosterRow[]))
+  }, [orgId])
+
+  const groups = useMemo(() => {
+    const mine = students.filter((r) => r.profile.org_id === orgId)
+    const byUser = new Map(mine.map((r) => [r.profile.id, r]))
+    const apps = new Map<string, { applied: number; offers: number }>()
+    for (const a of applications) {
+      const x = apps.get(a.user_id) ?? { applied: 0, offers: 0 }
+      x.applied++
+      if (a.status === 'offer') x.offers++
+      apps.set(a.user_id, x)
+    }
+    // Everyone on the roster, joined or not; joined students use their live profile for class details.
+    const people = roster.map((r) => {
+      const s = r.user_id ? byUser.get(r.user_id) : undefined
+      const p = s?.profile
+      return {
+        name: p?.full_name || r.full_name || r.email,
+        year: yearOfStudy(p?.batch || r.batch, p?.program || r.program),
+        branch: branchCode(p?.branch || r.branch || ''),
+        section: (p?.section || r.section || '').toUpperCase(),
+        s,
+      }
+    })
+    const map = new Map<string, typeof people>()
+    for (const x of people) {
+      const k = `${x.year ?? 'na'}|${x.branch}|${x.section}`
+      map.set(k, [...(map.get(k) ?? []), x])
+    }
+    const out: ClassStats[] = [...map.entries()].map(([key, xs]) => {
+      const joined = xs.filter((x) => x.s).map((x) => x.s!)
+      const best = [...joined].sort((a, b) => b.score - a.score)[0]
+      return {
+        key,
+        year: xs[0].year,
+        branch: xs[0].branch,
+        section: xs[0].section,
+        rostered: xs.length,
+        joined: joined.length,
+        onboarded: joined.filter((r) => r.profile.onboarded_at).length,
+        cgpa: avg(joined.map((r) => r.profile.cgpa).filter((v) => v > 0)),
+        readiness: avg(joined.map((r) => r.readiness)),
+        score: avg(joined.map((r) => r.score)),
+        dsa: avg(joined.map((r) => r.dsa)),
+        resume: avg(joined.map((r) => r.resume).filter((v): v is number => v != null)),
+        applied: joined.reduce((a, r) => a + (apps.get(r.profile.id)?.applied ?? 0), 0),
+        offers: joined.reduce((a, r) => a + (apps.get(r.profile.id)?.offers ?? 0), 0),
+        // Not signed up, onboarding unfinished, active backlogs, or readiness below 40.
+        attention: xs.filter((x) => !x.s || !x.s.profile.onboarded_at || x.s.profile.backlogs > 0 || x.s.readiness < 40).length,
+        top: best ? `${best.profile.full_name || best.profile.email} (${best.score})` : 'n/a',
+      }
+    })
+    return out.sort((a, b) => (a.year ?? 99) - (b.year ?? 99) || a.branch.localeCompare(b.branch) || a.section.localeCompare(b.section))
+  }, [students, roster, applications, orgId])
+
+  if (!isAdmin) return <Denied what="Classes" />
+
+  const years = [...new Set(groups.map((g) => g.year))].sort((a, b) => (a ?? 99) - (b ?? 99))
+  const shownGroups = groups.filter((g) => year === 'all' || g.year === year)
+  const branchesIn = [...new Set(shownGroups.map((g) => `${g.year}|${g.branch}`))]
+  const total = (gs: ClassStats[], k: 'rostered' | 'joined' | 'onboarded' | 'applied' | 'offers' | 'attention') => gs.reduce((a, g) => a + g[k], 0)
+  const open = (g: { year: number | null; branch: string; section?: string }) => {
+    const p = new URLSearchParams({ org: orgId })
+    if (g.year != null) p.set('year', String(g.year))
+    p.set('branch', g.branch)
+    if (g.section !== undefined) p.set('section', g.section)
+    navigate(`/admin/students?${p}`)
+  }
+
+  return (
+    <Page title="Classes" subtitle={`Every year, branch and section of ${org?.name ?? 'your college'}. Open any class to see its students, ranked.`} wide actions={picker}>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+        {years.map((y) => {
+          const gs = groups.filter((g) => g.year === y)
+          const r = total(gs, 'rostered')
+          return (
+            <button key={String(y)} onClick={() => setYear(year === y ? 'all' : (y as number))} className={`card p-4 text-left transition ${year === y ? 'ring-2 ring-brand' : ''}`}>
+              <p className="text-[12px] font-medium text-ink-mute">{yearLabel(y)}</p>
+              <p className="mt-1 text-[24px] font-semibold tracking-[-0.03em] text-ink">{r}</p>
+              <p className="text-[11.5px] text-ink-faint">
+                {total(gs, 'joined')} joined · {[...new Set(gs.map((g) => g.branch))].length} branches · {gs.length} sections
+              </p>
+              <p className="mt-1 text-[11.5px] text-ink-mute">{total(gs, 'offers')} offers · {total(gs, 'attention')} need attention</p>
+            </button>
+          )
+        })}
+        {!years.length && <p className="col-span-full py-6 text-center text-[13px] text-ink-faint">{loading ? 'Loading classes…' : 'No students on the roster yet. Add them on the Roster page with branch, graduation year and section.'}</p>}
+      </div>
+
+      {branchesIn.map((bk) => {
+        const gs = shownGroups.filter((g) => `${g.year}|${g.branch}` === bk)
+        const head = gs[0]
+        return (
+          <Card
+            key={bk}
+            title={`${yearLabel(head.year)} · ${head.branch}`}
+            action={<button onClick={() => open({ year: head.year, branch: head.branch })} className="text-[12px] font-semibold text-brand-dark hover:underline">All {head.branch} students</button>}
+          >
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[980px] text-left text-[12.5px]">
+                <thead>
+                  <tr className="border-b border-line text-[11px] font-semibold text-ink-mute">
+                    {['Section', 'On roster', 'Joined', 'Onboarded', 'Avg CGPA', 'Avg readiness', 'Avg score', 'Avg DSA', 'Avg resume', 'Applications', 'Offers', 'Need attention', 'Top student'].map((h) => <th key={h} className="px-2 py-2">{h}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {gs.map((g) => (
+                    <tr key={g.key} onClick={() => open(g)} className="cursor-pointer border-b border-line/70 tabular-nums transition hover:bg-white/70">
+                      <td className="px-2 py-2.5 font-semibold text-ink">{sectionLabel(g.section)}</td>
+                      <td className="px-2 py-2.5">{g.rostered}</td>
+                      <td className="px-2 py-2.5">{g.joined}<span className="ml-1 text-[11px] text-ink-faint">{g.rostered ? `${Math.round((g.joined / g.rostered) * 100)}%` : ''}</span></td>
+                      <td className="px-2 py-2.5">{g.onboarded}</td>
+                      <td className="px-2 py-2.5">{fmt(g.cgpa, 2)}</td>
+                      <td className="px-2 py-2.5">{fmt(g.readiness)}</td>
+                      <td className="px-2 py-2.5 font-semibold text-brand-dark">{fmt(g.score)}</td>
+                      <td className="px-2 py-2.5">{fmt(g.dsa)}</td>
+                      <td className="px-2 py-2.5">{fmt(g.resume)}</td>
+                      <td className="px-2 py-2.5">{g.applied}</td>
+                      <td className="px-2 py-2.5">{g.offers}</td>
+                      <td className={`px-2 py-2.5 ${g.attention ? 'text-[#b45309]' : 'text-ink-faint'}`}>{g.attention}</td>
+                      <td className="px-2 py-2.5 text-ink-soft">{g.top}</td>
+                    </tr>
+                  ))}
+                  {gs.length > 1 && (
+                    <tr className="tabular-nums text-ink-mute">
+                      <td className="px-2 py-2.5 font-semibold">All sections</td>
+                      <td className="px-2 py-2.5">{total(gs, 'rostered')}</td>
+                      <td className="px-2 py-2.5">{total(gs, 'joined')}</td>
+                      <td className="px-2 py-2.5">{total(gs, 'onboarded')}</td>
+                      <td className="px-2 py-2.5" colSpan={5} />
+                      <td className="px-2 py-2.5">{total(gs, 'applied')}</td>
+                      <td className="px-2 py-2.5">{total(gs, 'offers')}</td>
+                      <td className="px-2 py-2.5">{total(gs, 'attention')}</td>
+                      <td />
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        )
+      })}
+      <p className="text-[11.5px] text-ink-faint">
+        Need attention: not signed up yet, onboarding unfinished, active backlogs, or readiness below 40. Year of study comes from the graduation year and moves up every July.
+      </p>
     </Page>
   )
 }

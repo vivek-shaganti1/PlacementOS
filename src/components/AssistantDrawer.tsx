@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { useEffect, useRef, useState } from 'react'
 import { useApp } from '../lib/store'
+import { supabase } from '../lib/supabase'
 import { IconClose, IconSpark } from './Icons'
 import { LogoMark } from './Logo'
 
@@ -16,6 +17,16 @@ export default function AssistantDrawer() {
   const [draft, setDraft] = useState('')
   const end = useRef<HTMLDivElement>(null)
   const input = useRef<HTMLInputElement>(null)
+  const [quota, setQuota] = useState<{ used: number; quota: number } | null>(null)
+
+  // This month's AI actions left on the college's plan; refreshed when the drawer opens and after each reply.
+  useEffect(() => {
+    if (!assistantOpen || thinking) return
+    supabase.rpc('ai_quota').then(({ data }) => {
+      const row = (Array.isArray(data) ? data[0] : data) as { used: number; quota: number } | undefined
+      if (row) setQuota({ used: row.used, quota: row.quota })
+    })
+  }, [assistantOpen, thinking])
 
   useEffect(() => end.current?.scrollIntoView({ block: 'end', behavior: 'smooth' }), [chat.length, assistantOpen, thinking])
   useEffect(() => {
@@ -60,6 +71,7 @@ export default function AssistantDrawer() {
                 <p className="text-[14px] font-semibold">AI Career Assistant</p>
                 <p className="flex items-center gap-1.5 text-[11px] text-white/60">
                   <span className="h-1.5 w-1.5 rounded-full bg-[#8ef5d9]" /> Grounded in your profile
+                  {quota && <span className="text-white/45">{' '}· {Math.max(0, quota.quota - quota.used)} of {quota.quota} AI actions left this month</span>}
                 </p>
               </div>
               {chat.length > 1 && (

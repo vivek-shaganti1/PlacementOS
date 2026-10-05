@@ -46,6 +46,24 @@ export async function rest(token: string, path: string, init: RequestInit = {}) 
   return res
 }
 
+/**
+ * Records one AI action against the student's monthly plan quota, before the model is called.
+ * Throws 429 with a readable message once the quota is used up.
+ */
+export async function consumeAi(token: string, kind: 'chat' | 'resume' | 'jd_match') {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/consume_ai`, {
+    method: 'POST',
+    headers: { apikey: SUPABASE_KEY, authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+    body: JSON.stringify({ action: kind }),
+  })
+  if (res.ok) return (await res.json()) as number
+  const err = (await res.json().catch(() => ({}))) as { message?: string }
+  const msg = err.message ?? ''
+  if (msg.startsWith('AI_QUOTA: ')) throw new HttpError(429, msg.slice('AI_QUOTA: '.length))
+  if (res.status === 401) throw new HttpError(401, 'Session expired. Please sign in again.')
+  throw new HttpError(403, msg || 'AI is not available for this account.')
+}
+
 /** Loads the caller's own profile; doubles as token validation. */
 export async function loadProfile(token: string): Promise<Record<string, any>> {
   const [profile] = (await (await rest(token, 'profiles?select=*&limit=1')).json()) as Record<string, any>[]

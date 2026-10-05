@@ -36,6 +36,7 @@ const AdminJobs = lazy(() => import('./pages/Admin').then((m) => ({ default: m.A
 const AdminTeam = lazy(() => import('./pages/AdminOrg').then((m) => ({ default: m.AdminTeam })))
 const AdminRoster = lazy(() => import('./pages/AdminOrg').then((m) => ({ default: m.AdminRoster })))
 const SuperOrgs = lazy(() => import('./pages/AdminOrg').then((m) => ({ default: m.SuperOrgs })))
+const AdminClasses = lazy(() => import('./pages/AdminOrg').then((m) => ({ default: m.AdminClasses })))
 const SuperAdmins = lazy(() => import('./pages/AdminOrg').then((m) => ({ default: m.SuperAdmins })))
 const ResumeAnalyzer = lazy(() => import('./pages/ResumeAnalyzer'))
 const Landing = lazy(() => import('./pages/Landing'))
@@ -68,6 +69,7 @@ function RoleRoutes() {
         <Route path="/super/admins" element={<SuperAdmins />} />
         <Route path="/admin" element={<AdminOverview />} />
         <Route path="/admin/students" element={<AdminStudents />} />
+        <Route path="/admin/classes" element={<AdminClasses />} />
         <Route path="/admin/roster" element={<AdminRoster />} />
         <Route path="/admin/jobs" element={<AdminJobs />} />
         <Route path="/admin/team" element={<AdminTeam />} />
@@ -79,6 +81,7 @@ function RoleRoutes() {
       <Routes location={location}>
         <Route path="/admin" element={<AdminOverview />} />
         <Route path="/admin/students" element={<AdminStudents />} />
+        <Route path="/admin/classes" element={<AdminClasses />} />
         <Route path="/admin/roster" element={<AdminRoster />} />
         <Route path="/admin/jobs" element={<AdminJobs />} />
         <Route path="/admin/team" element={<AdminTeam />} />

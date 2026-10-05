@@ -194,7 +194,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       try {
         reply = (await callApi<{ reply: string }>('chat', { messages: convo.slice(-20) })).reply
       } catch (e) {
-        showToast(`AI unavailable (${errMsg(e)}). Showing a quick answer instead.`)
+        const m = errMsg(e)
+        showToast(m.includes('AI actions') ? `${m} Showing a quick answer from your profile instead.` : `AI unavailable (${m}). Showing a quick answer instead.`)
         reply = canned(text, profile)
       } finally {
         setThinking(false)

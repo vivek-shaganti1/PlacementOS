@@ -2,7 +2,7 @@
 // POST { action: 'analyze', text, file_name }  -> parses the extracted resume text, scores it, saves to profile
 // POST { action: 'match', jd }                 -> matches the saved resume against a job description
 import { SKILLS } from '../src/lib/eligibility'
-import { bearer, deleteRows, groq, handle, HttpError, insertRows, json, loadProfile, parseJson, rest, saveProfile, STYLE_RULES, tidyDeep } from './_lib'
+import { bearer, consumeAi, deleteRows, groq, handle, HttpError, insertRows, json, loadProfile, parseJson, rest, saveProfile, STYLE_RULES, tidyDeep } from './_lib'
 
 export const config = { runtime: 'edge' }
 
@@ -208,6 +208,7 @@ export default handle(async (req) => {
   if (body.action === 'analyze') {
     const text = String(body.text ?? '').replace(/\u0000/g, '').trim().slice(0, 40000)
     if (text.length < 200) throw new HttpError(422, 'Could not read enough text from this file. If it is a scanned image, export it as a text-based PDF.')
+    await consumeAi(token, 'resume')
     const analysis = await analyze(text, body.file_name ?? null, profile.target_roles || 'Software Engineer')
     const { analyzed_at, ...row } = analysis
     void analyzed_at
@@ -228,6 +229,7 @@ export default handle(async (req) => {
       jd = `${job.company} — ${job.role} (${job.location})\n\n${job.description}`.trim()
     }
     if (jd.length < 80) throw new HttpError(422, 'Paste the full job description (at least a few lines).')
+    await consumeAi(token, 'jd_match')
     if (!profile.resume_text) throw new HttpError(422, 'Upload and analyze your resume first.')
     const result = await match(profile.resume_text, jd)
     const { analyzed_at, ...row } = result
