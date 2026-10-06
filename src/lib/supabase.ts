@@ -2,7 +2,11 @@ import { createClient } from '@supabase/supabase-js'
 
 // Defaults point at the production project. The publishable key is safe to ship to browsers
 // (RLS protects the data); env vars override these for other environments.
-const url = import.meta.env.VITE_SUPABASE_URL || 'https://oewjimwozaksyigfyrkz.supabase.co'
+const projectUrl = import.meta.env.VITE_SUPABASE_URL || 'https://oewjimwozaksyigfyrkz.supabase.co'
+// In production the browser talks to Supabase through this app's own domain (vercel.json rewrites /supabase/* to the
+// project). Some networks (ISP DNS filters, campus firewalls) block *.supabase.co, which surfaces as "Failed to fetch".
+const proxied = typeof window !== 'undefined' && import.meta.env.PROD && !/^(localhost|127\.0\.0\.1)$/.test(window.location.hostname)
+const url = proxied ? `${window.location.origin}/supabase` : projectUrl
 const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_l4oFZfheVfvTBAfU3t9sRg_AwdkNqse'
 
 export const supabaseConfigured = Boolean(url && key)
@@ -10,7 +14,8 @@ export const supabaseConfigured = Boolean(url && key)
 // Placeholder values keep the module importable when env vars are missing;
 // the app renders a configuration screen instead of calling the API in that case.
 export const supabase = createClient(url || 'http://localhost', key || 'missing-key', {
-  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true },
+  // Fixed storage key so sessions survive switching between the direct and proxied URL.
+  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: `sb-${new URL(projectUrl).hostname.split('.')[0]}-auth-token` },
 })
 
 export type Skill = { name: string; level: number }
