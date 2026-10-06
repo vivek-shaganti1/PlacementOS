@@ -36,6 +36,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [roles, setRoles] = useState<{ role: string; org_id: string | null }[]>([])
 
   useEffect(() => {
+    // Recovery links in the form /reset-password?token_hash=…&type=recovery are verified through the app's own domain,
+    // so the reset works on networks that block *.supabase.co (the default email link points there).
+    const q = new URLSearchParams(window.location.search)
+    const tokenHash = q.get('token_hash')
+    if (tokenHash && q.get('type') === 'recovery') {
+      window.history.replaceState(null, '', window.location.pathname)
+      supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'recovery' }).then(({ error }) => {
+        if (!error) setRecovering(true)
+      })
+    }
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session)
       setLoading(false)
