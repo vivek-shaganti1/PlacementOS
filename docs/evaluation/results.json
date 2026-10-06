@@ -1,0 +1,30 @@
+{
+  "cohort": 10000,
+  "companies": 66,
+  "decisions": 660000,
+  "latency_ms": {
+    "mean": 0.176,
+    "p95": 0.254
+  },
+  "bucket_distribution_pct": {
+    "eligible": 4.69,
+    "nearly": 5.5,
+    "canBecome": 13.39,
+    "notEligible": 76.42
+  },
+  "non_eligible_decisions": 629068,
+  "explained_decisions": 629068,
+  "explanation_coverage_pct": 100,
+  "monotonicity": {
+    "checks": 594000,
+    "violations": 0,
+    "pass_pct": 100
+  },
+  "baseline_cutoff": {
+    "pairs_passing_cutoff": 341912,
+    "of_which_major_skill_gap_pct": 80.33,
+    "pairs_rejected_by_cutoff": 318088,
+    "of_which_can_become_eligible_pct": 10.29
+  },
+  "whatif_one_step_moves_a_company_pct": 36.7
+}
