@@ -1,7 +1,7 @@
 # PlacementIQ: working rules for Claude
 
-PlacementIQ is a multi-college placement platform: students (rostered by their college), placement-cell admins (one college)
-and platform admins (all colleges). Stack: Vite 5 + React 18 + TypeScript + Tailwind 3 + react-router 6, Supabase (Postgres
+PlacementIQ is a multi-college placement platform: students (rostered by their college), placement-cell admins (one college),
+company recruiters (added by a college; see only applicants to their own drives) and platform admins (all colleges). Stack: Vite 5 + React 18 + TypeScript + Tailwind 3 + react-router 6, Supabase (Postgres
 with RLS, Auth, Storage), Vercel edge functions in `api/`, Groq for AI.
 
 ## Commands
@@ -10,11 +10,13 @@ with RLS, Auth, Storage), Vercel edge functions in `api/`, Groq for AI.
 - After any visual or dependency change, run the build and check the chunk rules in the `performance` skill.
 
 ## Product invariants (never break these)
-- Access is role based and enforced in the database: `user_roles` (`super_admin`, `org_admin`), roster-only student access
+- Access is role based and enforced in the database: `user_roles` (`super_admin`, `org_admin`, `recruiter`), roster-only student access
   (`org_students`), allowlist trigger on `auth.users`. UI checks are convenience only.
 - The Supabase secret key, Groq key and database password never go into `VITE_*` variables or committed files.
 - AI calls go through `consumeAi()` (plan quota) before the model call.
 - Pricing numbers live only in `src/lib/pricing.ts`.
+- Predictions (expected CTC, interview readiness, what-if) live in `src/lib/predict.ts` and must stay explainable: every number
+  is a documented function of the student's own data.
 
 ## Design philosophy
 The product should feel premium, cinematic, modern, fluid, responsive, interactive, sophisticated, fast, minimal and

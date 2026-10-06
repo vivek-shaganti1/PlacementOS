@@ -28,6 +28,7 @@ const groups = [
     label: 'Prepare',
     items: [
       { to: '/skill-gap', label: 'Skill Gap Analyzer', Icon: IconTarget },
+      { to: '/what-if', label: 'What-If Simulator', Icon: IconSpark },
       { to: '/roadmap', label: 'Learning Roadmap', Icon: IconRoadmap },
       { to: '/practice', label: 'Practice Arena', Icon: IconPractice },
       { to: '/mock-interviews', label: 'Mock Interviews', Icon: IconCheckSquare },
@@ -59,7 +60,7 @@ const placementItems = [
   { to: '/admin/classes', label: 'Classes', Icon: IconChart },
   { to: '/admin/roster', label: 'Roster', Icon: IconFileText },
   { to: '/admin/jobs', label: 'Job postings', Icon: IconDrives },
-  { to: '/admin/team', label: 'Admins', Icon: IconUser },
+  { to: '/admin/team', label: 'Admins & recruiters', Icon: IconUser },
 ]
 
 const NAV: Record<AccountRole, Group[]> = {
@@ -74,6 +75,7 @@ const NAV: Record<AccountRole, Group[]> = {
     { label: 'All colleges', items: placementItems },
   ],
   org: [{ label: 'Placement cell', items: placementItems }],
+  recruiter: [{ label: 'Recruiter', items: [{ to: '/recruiter', label: 'My drives', Icon: IconDrives }] }],
   student: groups,
 }
 

@@ -1,3 +1,4 @@
+import { FeedbackPrompt } from '../components/Feedback'
 import { Card, Page } from '../components/Page'
 import { useApp } from '../lib/store'
 
@@ -45,6 +46,7 @@ export default function Roadmap() {
           </div>
         </Card>
       ))}
+      <FeedbackPrompt target="roadmap" label="Is this roadmap useful for you?" />
     </Page>
   )
 }

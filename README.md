@@ -67,6 +67,8 @@ There are three separate kinds of account, decided by the database (`user_roles`
   listed in `private.platform_admin_emails`; listed emails get the role when they sign up.
 - **Placement cell** (`org_admin` of one college): sees only that college's students (profiles, resumes, repos,
   LeetCode/Codeforces/CodeChef stats), its roster, its drives and its admins.
+- **Recruiter** (`recruiter` of one college): added by that college's placement cell with a company name. Posts drives
+  only under that company and sees full profiles of the students who applied to those drives, nothing else.
 - **Student**: gets access only when their college adds their email to its roster (e.g. 23eg105f59@anurag.edu.in).
   Removing them from the roster removes access. Unlisted accounts see a "waiting for your college" screen.
 

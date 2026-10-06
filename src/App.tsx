@@ -29,6 +29,7 @@ import Help from './pages/Help'
 const Analytics = lazy(() => import('./pages/Analytics'))
 const Dashboard = lazy(() => import('./pages/Dashboard'))
 const SkillGap = lazy(() => import('./pages/SkillGap'))
+const WhatIf = lazy(() => import('./pages/WhatIf'))
 const Jobs = lazy(() => import('./pages/Jobs'))
 const Onboarding = lazy(() => import('./pages/Onboarding'))
 const AdminOverview = lazy(() => import('./pages/Admin').then((m) => ({ default: m.AdminOverview })))
@@ -77,6 +78,13 @@ function RoleRoutes() {
         {common}
       </Routes>
     )
+  if (role === 'recruiter')
+    return (
+      <Routes location={location}>
+        <Route path="/recruiter" element={<AdminJobs />} />
+        {common}
+      </Routes>
+    )
   if (role === 'org')
     return (
       <Routes location={location}>
@@ -96,6 +104,7 @@ function RoleRoutes() {
       <Route path="/eligibility" element={<EligibilityStacks />} />
       <Route path="/drives" element={<Drives />} />
       <Route path="/skill-gap" element={<SkillGap />} />
+      <Route path="/what-if" element={<WhatIf />} />
       <Route path="/roadmap" element={<Roadmap />} />
       <Route path="/practice" element={<Practice />} />
       <Route path="/mock-interviews" element={<MockInterviews />} />

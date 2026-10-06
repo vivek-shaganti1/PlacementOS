@@ -20,10 +20,10 @@ type AuthCtx = {
   clearRecovery: () => void
 }
 
-export type AccountRole = 'super' | 'org' | 'student'
+export type AccountRole = 'super' | 'org' | 'recruiter' | 'student'
 
 /** Landing page for each kind of account. */
-export const HOME: Record<AccountRole, string> = { super: '/super/orgs', org: '/admin', student: '/dashboard' }
+export const HOME: Record<AccountRole, string> = { super: '/super/orgs', org: '/admin', recruiter: '/recruiter', student: '/dashboard' }
 
 const Ctx = createContext<AuthCtx | null>(null)
 
@@ -106,7 +106,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const isSuperAdmin = roles.some((r) => r.role === 'super_admin')
   const adminOrgIds = useMemo(() => roles.filter((r) => r.role === 'org_admin' && r.org_id).map((r) => r.org_id as string), [roles])
   const isAdmin = isSuperAdmin || adminOrgIds.length > 0
-  const role: AccountRole = isSuperAdmin ? 'super' : adminOrgIds.length ? 'org' : 'student'
+  const isRecruiter = roles.some((r) => r.role === 'recruiter')
+  const role: AccountRole = isSuperAdmin ? 'super' : adminOrgIds.length ? 'org' : isRecruiter ? 'recruiter' : 'student'
 
   const value = useMemo<AuthCtx>(
     () => ({

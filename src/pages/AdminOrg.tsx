@@ -280,6 +280,86 @@ export function AdminRoster() {
   )
 }
 
+/* ================================================================ recruiters */
+type RecruiterRow = { id: number; email: string; company: string; full_name: string; user_id: string | null; created_at: string }
+
+/** Company recruiters for one college: they post drives for their company and see only their own applicants. */
+function RecruitersCard({ orgId }: { orgId: string }) {
+  const { showToast } = useApp()
+  const [rows, setRows] = useState<RecruiterRow[]>([])
+  const [f, setF] = useState({ email: '', company: '', full_name: '' })
+  const [password, setPassword] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [results, setResults] = useState<InviteResult[]>([])
+
+  const load = useCallback(async () => {
+    if (!orgId) return
+    const { data, error } = await supabase.from('org_recruiters').select('*').eq('org_id', orgId).order('created_at', { ascending: false })
+    if (error) showToast(errMsg(error))
+    setRows((data ?? []) as RecruiterRow[])
+  }, [orgId, showToast])
+  useEffect(() => {
+    load()
+  }, [load])
+
+  const add = async (e: FormEvent) => {
+    e.preventDefault()
+    if (!f.email.trim() || !f.company.trim()) return showToast('Enter the recruiter email and their company.')
+    if (password && password.length < 8) return showToast('Temporary password must be at least 8 characters.')
+    setBusy(true)
+    try {
+      const { results } = await callApi<{ results: InviteResult[] }>('admin', {
+        action: 'invite', org_id: orgId, role: 'recruiter', password: password || undefined,
+        people: [{ email: f.email.trim().toLowerCase(), company: f.company.trim(), full_name: f.full_name.trim() }],
+      })
+      setResults(results)
+      setF({ email: '', company: '', full_name: '' })
+      load()
+    } catch (err) {
+      showToast(errMsg(err))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const remove = async (r: RecruiterRow) => {
+    if (!window.confirm(`Remove ${r.email} (${r.company})? They lose access to this college; their drives stay with the placement cell.`)) return
+    const { error } = await supabase.from('org_recruiters').delete().eq('id', r.id)
+    if (error) return showToast(errMsg(error))
+    showToast('Recruiter removed.')
+    load()
+  }
+
+  return (
+    <Card title={`Recruiters (${rows.length})`}>
+      <p className="text-[12.5px] text-ink-mute">
+        Recruiters post drives for their own company at your college and see the full profiles of students who apply to those drives. They never see your roster or other students.
+      </p>
+      <form onSubmit={add} className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-[1.3fr_1fr_1fr_auto]">
+        <input type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} placeholder="hr@company.com" className="field" />
+        <input value={f.company} onChange={(e) => setF({ ...f, company: e.target.value })} placeholder="Company" className="field" />
+        <input value={f.full_name} onChange={(e) => setF({ ...f, full_name: e.target.value })} placeholder="Name (optional)" className="field" />
+        <button disabled={busy || !orgId} className="btn-primary">{password ? 'Add and create login' : 'Add and invite'}</button>
+      </form>
+      <div className="mt-3"><LoginMethod password={password} setPassword={setPassword} /></div>
+      <ResultList results={results} />
+      <div className="mt-3 divide-y divide-line">
+        {rows.map((r) => (
+          <div key={r.id} className="flex flex-wrap items-center gap-3 py-2.5">
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-[13px] font-semibold text-ink">{r.company}</span>
+              <span className="block truncate text-[12px] text-ink-mute">{[r.full_name, r.email].filter(Boolean).join(' · ')}</span>
+            </span>
+            <span className={`text-[12px] ${r.user_id ? 'text-[#067647]' : 'text-ink-mute'}`}>{r.user_id ? 'Active' : 'Invited, not signed up'}</span>
+            <button onClick={() => remove(r)} className="text-[12px] text-[#d92d20] underline">Remove</button>
+          </div>
+        ))}
+        {!rows.length && <p className="py-4 text-center text-[12.5px] text-ink-faint">No recruiters yet.</p>}
+      </div>
+    </Card>
+  )
+}
+
 /* ================================================================ org admins */
 export function AdminTeam() {
   const { isAdmin, session } = useAuth()
@@ -363,6 +443,7 @@ export function AdminTeam() {
           </div>
         )}
       </Card>
+      <RecruitersCard orgId={orgId} />
     </Page>
   )
 }

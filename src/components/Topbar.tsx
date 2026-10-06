@@ -170,7 +170,7 @@ export default function Topbar({ onToggleSidebar }: { onToggleSidebar: () => voi
           <Avatar src={profile.avatar_url ?? undefined} name={profile.full_name || profile.email} size={34} />
           <div className="hidden max-w-[150px] text-left leading-tight sm:block xl:max-w-[220px]">
             <p className="truncate text-[13px] font-semibold text-ink">{profile.full_name || profile.email}</p>
-            <p className="truncate text-[11px] text-ink-faint">{role === 'super' ? 'Platform admin' : role === 'org' ? 'Placement cell' : profile.meta}</p>
+            <p className="truncate text-[11px] text-ink-faint">{role === 'super' ? 'Platform admin' : role === 'org' ? 'Placement cell' : role === 'recruiter' ? 'Recruiter' : profile.meta}</p>
           </div>
           <IconChevronDown className="hidden h-4 w-4 text-ink-faint sm:block" />
         </button>

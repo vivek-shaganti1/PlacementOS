@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Card, Page, Stat } from '../components/Page'
+import { Card, Meter, Page, Stat } from '../components/Page'
+import { interviewReadiness } from '../lib/predict'
 import { useAuth, useProfile } from '../lib/auth'
 import { useApp } from '../lib/store'
 import { errMsg } from '../lib/supabase'
@@ -42,6 +43,8 @@ export default function MockInterviews() {
         <Stat label="Average score" value={avg === null ? '—' : `${avg.toFixed(1)} / 10`} sub="From your logged feedback" tone="text-[#0d9a5b]" />
         <Stat label="Upcoming" value={`${booked.length}`} sub="Booked sessions" tone="text-brand-dark" />
       </div>
+
+      <InterviewReadinessCard />
 
       <Card title="Available slots">
         <div className="divide-y divide-line">
@@ -87,5 +90,23 @@ export default function MockInterviews() {
         </div>
       </Card>
     </Page>
+  )
+}
+
+/** How ready the student is for interview rounds, and what drives the score. */
+function InterviewReadinessCard() {
+  const r = interviewReadiness(useProfile())
+  return (
+    <Card title={`Interview readiness: ${r.score} / 100`}>
+      <div className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
+        {r.components.map((c) => (
+          <Meter key={c.label} label={`${c.label} (${Math.round(c.weight * 100)}%)`} value={c.value} tone={c.value >= 70 ? '#12b76a' : c.value >= 50 ? '#f79009' : '#f04438'} />
+        ))}
+      </div>
+      <p className="mt-3 text-[12px] text-ink-mute">
+        Focus next on {r.weakest.join(' and ').toLowerCase()}.{' '}
+        {r.mockCount === 0 ? 'Log a mock interview below so your interview performance counts toward the score.' : `Based on ${r.mockCount} logged mock interview${r.mockCount === 1 ? '' : 's'}.`}
+      </p>
+    </Card>
   )
 }

@@ -98,3 +98,19 @@ export function useAdminOrgs() {
   const { orgs, loading, reload } = useOrgs()
   return { orgs: isSuperAdmin ? orgs : orgs.filter((o) => adminOrgIds.includes(o.id)), loading, reload }
 }
+
+/** The signed-in recruiter's record: which college they recruit at and for which company. */
+export function useRecruiter() {
+  const { role, session } = useAuth()
+  const [rec, setRec] = useState<{ org_id: string; company: string; full_name: string } | null>(null)
+  useEffect(() => {
+    if (role !== 'recruiter' || !session) return
+    supabase
+      .from('org_recruiters')
+      .select('org_id, company, full_name')
+      .eq('user_id', session.user.id)
+      .limit(1)
+      .then(({ data }) => setRec((data?.[0] as typeof rec) ?? null))
+  }, [role, session])
+  return rec
+}

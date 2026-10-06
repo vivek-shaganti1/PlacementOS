@@ -6,7 +6,7 @@ import { bearer, env, handle, HttpError, json, rest, SUPABASE_URL } from './_lib
 
 export const config = { runtime: 'edge' }
 
-type Person = { email: string; full_name?: string; roll_number?: string; branch?: string; batch?: string; section?: string; program?: string }
+type Person = { email: string; full_name?: string; roll_number?: string; branch?: string; batch?: string; section?: string; program?: string; company?: string }
 type Result = { email: string; status: 'invited' | 'created' | 'existing' | 'failed' | 'saved'; detail?: string }
 
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
@@ -53,7 +53,7 @@ export default handle(async (req) => {
   const token = bearer(req)
   const body = (await req.json().catch(() => ({}))) as { action?: string; org_id?: string; role?: string; people?: Person[]; send?: boolean; password?: string }
   if (body.action !== 'invite') throw new HttpError(400, 'Unknown action')
-  const role = body.role === 'platform_admin' ? 'platform_admin' : body.role === 'org_admin' ? 'org_admin' : 'student'
+  const role = body.role === 'platform_admin' ? 'platform_admin' : body.role === 'org_admin' ? 'org_admin' : body.role === 'recruiter' ? 'recruiter' : 'student'
   const roles = await callerRoles(token)
   const isSuper = roles.some((r) => r.role === 'super_admin')
   const orgId = clip(body.org_id, 40)
@@ -66,6 +66,7 @@ export default handle(async (req) => {
   const people = (Array.isArray(body.people) ? body.people : []).slice(0, 200).map((p) => ({
     email: clip(p.email, 200).toLowerCase(),
     full_name: clip(p.full_name, 160),
+    company: clip(p.company, 120),
     roll_number: clip(p.roll_number, 40),
     branch: clip(p.branch, 120),
     batch: clip(p.batch, 10),
@@ -99,6 +100,18 @@ export default handle(async (req) => {
           body: JSON.stringify({ invited_at: new Date().toISOString() }),
           headers: { prefer: 'return=minimal' },
         })
+    }
+  } else if (role === 'recruiter') {
+    if (people.some((p) => !p.company)) throw new HttpError(422, 'Enter the company each recruiter hires for.')
+    // The recruiter record is written as the caller (RLS: placement cell of this college); it allowlists the email.
+    await rest(token, 'org_recruiters?on_conflict=org_id,email', {
+      method: 'POST',
+      body: JSON.stringify(people.map((p) => ({ org_id: orgId, email: p.email, company: p.company, full_name: p.full_name }))),
+      headers: { prefer: 'return=minimal,resolution=merge-duplicates' },
+    })
+    for (const p of people) {
+      const r = await provision(p)
+      results.push(r.status === 'existing' ? { ...r, detail: 'Existing account; recruiter access granted.' } : r)
     }
   } else if (role === 'platform_admin') {
     for (const p of people) {

@@ -4,7 +4,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import Avatar from '../components/Avatar'
 import { BarList, Columns, EmptyChart, SERIES } from '../components/charts'
 import { Card, Meter, Page, Ring, Stat } from '../components/Page'
-import { useAdminOrgs, useStudents, type StudentRow } from '../lib/admin'
+import { useAdminOrgs, useRecruiter, useStudents, type StudentRow } from '../lib/admin'
 import { useAuth } from '../lib/auth'
 import { sectionLabel, yearLabel, yearOfStudy } from '../lib/academics'
 import { branchCode, evaluateJob, SKILL_SHORT, SKILLS, type JobPosting } from '../lib/eligibility'
@@ -83,7 +83,46 @@ export function AdminOverview() {
           {!students.length && <p className="py-6 text-center text-[12px] text-ink-faint">{loading ? 'Loading…' : 'No students have signed up yet.'}</p>}
         </div>
       </Card>
+      <FeedbackSummary />
     </Page>
+  )
+}
+
+const FEEDBACK_LABEL: Record<string, string> = {
+  next_step: 'Next best step', roadmap: 'Learning roadmap', assistant: 'AI assistant', what_if: 'What-If Simulator', eligibility: 'Eligibility stacks', resume: 'Resume analysis',
+}
+
+/** How useful students find each kind of recommendation, with their latest comments. */
+function FeedbackSummary() {
+  const [rows, setRows] = useState<{ target: string; helpful: boolean; comment: string; created_at: string }[]>([])
+  useEffect(() => {
+    supabase.from('recommendation_feedback').select('target, helpful, comment, created_at').order('created_at', { ascending: false }).limit(500).then(({ data }) => setRows(data ?? []))
+  }, [])
+  const byTarget = Object.keys(FEEDBACK_LABEL).map((t) => {
+    const xs = rows.filter((r) => r.target === t)
+    return { t, n: xs.length, pct: xs.length ? Math.round((xs.filter((r) => r.helpful).length / xs.length) * 100) : null }
+  })
+  const comments = rows.filter((r) => r.comment).slice(0, 5)
+  return (
+    <Card title={`Student feedback on recommendations (${rows.length})`}>
+      {rows.length === 0 ? (
+        <p className="py-4 text-center text-[12.5px] text-ink-faint">No feedback yet. Students rate the next best step, the What-If Simulator and other recommendations as they use them.</p>
+      ) : (
+        <>
+          <div className="grid grid-cols-1 gap-x-6 gap-y-2.5 sm:grid-cols-2">
+            {byTarget.filter((x) => x.n).map((x) => (
+              <Meter key={x.t} label={`${FEEDBACK_LABEL[x.t]} · ${x.n} response${x.n === 1 ? '' : 's'}`} value={x.pct ?? 0} tone={(x.pct ?? 0) >= 70 ? '#12b76a' : (x.pct ?? 0) >= 50 ? '#f79009' : '#f04438'} />
+            ))}
+          </div>
+          {comments.length > 0 && (
+            <div className="mt-4 space-y-1.5 text-[12.5px]">
+              <p className="font-semibold text-ink">Latest suggestions</p>
+              {comments.map((c, i) => <p key={i} className="text-ink-soft"><span className="text-ink-faint">{FEEDBACK_LABEL[c.target]}:</span> {c.comment}</p>)}
+            </div>
+          )}
+        </>
+      )}
+    </Card>
   )
 }
 
@@ -460,12 +499,16 @@ const emptyJob = {
 }
 
 function JobForm({ initial, onDone }: { initial?: JobPosting; onDone: () => void }) {
-  const { session } = useAuth()
+  const { session, role } = useAuth()
   const { orgs } = useAdminOrgs()
+  // Recruiters post only for the college that added them, and only under their own company name.
+  const recruiter = useRecruiter()
+  const isRecruiter = role === 'recruiter'
   const [orgId, setOrgId] = useState<string>(initial?.org_id ?? '')
   useEffect(() => {
-    if (!orgId && orgs.length) setOrgId(orgs[0].id)
-  }, [orgs, orgId])
+    if (isRecruiter && recruiter && !orgId) setOrgId(recruiter.org_id)
+    else if (!isRecruiter && !orgId && orgs.length) setOrgId(orgs[0].id)
+  }, [orgs, orgId, isRecruiter, recruiter])
   const { showToast } = useApp()
   const [f, setF] = useState(() =>
     initial
@@ -477,8 +520,11 @@ function JobForm({ initial, onDone }: { initial?: JobPosting; onDone: () => void
           branches: initial.branches.join(', '), batches: initial.batches.join(', '), deadline: initial.deadline ?? '', status: initial.status,
           skills: Object.fromEntries(SKILLS.map((s) => [s, Number(initial.skill_requirements[s] ?? 0)])),
         }
-      : emptyJob,
+      : { ...emptyJob, company: recruiter?.company ?? '' },
   )
+  useEffect(() => {
+    if (isRecruiter && recruiter && !initial) setF((x) => ({ ...x, company: recruiter.company }))
+  }, [isRecruiter, recruiter, initial])
   const [busy, setBusy] = useState(false)
   const set = (k: keyof typeof f, v: string) => setF({ ...f, [k]: v })
   const list = (v: string) => v.split(',').map((x) => x.trim()).filter(Boolean)
@@ -497,6 +543,7 @@ function JobForm({ initial, onDone }: { initial?: JobPosting; onDone: () => void
       branches: list(f.branches), batches: list(f.batches), deadline: f.deadline || null, status: f.status,
       skill_requirements: Object.fromEntries(Object.entries(f.skills).filter(([, v]) => v > 0)),
       org_id: orgId,
+      ...(isRecruiter ? { company: recruiter?.company ?? f.company.trim(), recruiter_id: session?.user.id } : {}),
     }
     const { error } = initial
       ? await supabase.from('job_postings').update(row).eq('id', initial.id)
@@ -516,7 +563,7 @@ function JobForm({ initial, onDone }: { initial?: JobPosting; onDone: () => void
 
   return (
     <form onSubmit={submit} className="space-y-4">
-      {orgs.length > 1 && (
+      {!isRecruiter && orgs.length > 1 && (
         <label className="block max-w-[420px]">
           <span className="text-[11.5px] font-medium text-ink-mute">College</span>
           <select className="field mt-1" value={orgId} onChange={(e) => setOrgId(e.target.value)}>
@@ -525,7 +572,7 @@ function JobForm({ initial, onDone }: { initial?: JobPosting; onDone: () => void
         </label>
       )}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {input('company', 'Company')}
+        {input('company', 'Company', isRecruiter ? { readOnly: true, title: 'Recruiters post for their own company' } : {})}
         {input('role', 'Role')}
         {input('location', 'Location')}
         {input('ctc_min', 'CTC min (LPA)', { inputMode: 'decimal' })}
@@ -579,14 +626,17 @@ function JobForm({ initial, onDone }: { initial?: JobPosting; onDone: () => void
 }
 
 export function AdminJobs() {
-  const { isAdmin } = useAuth()
+  const { isAdmin, role } = useAuth()
+  const isRecruiter = role === 'recruiter'
+  const recruiter = useRecruiter()
+  const [openRow, setOpenRow] = useState<StudentRow | null>(null)
   const { showToast } = useApp()
   const { jobs, applications, reload } = useJobs()
   const { rows } = useStudents()
   const [mode, setMode] = useState<'list' | 'new' | 'edit'>('list')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const selected = jobs.find((j) => j.id === selectedId) ?? jobs[0] ?? null
-  if (!isAdmin) return <Denied />
+  if (!isAdmin && !isRecruiter) return <Denied />
 
   const applicants = selected
     ? applications
@@ -629,7 +679,10 @@ export function AdminJobs() {
     )
 
   return (
-    <Page title="Job postings" subtitle="Post drives, see ranked applicants and move them through the pipeline." wide actions={<button onClick={() => setMode('new')} className="btn-primary">+ Post a drive</button>}>
+    <Page
+      title={isRecruiter ? `${recruiter?.company ?? 'Your'} drives` : 'Job postings'}
+      subtitle={isRecruiter ? 'Post drives for this college, see ranked applicants with their full profiles, and move them through your pipeline.' : 'Post drives, see ranked applicants and move them through the pipeline.'}
+      wide actions={<button onClick={() => setMode('new')} className="btn-primary">+ Post a drive</button>}>
       {jobs.length === 0 ? (
         <Card><p className="py-10 text-center text-[13px] text-ink-mute">No drives yet. Post your first one — every student is notified and scored against it instantly.</p></Card>
       ) : (
@@ -669,7 +722,11 @@ export function AdminJobs() {
                 </div>
                 <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
                   <Stat label="Applicants" value={`${applicants.length}`} />
-                  <Stat label="Eligible, not applied" value={`${eligibleNotApplied}`} tone="text-[#b45309]" />
+                  {isRecruiter ? (
+                    <Stat label="Shortlisted" value={`${applicants.filter((x) => x.a.status === 'shortlisted' || x.a.status === 'interview').length}`} tone="text-[#1570cd]" />
+                  ) : (
+                    <Stat label="Eligible, not applied" value={`${eligibleNotApplied}`} tone="text-[#b45309]" />
+                  )}
                   <Stat label="Offers" value={`${applicants.filter((x) => x.a.status === 'offer').length}`} tone="text-[#0d9a5b]" />
                 </div>
               </div>
@@ -681,7 +738,7 @@ export function AdminJobs() {
                       <span className="w-6 text-[12px] font-semibold text-ink-faint">{idx + 1}</span>
                       <Avatar src={r?.profile.avatar_url ?? undefined} name={r?.profile.full_name || 'Student'} size={30} />
                       <span className="min-w-[140px] flex-1">
-                        <span className="block truncate text-[13px] font-semibold text-ink">{r?.profile.full_name ?? 'Student'}</span>
+                        <button type="button" onClick={() => r && setOpenRow(r)} className="block truncate text-left text-[13px] font-semibold text-ink hover:underline">{r?.profile.full_name ?? 'Student'}</button>
                         <span className="block text-[11px] text-ink-mute">{r?.profile.branch} · CGPA {r?.profile.cgpa} · resume {r?.resume ?? '—'}</span>
                       </span>
                       <span className="text-center text-[11px] text-ink-mute">Match<b className="block text-[14px] text-ink">{ev?.match ?? a.match ?? '—'}%</b></span>
@@ -698,6 +755,7 @@ export function AdminJobs() {
           )}
         </div>
       )}
+      <AnimatePresence>{openRow && <StudentDrawer row={openRow} jobs={jobs} applications={applications} onClose={() => setOpenRow(null)} />}</AnimatePresence>
     </Page>
   )
 }

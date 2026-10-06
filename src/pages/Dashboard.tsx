@@ -11,6 +11,8 @@ import { evaluateJob, readinessOf } from '../lib/eligibility'
 import { ctcText, isOpen, STATUS_META, useJobs } from '../lib/jobs'
 import { shortDate, useHistory } from '../lib/history'
 import { useApp } from '../lib/store'
+import { interviewReadiness, predictSalary } from '../lib/predict'
+import { FeedbackPrompt } from '../components/Feedback'
 
 const tone = (v: number) => (v >= 75 ? '#12b76a' : v >= 60 ? '#f79009' : '#f04438')
 
@@ -22,6 +24,8 @@ export default function Dashboard() {
   const { snapshots } = useHistory()
   const strength = completeness(student).pct
   const readiness = readinessOf(companies)
+  const salary = predictSalary(companies)
+  const interview = interviewReadiness(student)
   const counts = (['eligible', 'nearly', 'canBecome', 'notEligible'] as const).map((b) => ({ b, n: byBucket(b).length }))
   const toApply = companies.filter((c) => (c.bucket === 'eligible' || c.bucket === 'nearly') && !applied.includes(c.id)).slice(0, 5)
   const prev = snapshots.length > 1 ? snapshots[snapshots.length - 2].readiness : null
@@ -56,6 +60,9 @@ export default function Dashboard() {
                 <button onClick={() => openAssistant(`Give me a 2-week plan to improve ${weakest[0]?.name}.`)} className="rounded-[11px] border border-white/20 bg-white/10 px-3.5 py-2 text-[12.5px] font-semibold text-white transition hover:bg-white/15">
                   Ask AI for a plan
                 </button>
+                <button onClick={() => navigate('/what-if')} className="rounded-[11px] border border-white/20 bg-white/10 px-3.5 py-2 text-[12.5px] font-semibold text-white transition hover:bg-white/15">
+                  Try a what-if
+                </button>
               </div>
             </div>
           </div>
@@ -64,10 +71,13 @@ export default function Dashboard() {
         <div className="grid grid-cols-2 gap-3">
           <Stat label="Eligible companies" value={`${counts[0].n}`} sub={`of ${companies.length} tracked`} tone="text-[#0d9a5b]" />
           <Stat label="Applications" value={`${applications.filter((a) => a.user_id === student.id).length + applied.length}`} sub={`Campus drives + tracked · ${saved.length} shortlisted`} />
+          <Stat label="Expected CTC" value={salary.expected ? `₹${salary.expected.toFixed(1)} LPA` : 'n/a'} sub={salary.expected ? `Likely ₹${salary.low}–${salary.high} LPA · best ₹${salary.bestRealistic} LPA` : 'Complete your profile'} tone="text-[#0d9a5b]" />
+          <Stat label="Interview readiness" value={`${interview.score}`} sub={`Work on ${interview.weakest.join(' and ').toLowerCase()}`} tone="text-brand-dark" />
           <Stat label="Profile strength" value={`${strength}%`} sub="Completeness & verification" tone="text-brand-dark" />
           <Stat label="Roadmap tasks" value={`${roadmapDone.length}`} sub="completed so far" />
         </div>
       </div>
+      <FeedbackPrompt target="next_step" label="Was the next best step useful?" />
 
       {drives.length > 0 && (
         <Card title="Campus drives for you" action={<button onClick={() => navigate('/jobs')} className="text-[11.5px] font-semibold text-brand-dark hover:underline">All campus jobs →</button>}>
