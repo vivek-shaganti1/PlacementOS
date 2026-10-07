@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from 'motion/react'
 import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import AssistantDrawer from './components/AssistantDrawer'
+import { ErrorBoundary } from './components/ErrorBoundary'
 import { LogoMark } from './components/Logo'
 import { Aurora } from './components/Page'
 import Sidebar from './components/Sidebar'
@@ -126,6 +127,16 @@ function Shell() {
   const [sidebarOpen, setSidebarOpen] = useState(() => !window.matchMedia('(max-width: 1023px)').matches)
   const { openAssistant, toast } = useApp()
   const { role } = useAuth()
+  const { pathname } = useLocation()
+
+  // The app scrolls inside its panes; the document itself must never stay scrolled (that reads as a blank page).
+  useEffect(() => {
+    const reset = () => {
+      if (window.scrollY || document.documentElement.scrollTop) window.scrollTo(0, 0)
+    }
+    window.addEventListener('scroll', reset, { passive: true })
+    return () => window.removeEventListener('scroll', reset)
+  }, [])
 
   // Switching between phone and desktop layouts: drawer starts closed on phones, rail starts open on desktop.
   useEffect(() => setSidebarOpen(!isMobile), [isMobile])
@@ -139,14 +150,20 @@ function Shell() {
           <Sidebar open={sidebarOpen} onChat={() => openAssistant()} mobile={isMobile} onClose={() => setSidebarOpen(false)} />
           <main className="flex min-w-0 flex-1">
             <PageTransition kind="rise" className="flex min-w-0 flex-1">
-              <Suspense fallback={<Loader />}>
-                <RoleRoutes />
-              </Suspense>
+              <ErrorBoundary resetKey={pathname}>
+                <Suspense fallback={<Loader />}>
+                  <RoleRoutes />
+                </Suspense>
+              </ErrorBoundary>
             </PageTransition>
           </main>
         </div>
       </div>
-      {role === 'student' && <AssistantDrawer />}
+      {role === 'student' && (
+        <ErrorBoundary compact>
+          <AssistantDrawer />
+        </ErrorBoundary>
+      )}
       <AnimatePresence>
         {toast && (
           <motion.div
@@ -268,7 +285,9 @@ export default function App() {
 
   return (
     <AuthProvider>
-      <Gate />
+      <ErrorBoundary>
+        <Gate />
+      </ErrorBoundary>
     </AuthProvider>
   )
 }

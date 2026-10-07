@@ -15,7 +15,7 @@ const suggestions = [
 export default function AssistantDrawer() {
   const { assistantOpen, closeAssistant, chat, send, clearChat, thinking } = useApp()
   const [draft, setDraft] = useState('')
-  const end = useRef<HTMLDivElement>(null)
+  const list = useRef<HTMLDivElement>(null)
   const input = useRef<HTMLInputElement>(null)
   const [quota, setQuota] = useState<{ used: number; quota: number } | null>(null)
 
@@ -28,7 +28,12 @@ export default function AssistantDrawer() {
     })
   }, [assistantOpen, thinking])
 
-  useEffect(() => end.current?.scrollIntoView({ block: 'end', behavior: 'smooth' }), [chat.length, assistantOpen, thinking])
+  // Scroll only the message list. scrollIntoView also scrolls every scrollable ancestor, including the document, which
+  // left the whole app scrolled off-screen (a blank page) once the drawer closed after a long reply.
+  useEffect(() => {
+    const el = list.current
+    if (el) el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
+  }, [chat.length, assistantOpen, thinking])
   useEffect(() => {
     if (assistantOpen) window.setTimeout(() => input.current?.focus(), 250)
   }, [assistantOpen])
@@ -84,7 +89,7 @@ export default function AssistantDrawer() {
               </button>
             </div>
 
-            <div className="scroll-thin flex-1 space-y-3 overflow-y-auto px-4 py-4">
+            <div ref={list} className="scroll-thin flex-1 space-y-3 overflow-y-auto overscroll-contain px-4 py-4">
               {chat.map((m, i) => (
                 <motion.div
                   key={i}
@@ -100,7 +105,7 @@ export default function AssistantDrawer() {
                         : 'rounded-[16px] rounded-bl-[5px] border border-white/80 bg-white/90 text-ink-soft shadow-[var(--shadow-1)]'
                     }`}
                   >
-                    {m.text}
+                    {typeof m.text === 'string' ? m.text : String(m.text ?? '')}
                   </p>
                 </motion.div>
               ))}
@@ -123,7 +128,6 @@ export default function AssistantDrawer() {
                   ))}
                 </div>
               )}
-              <div ref={end} />
             </div>
 
             <form
