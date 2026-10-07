@@ -23,13 +23,15 @@ export function dsaEvidence(i: Integrations): Evidence | null {
     weighted += 1.2 * cc.solved
     sources.push(`CodeChef ${cc.solved} solved${cc.rating ? `, rated ${cc.rating}` : ''}`)
   }
-  const volume = 100 * (1 - Math.exp(-weighted / 450))
+  // About 100 weighted problems reads as 39, 200 as 63, 400 as 86: campus tests ask for steady practice, not thousands.
+  const volume = 100 * (1 - Math.exp(-weighted / 200))
 
-  // Contest strength: best normalized rating across platforms.
+  // Contest strength: best normalized rating across platforms. Anchors: LeetCode 1500 or Codeforces 1200 or CodeChef
+  // 1600 is about 50; LeetCode 2100, Codeforces 1800 and CodeChef 2200 approach 90.
   const ratings = [
-    lc?.contest_rating ? (lc.contest_rating - 1100) / 11 : null,
-    cf?.max_rating ? (cf.max_rating - 700) / 14 : null,
-    cc?.max_rating ? (cc.max_rating - 1100) / 9 : null,
+    lc?.contest_rating ? (lc.contest_rating - 800) / 14 : null,
+    cf?.max_rating ? (cf.max_rating - 400) / 16 : null,
+    cc?.max_rating ? (cc.max_rating - 900) / 14 : null,
   ].filter((v): v is number => v !== null)
   const contest = ratings.length ? Math.max(...ratings) : null
   if (lc?.contest_rating) sources.push(`LeetCode contest rating ${lc.contest_rating}`)
