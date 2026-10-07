@@ -10,7 +10,10 @@ import { intensity, useMotionTier } from '../lib/motion'
 import { inr, PLANS } from '../lib/pricing'
 
 // three.js loads only on devices that get WebGL, after the page is interactive.
-const HeroScene = lazy(() => import('../components/3d/HeroScene'))
+// Decorative: if the 3D chunk cannot load (slow network, or a deploy replaced it), keep the static glow.
+const HeroScene = lazy(() =>
+  import('../components/3d/HeroScene').catch(() => ({ default: (_: { className?: string }) => <Glow size={560} className="right-[10%] top-[10%]" /> })),
+)
 
 const ease = [0.16, 1, 0.3, 1] as const
 const reveal: Variants = { hidden: { opacity: 0, y: 24 }, show: { opacity: 1, y: 0, transition: { duration: 0.7, ease } } }
