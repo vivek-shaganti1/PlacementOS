@@ -42,7 +42,14 @@ export async function rest(token: string, path: string, init: RequestInit = {}) 
     headers: { apikey: SUPABASE_KEY, authorization: `Bearer ${token}`, 'content-type': 'application/json', ...(init.headers ?? {}) },
   })
   if (res.status === 401) throw new HttpError(401, 'Session expired. Please sign in again.')
-  if (!res.ok) throw new HttpError(502, `Database error: ${(await res.text()).slice(0, 200)}`)
+  if (!res.ok) {
+    const text = await res.text()
+    // Turn the common database refusals into messages an admin can act on.
+    if (/org_students_roll_key/.test(text)) throw new HttpError(409, 'That roll number is already used by another student in this college. Check the roll number or update that student instead.')
+    if (/"code":"23505"/.test(text)) throw new HttpError(409, 'This record already exists.')
+    if (/"code":"42501"|row-level security/.test(text)) throw new HttpError(403, 'You do not have permission to change this.')
+    throw new HttpError(502, `Database error: ${text.slice(0, 200)}`)
+  }
   return res
 }
 
