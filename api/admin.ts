@@ -88,7 +88,10 @@ export default handle(async (req) => {
     // Upsert roster rows as the caller; RLS confirms they administer this organization.
     await rest(token, 'org_students?on_conflict=org_id,email', {
       method: 'POST',
-      body: JSON.stringify(people.map((p) => ({ ...p, org_id: orgId }))),
+      // Only roster columns: `company` belongs to recruiters and does not exist on org_students.
+      body: JSON.stringify(
+        people.map((p) => ({ org_id: orgId, email: p.email, full_name: p.full_name, roll_number: p.roll_number, branch: p.branch, batch: p.batch, section: p.section, program: p.program })),
+      ),
       headers: { prefer: 'return=minimal,resolution=merge-duplicates' },
     })
     for (const p of people) {
