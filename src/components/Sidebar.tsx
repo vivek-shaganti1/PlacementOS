@@ -79,6 +79,16 @@ const NAV: Record<AccountRole, Group[]> = {
   student: groups,
 }
 
+/** The nav group a route belongs to and its number, for the mono label above each page title ("02 · Profile"). */
+export function navMeta(role: AccountRole, pathname: string) {
+  const list = NAV[role] ?? []
+  for (let i = 0; i < list.length; i++) {
+    const hit = list[i].items.find((it) => pathname === it.to || (it.to !== '/admin' && pathname.startsWith(`${it.to}/`)))
+    if (hit) return { number: String(i + 1).padStart(2, '0'), group: list[i].label }
+  }
+  return null
+}
+
 export default function Sidebar({ open, onChat, mobile, onClose }: { open: boolean; onChat: () => void; mobile?: boolean; onClose?: () => void }) {
   const { role } = useAuth()
   const visible = NAV[role]
@@ -86,9 +96,12 @@ export default function Sidebar({ open, onChat, mobile, onClose }: { open: boole
   const panel = (
       <div className={`glass flex flex-col rounded-[22px] ${mobile ? 'h-full w-[min(300px,86vw)]' : 'm-3 mr-0 h-[calc(100%-24px)] w-[228px]'}`}>
         <nav className="scroll-thin flex-1 overflow-y-auto px-2.5 pb-2 pt-3" aria-label="Main">
-          {visible.map((g) => (
+          {visible.map((g, gi) => (
             <div key={g.label} className="mb-2">
-              <p className="px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-ink-faint">{g.label}</p>
+              <p className="flex items-center gap-2 px-3 pb-1 pt-2 font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-ink-faint">
+                <span className="text-brand/80">{String(gi + 1).padStart(2, '0')}</span>
+                {g.label}
+              </p>
               {g.items.map(({ to, label, Icon }) => (
                 <NavLink key={to} to={to} end={to === '/admin'} onClick={mobile ? onClose : undefined} className="relative mb-[2px] block rounded-[12px]">
                   {({ isActive }) => (
@@ -96,16 +109,16 @@ export default function Sidebar({ open, onChat, mobile, onClose }: { open: boole
                       {isActive && (
                         <motion.span
                           layoutId="nav-pill"
-                          className="absolute inset-0 rounded-[12px] bg-white shadow-[var(--shadow-1)] ring-1 ring-[oklch(0.88_0.05_285)]"
+                          className="absolute inset-0 rounded-[12px] bg-[linear-gradient(180deg,oklch(0.27_0.05_285),oklch(0.18_0.04_285))] shadow-[inset_0_1px_0_oklch(1_0_0/.12),0_6px_16px_oklch(0.2_0.06_285/.22)]"
                           transition={{ type: 'spring', stiffness: 420, damping: 34 }}
                         />
                       )}
                       <span
                         className={`relative flex items-center gap-[11px] px-3 py-[8px] text-[13px] transition-colors ${
-                          isActive ? 'font-semibold text-brand-dark' : 'font-medium text-ink-soft hover:text-ink'
+                          isActive ? 'font-semibold text-white' : 'font-medium text-ink-soft hover:text-ink'
                         }`}
                       >
-                        <Icon className={`h-[17px] w-[17px] ${isActive ? 'text-brand' : 'text-ink-faint'}`} />
+                        <Icon className={`h-[17px] w-[17px] ${isActive ? 'text-[#8ef5d9]' : 'text-ink-faint'}`} />
                         <span className="truncate">{label}</span>
                       </span>
                     </>

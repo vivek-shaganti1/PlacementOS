@@ -81,7 +81,7 @@ export default function Topbar({ onToggleSidebar }: { onToggleSidebar: () => voi
           aria-label="Search companies"
           className="h-[40px] w-full rounded-full border border-white/80 bg-white/60 pl-10 pr-14 text-[13px] text-ink outline-none transition placeholder:text-ink-faint focus:bg-white focus:ring-4 focus:ring-brand/10"
         />
-        <kbd className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 rounded-md border border-line bg-white/80 px-1.5 py-0.5 text-[10.5px] font-medium text-ink-faint">⌘K</kbd>
+        <kbd className="kbd kbd-light pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 px-1.5">⌘K</kbd>
         <AnimatePresence>
         {results.length > 0 && (
           <motion.div

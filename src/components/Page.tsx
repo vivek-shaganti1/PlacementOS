@@ -1,5 +1,8 @@
 import { animate, motion, useInView, useReducedMotion, type Variants } from 'motion/react'
 import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react'
+import { useLocation } from 'react-router-dom'
+import { useAuth } from '../lib/auth'
+import { navMeta } from './Sidebar'
 
 const ease = [0.16, 1, 0.3, 1] as const
 
@@ -24,11 +27,19 @@ export const trackSpotlight = (e: PointerEvent<HTMLElement>) => {
 }
 
 export function Page({ title, subtitle, children, wide, actions }: { title: string; subtitle?: string; children: ReactNode; wide?: boolean; actions?: ReactNode }) {
+  const { pathname } = useLocation()
+  const { role } = useAuth()
+  const meta = navMeta(role, pathname)
   return (
     <div className="scroll-thin relative flex-1 overflow-y-auto overflow-x-hidden px-3 py-5 sm:px-6 sm:py-7">
       <div className={wide ? 'mx-auto max-w-[1180px]' : 'mx-auto max-w-[1000px]'}>
         <motion.div initial="hidden" animate="show" variants={itemVariants} className="flex flex-wrap items-end gap-3 sm:gap-4">
           <div className="flex-1">
+            {meta && (
+              <p className="label-mono mb-2">
+                <b>{meta.number}</b> {meta.group}
+              </p>
+            )}
             <h1 className="text-[22px] font-semibold tracking-[-0.03em] text-ink sm:text-[26px]">{title}</h1>
             {subtitle && <p className="mt-1 max-w-[680px] text-[13px] text-ink-mute">{subtitle}</p>}
           </div>
@@ -93,7 +104,7 @@ export function Stat({ label, value, sub, tone, icon }: { label: string; value: 
   return (
     <motion.div {...revealProps} onPointerMove={trackSpotlight} className="card card-hover spotlight px-4 py-4">
       <div className="flex items-center justify-between">
-        <p className="text-[11.5px] font-medium text-ink-mute">{label}</p>
+        <p className="font-mono text-[10.5px] font-medium uppercase tracking-[0.1em] text-ink-mute">{label}</p>
         {icon && <span className="text-ink-faint">{icon}</span>}
       </div>
       <p className={`mt-2 text-[24px] font-semibold leading-none tracking-[-0.03em] ${tone ?? 'text-ink'}`}>
