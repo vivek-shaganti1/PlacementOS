@@ -75,6 +75,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }),
     ])
     const err = base.error ?? rel.find((x) => x.error)?.error
+    // A stored session the server no longer accepts (expired, or signed with rotated keys): sign out cleanly
+    // so the visitor lands on the public pages instead of a dead end.
+    if (err && /jwt|token|401|PGRST30/i.test(`${err.message} ${(err as { code?: string }).code ?? ''}`)) {
+      await supabase.auth.signOut({ scope: 'local' })
+      return
+    }
     if (err) {
       setProfileError(err.message)
       return

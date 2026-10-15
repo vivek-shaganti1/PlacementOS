@@ -178,7 +178,7 @@ export default function Login({ initialMode = 'signin' }: { initialMode?: Mode }
               )}
             </AnimatePresence>
 
-            <button disabled={busy} className="btn-primary h-[42px] w-full text-[13px]">
+            <button disabled={busy} className="btn-ink h-[44px] w-full text-[13px] disabled:opacity-60">
               {busy ? 'Please wait…' : cta}
             </button>
 

@@ -6,6 +6,8 @@ export default {
       fontFamily: {
         sans: ['Geist', 'Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'Segoe UI', 'sans-serif'],
         display: ['"Instrument Serif"', 'ui-serif', 'Georgia', 'serif'],
+        // Technical labels only (section numbers, keyboard hints, stats captions); never body copy.
+        mono: ['"Geist Mono"', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
       },
       colors: {
         canvas: 'transparent',

@@ -1,11 +1,11 @@
-import { AnimatePresence, motion, useMotionValue, useReducedMotion, useSpring, useTransform, type Variants } from 'motion/react'
-import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+import { AnimatePresence, motion, useMotionValue, useMotionValueEvent, useReducedMotion, useScroll, useSpring, useTransform, type Variants } from 'motion/react'
+import { lazy, Suspense, useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
 import { Logo, LogoMark } from '../components/Logo'
 import { AnimatedValue, Aurora, trackSpotlight } from '../components/Page'
 import { companyCatalog } from '../data/companies'
 import { Glow } from '../components/effects'
-import { CursorFollower, Magnetic, ScrollProgress, SmoothScroll, TextReveal } from '../components/motion'
+import { CursorFollower, Magnetic, ScrollHighlight, ScrollProgress, SmoothScroll, TextReveal } from '../components/motion'
 import { intensity, useMotionTier } from '../lib/motion'
 import { inr, PLANS } from '../lib/pricing'
 
@@ -26,7 +26,7 @@ const SALES_EMAIL = import.meta.env.VITE_SALES_EMAIL
 function Pricing() {
   return (
     <Section id="pricing" className="pb-28">
-      <motion.p variants={reveal} className="text-[12px] font-semibold uppercase tracking-[0.18em] text-brand">Pricing</motion.p>
+      <motion.p variants={reveal} className="label-mono"><b>06</b> Pricing</motion.p>
       <motion.h2 variants={reveal} className="mt-3 max-w-[720px] text-[clamp(2rem,1.4rem+2vw,3.2rem)] font-semibold leading-[1.05] tracking-[-0.04em]">
         Colleges subscribe. <span className="font-display font-normal italic text-gradient">Students never pay.</span>
       </motion.h2>
@@ -248,6 +248,277 @@ const steps = [
   ['Close gaps and apply', 'Follow the roadmap, practise, log mocks, tailor your resume per JD, and track every application.'],
 ]
 
+/* ---------------------------------------------------------------- announcement, nav, ask bar */
+function Announcement() {
+  return (
+    <a href="#roles" className="relative z-50 flex items-center justify-center gap-2.5 bg-[oklch(0.17_0.04_285)] px-4 py-2 text-[12px] text-white/80 hover:text-white">
+      <span className="rounded-[6px] bg-[#8ef5d9] px-1.5 py-0.5 font-mono text-[10px] font-semibold uppercase tracking-[0.08em] text-[#0b3b30]">New</span>
+      <span className="truncate">Recruiter workspaces and the What-If Simulator are live for every college</span>
+      <span aria-hidden className="hidden text-[#8ef5d9] sm:inline">See what changed →</span>
+    </a>
+  )
+}
+
+/** Three floating pills: section links, the brand, and account actions with keyboard hints (G, S). */
+function Nav() {
+  const navigate = useNavigate()
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const t = e.target as HTMLElement
+      if (e.metaKey || e.ctrlKey || e.altKey || t.closest('input, textarea, select, [contenteditable="true"]')) return
+      if (e.key === 'g') navigate('/signup')
+      if (e.key === 's') navigate('/login')
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [navigate])
+  const pill = 'glass flex h-[46px] items-center rounded-full px-2'
+  return (
+    <div className="sticky top-0 z-40 px-4 pt-3">
+      <nav aria-label="Main" className="mx-auto flex max-w-[1160px] items-center justify-between gap-3 md:grid md:grid-cols-[1fr_auto_1fr]">
+        <div className={`${pill} hidden justify-self-start gap-0.5 md:flex`}>
+          {[['#features', 'Features'], ['#roles', 'For colleges'], ['#how', 'How it works'], ['#pricing', 'Pricing']].map(([h, l]) => (
+            <a key={h} href={h} className="rounded-full px-3.5 py-1.5 text-[12.5px] font-medium text-ink-soft transition hover:bg-white/80 hover:text-ink">{l}</a>
+          ))}
+        </div>
+        <Link to="/" aria-label="PlacementIQ home" className={`${pill} px-4 md:col-start-2 md:justify-self-center`}>
+          <Logo size={28} tagline={false} />
+        </Link>
+        <div className={`${pill} gap-1 md:col-start-3 md:justify-self-end`}>
+          <Link to="/login" className="hidden items-center gap-2 whitespace-nowrap rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold text-ink-soft hover:bg-white/80 hover:text-ink sm:inline-flex">
+            Sign in <span className="kbd kbd-light">S</span>
+          </Link>
+          <Link to="/signup" className="btn-ink h-[34px] whitespace-nowrap px-4 text-[12.5px]">
+            Get started <span className="kbd hidden sm:inline-grid">G</span>
+          </Link>
+        </div>
+      </nav>
+    </div>
+  )
+}
+
+const prompts = [
+  'Which companies can I unlock with my profile?',
+  'What should I fix first for Google?',
+  'Is my resume ready for Atlassian?',
+  'Build me a 4-week DSA plan',
+]
+
+/** A real input styled as the assistant's prompt. Asking takes you to sign-up, where answers are grounded in your data. */
+function AskBar({ compact = false }: { compact?: boolean }) {
+  const navigate = useNavigate()
+  const reduce = useReducedMotion()
+  const [i, setI] = useState(0)
+  const [value, setValue] = useState('')
+  useEffect(() => {
+    if (reduce || value) return
+    const t = window.setInterval(() => setI((n) => (n + 1) % prompts.length), 3200)
+    return () => window.clearInterval(t)
+  }, [reduce, value])
+  const submit = (e: FormEvent) => {
+    e.preventDefault()
+    navigate('/signup')
+  }
+  return (
+    <form onSubmit={submit} className={`gradient-border rounded-[20px] ${compact ? 'w-[min(560px,calc(100vw-32px))]' : 'w-full max-w-[540px]'}`}>
+      <div className="flex items-center gap-2 rounded-[20px] bg-white/95 p-2 pl-4 shadow-[var(--shadow-3)] backdrop-blur-xl">
+        <span aria-hidden className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-brand-tint"><LogoMark size={18} /></span>
+        <label className="relative min-w-0 flex-1">
+          <span className="sr-only">Ask the AI career assistant</span>
+          <input value={value} onChange={(e) => setValue(e.target.value)} className="h-[40px] w-full bg-transparent text-[14px] text-ink outline-none" />
+          {!value && (
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.span
+                key={i}
+                aria-hidden
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.3, ease }}
+                className="pointer-events-none absolute inset-y-0 left-0 flex items-center truncate text-[14px] text-ink-faint"
+              >
+                {prompts[i]}
+              </motion.span>
+            </AnimatePresence>
+          )}
+        </label>
+        <button type="submit" className="btn-ink h-[40px] shrink-0 px-4 text-[12.5px]">
+          Ask <span aria-hidden>↵</span>
+        </button>
+      </div>
+    </form>
+  )
+}
+
+/** The ask bar follows the reader once the hero has scrolled away, and steps aside for the final call to action. */
+function AskDock() {
+  const { scrollYProgress, scrollY } = useScroll()
+  const [show, setShow] = useState(false)
+  const update = () => setShow(scrollY.get() > window.innerHeight * 0.9 && scrollYProgress.get() < 0.93)
+  useMotionValueEvent(scrollY, 'change', update)
+  return (
+    <AnimatePresence>
+      {show && (
+        <motion.div
+          initial={{ opacity: 0, y: 24 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: 16, transition: { duration: 0.25 } }}
+          transition={{ duration: 0.45, ease }}
+          className="fixed inset-x-0 bottom-4 z-40 hidden justify-center px-4 md:flex"
+        >
+          <AskBar compact />
+        </motion.div>
+      )}
+    </AnimatePresence>
+  )
+}
+
+/* ---------------------------------------------------------------- floating recruiter chips */
+const chips = [
+  { name: 'Razorpay', note: '91% match', color: '#12b76a', pos: 'left-[44%] top-[14%]', delay: '0s' },
+  { name: 'Atlassian', note: 'Nearly · 2 gaps', color: '#f79009', pos: 'right-[3%] top-[3%]', delay: '-1.6s' },
+  { name: 'Google', note: 'System Design 62 → 75', color: '#2e90fa', pos: 'right-[8%] bottom-[9%]', delay: '-3.1s' },
+]
+function FloatingChips() {
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-0 hidden xl:block">
+      {chips.map((c, i) => (
+        <motion.div
+          key={c.name}
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 2.1 + i * 0.12, duration: 0.6, ease }}
+          className={`absolute ${c.pos} z-20`}
+        >
+          <div className="float-y glass flex items-center gap-2 rounded-full py-1.5 pl-1.5 pr-3.5" style={{ animationDelay: c.delay }}>
+            <span className="grid h-6 w-6 place-items-center rounded-full text-[10px] font-bold text-white" style={{ background: c.color }}>{c.name[0]}</span>
+            <span className="text-[11.5px] font-semibold text-ink">{c.name}</span>
+            <span className="font-mono text-[10.5px] text-ink-mute">{c.note}</span>
+          </div>
+        </motion.div>
+      ))}
+    </div>
+  )
+}
+
+/* ---------------------------------------------------------------- manifesto */
+function Manifesto() {
+  return (
+    <Section className="pb-28 pt-4">
+      <motion.div variants={reveal} className="glass relative overflow-hidden rounded-[32px] px-7 py-16 md:px-16 md:py-24">
+        <div aria-hidden className="prism" />
+        <div aria-hidden className="prism prism--thin" style={{ animationDelay: '-5s' }} />
+        <p className="label-mono relative"><b>01</b> Why we built it</p>
+        <ScrollHighlight className="relative mt-6 max-w-[860px] text-[clamp(1.35rem,1rem+1.3vw,2.15rem)] font-medium leading-[1.35] tracking-[-0.025em] text-ink">
+          Every placement season, thousands of students guess. They guess which drives they qualify for, which skill
+          matters, and why a shortlist never came. Cut-offs say who is out, never what would let them in. PlacementIQ
+          replaces the guess with a reason for every company, and a next step you can act on today.
+        </ScrollHighlight>
+      </motion.div>
+    </Section>
+  )
+}
+
+/* ---------------------------------------------------------------- roles */
+const roles = [
+  {
+    key: 'student', label: 'Students', title: 'A reason for every company, and the next step.',
+    points: ['Four eligibility stacks across 66 recruiters', 'What-If Simulator before you study', 'Resume and JD matching with AI rewrites'],
+    rows: [['Razorpay', 'Eligible', '#12b76a', 91], ['Atlassian', 'Nearly', '#f79009', 82], ['Google', 'Can become', '#2e90fa', 71], ['Jane Street', 'Stretch', '#f04438', 48]],
+  },
+  {
+    key: 'cell', label: 'Placement cells', title: 'Your whole batch, by year, branch and section.',
+    points: ['Roster-only access with roll-number sign-up', 'Filters by CGPA, backlogs, score and drive', 'Post drives and see who is eligible instantly'],
+    rows: [['CSE · 4th year · A', '62 students', '#6d4aff', 78], ['CSE · 4th year · B', '58 students', '#6d4aff', 71], ['ECE · 4th year', '64 students', '#38bdf8', 63], ['EEE · 3rd year', '49 students', '#38bdf8', 52]],
+  },
+  {
+    key: 'recruiter', label: 'Recruiters', title: 'Only your drives, only your applicants.',
+    points: ['Post roles with exact criteria', 'Ranked applicants with match breakdowns', 'Database-enforced isolation per company'],
+    rows: [['SDE Intern · 2027', '142 applied', '#12b76a', 88], ['Backend Engineer', '96 applied', '#12b76a', 74], ['Data Analyst', '51 applied', '#f79009', 61], ['QA Engineer', '33 applied', '#f79009', 45]],
+  },
+  {
+    key: 'admin', label: 'Platform admins', title: 'Every college, plan and quota in one place.',
+    points: ['Colleges, plans, seats and AI quotas', 'Margins and platform fees per college', 'Admins and placement-cell logins'],
+    rows: [['Anurag University', 'Pro · 1,000 seats', '#6d4aff', 84], ['College B', 'Basic · 600 seats', '#38bdf8', 58], ['College C', 'Trial · 30 days', '#8ef5d9', 22], ['College D', 'Enterprise', '#6d4aff', 91]],
+  },
+] as const
+
+function Roles() {
+  const [active, setActive] = useState<(typeof roles)[number]['key']>('student')
+  const role = roles.find((r) => r.key === active)!
+  return (
+    <Section id="roles" className="pb-28">
+      <motion.p variants={reveal} className="label-mono"><b>03</b> One platform, four desks</motion.p>
+      <motion.h2 variants={reveal} className="mt-3 max-w-[760px] text-[clamp(2rem,1.4rem+2vw,3.2rem)] font-semibold leading-[1.05] tracking-[-0.04em]">
+        Everyone sees <span className="font-display font-normal italic text-gradient">exactly</span> what they should.
+      </motion.h2>
+      <motion.div variants={reveal} role="tablist" aria-label="Roles" className="glass mt-8 inline-flex flex-wrap gap-1 rounded-full p-1">
+        {roles.map((r) => (
+          <button
+            key={r.key}
+            role="tab"
+            aria-selected={active === r.key}
+            onClick={() => setActive(r.key)}
+            className={`relative rounded-full px-4 py-2 text-[12.5px] font-semibold transition-colors ${active === r.key ? 'text-white' : 'text-ink-soft hover:text-ink'}`}
+          >
+            {active === r.key && <motion.span layoutId="role-pill" className="absolute inset-0 rounded-full bg-[oklch(0.2_0.045_285)]" transition={{ type: 'spring', stiffness: 380, damping: 32 }} />}
+            <span className="relative">{r.label}</span>
+          </button>
+        ))}
+      </motion.div>
+      <motion.div variants={reveal} className="mt-6 grid grid-cols-1 gap-4 lg:grid-cols-[0.9fr_1.1fr]">
+        <div className="card p-7">
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div key={role.key} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.3, ease }}>
+              <p className="text-[22px] font-semibold leading-[1.2] tracking-[-0.03em] text-ink">{role.title}</p>
+              <ul className="mt-5 space-y-3">
+                {role.points.map((pt, n) => (
+                  <li key={pt} className="flex items-start gap-3 text-[14px] text-ink-soft">
+                    <span className="mt-[2px] font-mono text-[11px] text-brand">0{n + 1}</span>
+                    {pt}
+                  </li>
+                ))}
+              </ul>
+              <Link to="/signup" className="btn-bracket mt-7 -ml-1">Open the {role.label.toLowerCase().replace(/s$/, '')} view →</Link>
+            </motion.div>
+          </AnimatePresence>
+        </div>
+        <div className="glass-strong hairline-grid relative overflow-hidden rounded-[22px] p-5">
+          <div className="mb-3 flex items-center justify-between">
+            <span className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-ink-faint">placementiq · {role.label.toLowerCase()}</span>
+            <span className="flex items-center gap-1.5 font-mono text-[10.5px] text-[#12b76a]"><span className="h-1.5 w-1.5 rounded-full bg-[#12b76a]" /> live</span>
+          </div>
+          <AnimatePresence mode="popLayout" initial={false}>
+            <motion.div key={role.key} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }} className="space-y-2.5">
+              {role.rows.map(([name, note, color, v], n) => (
+                <motion.div
+                  key={name}
+                  initial={{ opacity: 0, x: 14 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: n * 0.06, duration: 0.4, ease }}
+                  className="flex items-center gap-3 rounded-[14px] border border-white/80 bg-white/85 px-3.5 py-3 shadow-[var(--shadow-1)]"
+                >
+                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-[10px] text-[12px] font-bold text-white" style={{ background: color }}>{name[0]}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[13px] font-semibold text-ink">{name}</p>
+                    <p className="text-[11.5px] text-ink-mute">{note}</p>
+                  </div>
+                  <div className="w-[34%]">
+                    <span className="block h-[6px] overflow-hidden rounded-full bg-[oklch(0.92_0.015_285)]">
+                      <motion.span className="block h-full origin-left rounded-full" style={{ background: color }} initial={{ scaleX: 0 }} animate={{ scaleX: v / 100 }} transition={{ delay: 0.15 + n * 0.06, duration: 0.7, ease }} />
+                    </span>
+                  </div>
+                  <span className="w-9 text-right font-mono text-[12px] text-ink-soft">{v}%</span>
+                </motion.div>
+              ))}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      </motion.div>
+    </Section>
+  )
+}
+
 /* ---------------------------------------------------------------- page */
 export default function Landing() {
   const reduce = useReducedMotion()
@@ -278,22 +549,9 @@ export default function Landing() {
       <AnimatePresence>{intro && <LaunchIntro onDone={finishIntro} />}</AnimatePresence>
       <ScrollProgress />
 
-      {/* nav */}
-      <div className="sticky top-0 z-40 px-4 pt-4">
-        <nav className="glass mx-auto flex max-w-[1160px] items-center gap-6 rounded-[20px] px-4 py-2.5">
-          <Link to="/" aria-label="PlacementIQ home"><Logo size={32} tagline={false} /></Link>
-          <div className="ml-4 hidden items-center gap-5 text-[13px] font-medium text-ink-soft md:flex">
-            <a href="#features" className="hover:text-ink">Features</a>
-            <a href="#how" className="hover:text-ink">How it works</a>
-            <a href="#trust" className="hover:text-ink">Security</a>
-            <a href="#pricing" className="hover:text-ink">Pricing</a>
-          </div>
-          <div className="ml-auto flex items-center gap-2">
-            <Link to="/login" className="whitespace-nowrap rounded-[11px] px-3 py-2 text-[12.5px] font-semibold text-ink-soft hover:bg-white/70">Sign in</Link>
-            <Magnetic strength={0.2}><Link to="/signup" className="btn-primary whitespace-nowrap">Get started</Link></Magnetic>
-          </div>
-        </nav>
-      </div>
+      <Announcement />
+      <Nav />
+      {!intro && <AskDock />}
 
       <main className="relative z-10">
         {/* hero */}
@@ -308,11 +566,11 @@ export default function Landing() {
               <Glow size={560} className="right-[10%] top-[10%]" />
             )}
           </div>
+          {!intro && <FloatingChips />}
           <motion.div initial="hidden" animate={intro ? 'hidden' : 'show'} variants={stagger}>
-            <motion.span variants={reveal} className="glass inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[11.5px] font-semibold text-brand-dark">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#12b76a] shadow-[0_0_0_4px_rgba(18,183,106,.18)]" />
-              Live eligibility engine · AI resume intelligence
-            </motion.span>
+            <motion.p variants={reveal} className="label-mono">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#12b76a] shadow-[0_0_0_4px_rgba(18,183,106,.18)]" /> Live eligibility engine
+            </motion.p>
             <motion.h1 variants={reveal} className="mt-6 text-[clamp(2.6rem,1.6rem+3.6vw,4.6rem)] font-semibold leading-[0.98] tracking-[-0.045em] text-ink">
               Placement season,
               <br />
@@ -322,15 +580,18 @@ export default function Landing() {
               PlacementIQ scores your real profile against every campus recruiter, reads your resume like an ATS, syncs your coding
               platforms and tells you the one thing to fix next for each company.
             </motion.p>
-            <motion.div variants={reveal} className="mt-8 flex flex-wrap items-center gap-3">
-              <Magnetic><Link to="/signup" className="btn-primary h-[46px] px-6 text-[14px]">Start free — it takes 2 minutes</Link></Magnetic>
-              <a href="#how" className="btn-glass h-[46px] px-5 text-[14px]">See how it works</a>
+            <motion.div variants={reveal} className="mt-8">
+              <AskBar />
+            </motion.div>
+            <motion.div variants={reveal} className="mt-5 flex flex-wrap items-center gap-3">
+              <Magnetic><Link to="/signup" className="btn-ink">Start free <span className="kbd">G</span></Link></Magnetic>
+              <a href="#how" className="btn-bracket">See how it works</a>
             </motion.div>
             <motion.div variants={reveal} className="mt-10 flex items-center gap-6 text-[12px] text-ink-mute">
               {[['66', 'recruiters scored'], ['4', 'platforms synced'], ['< 10s', 'resume analysis']].map(([n, l]) => (
                 <div key={l}>
                   <p className="text-[22px] font-semibold tracking-[-0.03em] text-ink"><AnimatedValue value={n} /></p>
-                  <p>{l}</p>
+                  <p className="font-mono text-[10.5px] uppercase tracking-[0.1em] text-ink-faint">{l}</p>
                 </div>
               ))}
             </motion.div>
@@ -339,15 +600,19 @@ export default function Landing() {
         </section>
 
         {/* marquee */}
+        <p className="mb-3 text-center font-mono text-[10.5px] uppercase tracking-[0.18em] text-ink-faint">Every student scored against 66 recruiters</p>
         <div className="relative border-y border-white/60 bg-white/30 py-5 backdrop-blur-md [mask-image:linear-gradient(90deg,transparent,#000_12%,#000_88%,transparent)]">
           <div className="marquee__track flex w-max gap-10 whitespace-nowrap text-[15px] font-semibold tracking-[-0.01em] text-ink-faint">
             {[...names, ...names].map((n, i) => <span key={i}>{n}</span>)}
           </div>
         </div>
 
+        <div className="h-24" />
+        <Manifesto />
+
         {/* features */}
-        <Section id="features" className="py-28">
-          <motion.p variants={reveal} className="text-[12px] font-semibold uppercase tracking-[0.18em] text-brand">Everything, end to end</motion.p>
+        <Section id="features" className="pb-28">
+          <motion.p variants={reveal} className="label-mono"><b>02</b> Everything, end to end</motion.p>
           <motion.h2 variants={reveal} className="mt-3 max-w-[720px] text-[clamp(2rem,1.4rem+2vw,3.2rem)] font-semibold leading-[1.05] tracking-[-0.04em]">
             One profile. Every recruiter. <span className="font-display font-normal italic text-ink-mute">No guesswork.</span>
           </motion.h2>
@@ -408,9 +673,11 @@ export default function Landing() {
           </div>
         </Section>
 
+        <Roles />
+
         {/* how it works */}
         <Section id="how" className="pb-28">
-          <motion.p variants={reveal} className="text-[12px] font-semibold uppercase tracking-[0.18em] text-brand">How it works</motion.p>
+          <motion.p variants={reveal} className="label-mono"><b>04</b> How it works</motion.p>
           <TextReveal className="mt-3 text-[clamp(2rem,1.4rem+2vw,3.2rem)] font-semibold leading-[1.05] tracking-[-0.04em]">From sign-up to offer, in four moves.</TextReveal>
           <div className="relative mt-14 grid grid-cols-1 gap-5 md:grid-cols-4">
             <motion.span
@@ -419,7 +686,7 @@ export default function Landing() {
             />
             {steps.map(([t, b], i) => (
               <motion.div key={t} variants={reveal} className="relative">
-                <span className="glass-strong relative grid h-14 w-14 place-items-center rounded-[18px] text-[18px] font-semibold text-brand-dark">{i + 1}</span>
+                <span className="glass-strong relative grid h-14 w-14 place-items-center rounded-[18px] font-mono text-[15px] font-medium text-brand-dark">0{i + 1}</span>
                 <p className="mt-5 text-[16px] font-semibold tracking-[-0.02em]">{t}</p>
                 <p className="mt-1.5 text-[13px] leading-[1.6] text-ink-mute">{b}</p>
               </motion.div>
@@ -431,7 +698,7 @@ export default function Landing() {
         <Section id="trust" className="pb-28">
           <motion.div variants={reveal} className="glass-dark relative overflow-hidden rounded-[30px] p-10 text-white md:p-14">
             <div className="pointer-events-none absolute -right-20 -top-20 h-80 w-80 rounded-full bg-[oklch(0.6_0.22_285)] opacity-40 blur-[90px]" />
-            <p className="relative text-[12px] font-semibold uppercase tracking-[0.18em] text-white/50">Under the hood</p>
+            <p className="label-mono relative !text-white/55"><b className="!text-[#8ef5d9]">05</b> Under the hood</p>
             <h2 className="relative mt-3 max-w-[640px] text-[clamp(1.8rem,1.3rem+1.6vw,2.8rem)] font-semibold leading-[1.08] tracking-[-0.04em]">
               Your data is structured, private and yours.
             </h2>
@@ -462,8 +729,8 @@ export default function Landing() {
               </h2>
               <p className="mx-auto mt-4 max-w-[520px] text-[15px] text-ink-mute">Free for students. Your first full analysis takes about two minutes.</p>
               <div className="mt-8 flex justify-center gap-3">
-                <Link to="/signup" className="btn-primary h-[46px] px-6 text-[14px]">Create your account</Link>
-                <Link to="/login" className="btn-glass h-[46px] px-5 text-[14px]">I already have one</Link>
+                <Link to="/signup" className="btn-ink">Create your account <span className="kbd">G</span></Link>
+                <Link to="/login" className="btn-bracket">I already have one</Link>
               </div>
             </div>
           </motion.div>

@@ -112,6 +112,75 @@ h1, h2, h3 { text-wrap: balance; letter-spacing: -0.02em; }
     transition: border-color var(--dur-fast), box-shadow var(--dur-fast), background var(--dur-fast);
   }
   .field:focus { background: #fff; border-color: oklch(0.75 0.12 285); box-shadow: 0 0 0 4px oklch(0.6 0.22 285 / .12); }
+
+  /* ---------- landing language: ink pills, keycaps, crop-mark buttons, mono labels ---------- */
+  /* Dark pill CTA with a light sweep on hover. */
+  .btn-ink {
+    @apply relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-full px-5 text-[13px] font-semibold text-white;
+    height: 44px;
+    background: linear-gradient(180deg, oklch(0.27 0.05 285), oklch(0.17 0.04 285));
+    box-shadow: inset 0 1px 0 oklch(1 0 0 / .14), 0 0 0 1px oklch(0.12 0.03 285), 0 10px 24px oklch(0.2 0.06 285 / .28);
+    transition: transform var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+  }
+  .btn-ink::after {
+    content: ''; position: absolute; inset: 0; pointer-events: none;
+    background: linear-gradient(105deg, transparent 35%, oklch(1 0 0 / .22) 50%, transparent 65%);
+    transform: translateX(-120%); transition: transform 700ms var(--ease-out);
+  }
+  .btn-ink:hover::after { transform: translateX(120%); }
+  .btn-ink:hover { box-shadow: inset 0 1px 0 oklch(1 0 0 / .18), 0 0 0 1px oklch(0.12 0.03 285), 0 14px 30px oklch(0.45 0.2 285 / .35); }
+  .btn-ink:active { transform: scale(.97); }
+  .btn-ink:focus-visible, .btn-bracket:focus-visible { outline: 2px solid oklch(0.6 0.22 285); outline-offset: 3px; }
+
+  /* Keyboard hint chip inside buttons and the nav. */
+  .kbd {
+    @apply inline-grid h-[20px] min-w-[20px] place-items-center rounded-[6px] px-1 font-mono text-[10.5px] font-medium;
+    background: oklch(1 0 0 / .14); box-shadow: inset 0 0 0 1px oklch(1 0 0 / .18), inset 0 -1px 0 oklch(0 0 0 / .25);
+  }
+  .kbd-light { background: oklch(1 0 0 / .8); color: oklch(0.45 0.05 285); box-shadow: inset 0 0 0 1px oklch(0.85 0.03 285), inset 0 -1px 0 oklch(0.85 0.03 285); }
+
+  /* Secondary action framed by four corner marks instead of a box. */
+  .btn-bracket {
+    @apply relative inline-flex items-center justify-center gap-2 px-5 text-[13px] font-semibold text-ink;
+    height: 44px;
+    --c: oklch(0.45 0.08 285);
+    background:
+      linear-gradient(var(--c), var(--c)) top left / 9px 1.5px, linear-gradient(var(--c), var(--c)) top left / 1.5px 9px,
+      linear-gradient(var(--c), var(--c)) top right / 9px 1.5px, linear-gradient(var(--c), var(--c)) top right / 1.5px 9px,
+      linear-gradient(var(--c), var(--c)) bottom left / 9px 1.5px, linear-gradient(var(--c), var(--c)) bottom left / 1.5px 9px,
+      linear-gradient(var(--c), var(--c)) bottom right / 9px 1.5px, linear-gradient(var(--c), var(--c)) bottom right / 1.5px 9px;
+    background-repeat: no-repeat;
+    transition: padding var(--dur-fast) var(--ease-out), color var(--dur-fast);
+  }
+  .btn-bracket:hover { --c: oklch(0.55 0.22 285); color: oklch(0.45 0.22 285); padding-inline: 1.6rem; }
+
+  /* Numbered mono section label: "02 · How it works". */
+  .label-mono { @apply inline-flex items-center gap-2.5 font-mono text-[11px] font-medium uppercase tracking-[0.16em] text-ink-mute; }
+  .label-mono > b { @apply font-medium text-brand; }
+  .label-mono::after { content: ''; display: block; width: 28px; height: 1px; background: currentColor; opacity: .4; }
+}
+
+/* Prismatic light ribbon: a blurred spectral band that drifts slowly across a frosted card. Decorative only. */
+.prism {
+  position: absolute; left: -20%; right: -20%; top: 50%; height: 140px; pointer-events: none;
+  background: linear-gradient(90deg, transparent, oklch(0.75 0.17 25 / .55) 18%, oklch(0.85 0.16 80 / .55) 32%, oklch(0.85 0.14 160 / .45) 46%, oklch(0.72 0.15 230 / .55) 60%, oklch(0.6 0.22 285 / .6) 74%, transparent);
+  filter: blur(28px); transform: translateY(-50%) rotate(-6deg); mix-blend-mode: multiply;
+  animation: prism-drift 14s var(--ease-inout) infinite alternate;
+}
+.prism--thin { height: 3px; filter: blur(1.5px); opacity: .9; mix-blend-mode: normal; }
+@keyframes prism-drift {
+  from { transform: translate3d(-6%, -50%, 0) rotate(-7deg); }
+  to { transform: translate3d(6%, -42%, 0) rotate(-3deg); }
+}
+
+/* Slow vertical float for the decorative chips around the hero. */
+@keyframes float-y { from { transform: translateY(-6px); } to { transform: translateY(6px); } }
+.float-y { animation: float-y 5s var(--ease-inout) infinite alternate; }
+
+/* Thin grid of hairlines behind technical sections. */
+.hairline-grid {
+  background-image: linear-gradient(oklch(0.6 0.05 285 / .08) 1px, transparent 1px), linear-gradient(90deg, oklch(0.6 0.05 285 / .08) 1px, transparent 1px);
+  background-size: 56px 56px;
 }
 
 /* animated conic border for hero highlights */
@@ -140,7 +209,8 @@ h1, h2, h3 { text-wrap: balance; letter-spacing: -0.02em; }
 .scroll-thin::-webkit-scrollbar-track { background: transparent; }
 
 @media (prefers-reduced-motion: reduce) {
-  .aurora__blob, .marquee__track, .gradient-border::before, .shimmer::after { animation: none !important; }
+  .aurora__blob, .marquee__track, .gradient-border::before, .shimmer::after, .prism, .float-y { animation: none !important; }
+  .btn-ink::after { display: none; }
   .card-hover:hover { transform: none; }
   html { scroll-behavior: auto; }
 }
