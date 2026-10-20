@@ -557,7 +557,7 @@ function JobForm({ initial, onDone }: { initial?: JobPosting; onDone: () => void
       ? await supabase.from('job_postings').update(row).eq('id', initial.id)
       : await supabase.from('job_postings').insert({ ...row, created_by: session?.user.id })
     setBusy(false)
-    if (error) return showToast(`Could not save: ${error.message}`)
+    if (error) return showToast(`Could not save: ${errMsg(error)}`)
     showToast(initial ? 'Drive updated.' : row.status === 'open' ? 'Drive posted — students have been notified.' : 'Draft saved.')
     onDone()
   }
@@ -668,13 +668,13 @@ export function AdminJobs() {
   const toggle = async (j: JobPosting) => {
     const status = j.status === 'open' ? 'closed' : 'open'
     const { error } = await supabase.from('job_postings').update({ status }).eq('id', j.id)
-    if (error) return showToast(error.message)
+    if (error) return showToast(errMsg(error))
     reload()
   }
   const remove = async (j: JobPosting) => {
     if (!window.confirm(`Delete the ${j.company} drive and all its applications? This cannot be undone.`)) return
     const { error } = await supabase.from('job_postings').delete().eq('id', j.id)
-    if (error) return showToast(error.message)
+    if (error) return showToast(errMsg(error))
     setSelectedId(null)
     reload()
   }

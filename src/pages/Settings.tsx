@@ -38,7 +38,7 @@ export default function Settings() {
     setBusy(true)
     const { error } = await supabase.auth.updateUser({ password: pw.next })
     setBusy(false)
-    if (error) return showToast(`Could not change password: ${error.message}`)
+    if (error) return showToast(`Could not change password: ${errMsg(error)}`)
     setPw({ next: '', confirm: '' })
     showToast('Password updated.')
   }

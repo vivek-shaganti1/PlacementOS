@@ -3,7 +3,7 @@ import { completeness } from '../components/ProfileExtras'
 import { useAuth } from './auth'
 import { evaluateAll, readinessOf } from './eligibility'
 import { assembleProfile, RELATED, type RelatedRows } from './profileShape'
-import { supabase, type Organization, type Profile } from './supabase'
+import { supabase, type Organization, type Profile, errMsg } from './supabase'
 
 export type StudentRow = {
   profile: Profile
@@ -51,7 +51,7 @@ export function useStudents() {
     ])
     const err = profiles.error ?? roles.error ?? related.find((r) => r.error)?.error
     if (err) {
-      setError(err.message)
+      setError(errMsg(err))
       setLoading(false)
       return
     }

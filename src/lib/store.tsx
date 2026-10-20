@@ -103,7 +103,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ])
       if (!alive) return
       const firstErr = [s, a, r, b, c, at, n, ch].find((x) => x.error)?.error
-      if (firstErr) showToast(`Could not load your data: ${firstErr.message}`)
+      if (firstErr) showToast(`Could not load your data: ${errMsg(firstErr)}`)
       setSaved((s.data ?? []).map((x) => x.company_id))
       setApplications((a.data ?? []) as Application[])
       setRoadmapDone((r.data ?? []).map((x) => x.item))

@@ -46,7 +46,8 @@ insert into t_results values ('T05 roles assigned at sign-up', (
 select set_config('request.jwt.claims', '{"sub":"a1000000-0000-4000-8000-0000000000a1","role":"authenticated"}', true);
 set local role authenticated;
 insert into t_results values ('T06 student sees only own profile', (select count(*) = 1 from public.profiles));
-insert into t_results values ('T07 student sees only own college drives', (select count(*) = 1 and bool_and(company = 'Acme') from public.job_postings));
+insert into t_results values ('T07 student sees only own college drives', (
+  select count(*) >= 1 and bool_and(org_id = (select org_id from public.profiles where id = 'a1000000-0000-4000-8000-0000000000a1')) from public.job_postings));
 insert into t_results values ('T08 student cannot read the roster', (select count(*) = 0 from public.org_students));
 do $$ begin
   update public.profiles set org_id = '0b000000-0000-4000-8000-00000000000b' where id = 'a1000000-0000-4000-8000-0000000000a1';
@@ -96,6 +97,115 @@ do $$ begin
   values ((select org_id from public.org_recruiters limit 1), 'OtherCo', 'SDE', 'x', 'Full Time', 'x', 6, 1, 50, 50, 0, 0, '{}', '{}', '{}', 'open', 'cc000000-0000-4000-8000-0000000000cc');
   insert into t_results values ('T19 recruiter cannot post under another company', false);
 exception when others then insert into t_results values ('T19 recruiter cannot post under another company', true);
+end $$;
+reset role;
+
+
+-- ---------------------------------------------------------------- October 2026 audit: exploit attempts must fail
+insert into private.platform_admin_emails (email) values ('pending.boss@platform.example');
+-- recruiter: rewrite an application's student to read someone else
+select set_config('request.jwt.claims', '{"sub":"cc000000-0000-4000-8000-0000000000cc","role":"authenticated"}', true);
+set local role authenticated;
+do $$ begin
+  update public.job_applications set user_id = 'b1000000-0000-4000-8000-0000000000b1' where job_id = 'd1000000-0000-4000-8000-0000000000d1';
+  insert into t_results values ('T20 recruiter cannot rewrite an application to another student', false);
+exception when others then insert into t_results values ('T20 recruiter cannot rewrite an application to another student', true);
+end $$;
+insert into t_results values ('T21 recruiter cannot see a student of another college', (select count(*) = 0 from public.profiles where id = 'b1000000-0000-4000-8000-0000000000b1'));
+reset role;
+
+-- placement cell: point a drive at itself as recruiter, and move an application
+select set_config('request.jwt.claims', '{"sub":"ad000000-0000-4000-8000-0000000000ad","role":"authenticated"}', true);
+set local role authenticated;
+do $$ begin
+  update public.job_postings set recruiter_id = 'ad000000-0000-4000-8000-0000000000ad' where id = 'd1000000-0000-4000-8000-0000000000d1';
+  insert into t_results values ('T22 placement cell cannot make itself a drive recruiter', (select recruiter_id = 'cc000000-0000-4000-8000-0000000000cc' from public.job_postings where id = 'd1000000-0000-4000-8000-0000000000d1'));
+exception when others then insert into t_results values ('T22 placement cell cannot make itself a drive recruiter', true);
+end $$;
+do $$ begin
+  update public.job_applications set user_id = 'b1000000-0000-4000-8000-0000000000b1' where job_id = 'd1000000-0000-4000-8000-0000000000d1';
+  insert into t_results values ('T23 placement cell cannot move an application to another student', false);
+exception when others then insert into t_results values ('T23 placement cell cannot move an application to another student', true);
+end $$;
+insert into t_results values ('T24 can_provision refuses a pending admin email of another college', (select not public.can_provision((select id from public.organizations where name = 'Anurag University'), 'tpo@beta.example')));
+insert into t_results values ('T25 can_provision refuses a platform admin email', (select not public.can_provision((select id from public.organizations where name = 'Anurag University'), 'pending.boss@platform.example')));
+insert into t_results values ('T26 can_provision allows a brand-new email for own college', (select public.can_provision((select id from public.organizations where name = 'Anurag University'), 'fresh.student@anurag.example')));
+-- rostering the recruiter's email as a "student" must not pull that account into the college
+insert into public.org_students (org_id, email, full_name) values ((select id from public.organizations where name = 'Anurag University'), 'hr@acme.example', 'Not a student');
+reset role;
+insert into t_results values ('T27 roster entry never moves an account that holds a role', (select org_id is null from public.profiles where id = 'cc000000-0000-4000-8000-0000000000cc'));
+
+-- student: edit own application, forge links, change roster fields, read org pricing, apply below minimums
+update public.job_postings set min_cgpa = 9.9 where id = 'd2000000-0000-4000-8000-0000000000d2';
+insert into public.job_postings (id, org_id, company, role, location, job_type, description, min_cgpa, max_backlogs, min_class_x, min_class_xii, min_internships, min_projects, branches, batches, skill_requirements, status)
+values ('d3000000-0000-4000-8000-0000000000d3', (select id from public.organizations where name = 'Anurag University'), 'HardCo', 'SDE', 'x', 'Full Time', 'x', 9.99, 0, 0, 0, 0, 0, '{}', '{}', '{}', 'open');
+select set_config('request.jwt.claims', '{"sub":"a1000000-0000-4000-8000-0000000000a1","role":"authenticated"}', true);
+set local role authenticated;
+do $$ begin
+  update public.job_applications set ai_fit = 100 where user_id = 'a1000000-0000-4000-8000-0000000000a1';
+  insert into t_results values ('T28 student cannot set their own AI fit', (select coalesce(ai_fit, 0) <> 100 from public.job_applications where user_id = 'a1000000-0000-4000-8000-0000000000a1' limit 1));
+exception when others then insert into t_results values ('T28 student cannot set their own AI fit', true);
+end $$;
+do $$ begin
+  insert into public.job_applications (job_id, user_id, status) values ('d3000000-0000-4000-8000-0000000000d3', 'a1000000-0000-4000-8000-0000000000a1', 'applied');
+  insert into t_results values ('T29 student cannot apply below a drive''s minimum CGPA', false);
+exception when others then insert into t_results values ('T29 student cannot apply below a drive''s minimum CGPA', true);
+end $$;
+do $$ begin
+  update public.profiles set linkedin_url = 'javascript:alert(1)' where id = 'a1000000-0000-4000-8000-0000000000a1';
+  insert into t_results values ('T30 javascript: links are rejected', false);
+exception when others then insert into t_results values ('T30 javascript: links are rejected', true);
+end $$;
+update public.profiles set roll_number = 'HACKED' where id = 'a1000000-0000-4000-8000-0000000000a1';
+insert into t_results values ('T31 student cannot change their roster roll number', (select roll_number <> 'HACKED' from public.profiles where id = 'a1000000-0000-4000-8000-0000000000a1'));
+insert into t_results values ('T32 student cannot read college pricing or admin emails', (select count(*) = 0 from public.organizations));
+insert into t_results values ('T33 student still sees their college name', (select count(*) = 1 from public.my_org()));
+reset role;
+
+-- suspended college: AI refused
+update public.organizations set status = 'suspended', ai_monthly_limit = 50 where name = 'Anurag University';
+select set_config('request.jwt.claims', '{"sub":"a1000000-0000-4000-8000-0000000000a1","role":"authenticated"}', true);
+set local role authenticated;
+do $$ begin
+  perform public.consume_ai('chat');
+  insert into t_results values ('T34 suspended college cannot spend AI actions', false);
+exception when others then insert into t_results values ('T34 suspended college cannot spend AI actions', true);
+end $$;
+do $$ begin
+  perform public.signup_attempt('x@y.example', '1.2.3.4');
+  insert into t_results values ('T35 signed-in users cannot call the sign-up limiter', false);
+exception when others then insert into t_results values ('T35 signed-in users cannot call the sign-up limiter', true);
+end $$;
+reset role;
+update public.organizations set status = 'active' where name = 'Anurag University';
+
+-- private profile hidden from the drive's recruiter
+update public.profiles set visibility = 'private' where id = 'a1000000-0000-4000-8000-0000000000a1';
+select set_config('request.jwt.claims', '{"sub":"cc000000-0000-4000-8000-0000000000cc","role":"authenticated"}', true);
+set local role authenticated;
+insert into t_results values ('T36 private profile hidden from the recruiter', (select count(*) = 0 from public.profiles where id = 'a1000000-0000-4000-8000-0000000000a1'));
+reset role;
+
+-- sign-up limiter: 5 attempts per email per hour
+insert into t_results values ('T37 sign-up limiter blocks the 6th attempt for one email', (
+  select array_agg(public.signup_attempt('limit@test.example', '9.9.9.9')) = array[true, true, true, true, true, false]
+  from generate_series(1, 6)));
+
+
+-- notifications: real events still notify; students cannot fabricate one
+update public.profiles set visibility = 'college' where id = 'a1000000-0000-4000-8000-0000000000a1';
+select set_config('request.jwt.claims', '{"sub":"cc000000-0000-4000-8000-0000000000cc","role":"authenticated"}', true);
+set local role authenticated;
+update public.job_applications set status = 'shortlisted' where job_id = 'd1000000-0000-4000-8000-0000000000d1' and user_id = 'a1000000-0000-4000-8000-0000000000a1';
+reset role;
+insert into t_results values ('T38 a status change by the recruiter still notifies the student', (
+  select count(*) >= 1 from public.notifications where user_id = 'a1000000-0000-4000-8000-0000000000a1' and created_at >= now() - interval '1 minute'));
+select set_config('request.jwt.claims', '{"sub":"a1000000-0000-4000-8000-0000000000a1","role":"authenticated"}', true);
+set local role authenticated;
+do $$ begin
+  insert into public.notifications (user_id, title, body) values ('a1000000-0000-4000-8000-0000000000a1', 'Offer!', 'fake');
+  insert into t_results values ('T39 students cannot create their own notifications', false);
+exception when others then insert into t_results values ('T39 students cannot create their own notifications', true);
 end $$;
 reset role;
 

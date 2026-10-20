@@ -32,7 +32,8 @@ export default function Jobs() {
     setBusy(`apply-${job.id}`)
     const { error } = await supabase.from('job_applications').insert({ job_id: job.id, user_id: p.id, match, status: 'applied' })
     setBusy(null)
-    if (error) return showToast(`Could not apply: ${error.message}`)
+    // The database re-checks the drive is open, in your college, and that you meet its CGPA, backlog, Class X/XII and batch minimums.
+    if (error) return showToast(error.code === '42501' ? 'You do not meet this drive\'s minimum requirements, or it has closed.' : `Could not apply: ${errMsg(error)}`)
     showToast(`Applied to ${job.company}. The placement cell can now see your profile.`)
     reload()
   }
@@ -40,7 +41,7 @@ export default function Jobs() {
   const withdraw = async (job: JobPosting) => {
     if (!window.confirm(`Withdraw your application to ${job.company}?`)) return
     const { error } = await supabase.from('job_applications').delete().eq('job_id', job.id).eq('user_id', p.id)
-    if (error) return showToast(`Could not withdraw: ${error.message}`)
+    if (error) return showToast(`Could not withdraw: ${errMsg(error)}`)
     reload()
   }
 

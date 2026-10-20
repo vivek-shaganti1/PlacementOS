@@ -107,7 +107,7 @@ export function AdminRoster() {
     if (!orgId) return
     setLoading(true)
     const { data, error } = await supabase.from('org_students').select('*').eq('org_id', orgId).order('created_at', { ascending: false })
-    if (error) showToast(error.message)
+    if (error) showToast(errMsg(error))
     setRows((data ?? []) as RosterRow[])
     setLoading(false)
   }, [orgId, showToast])
@@ -160,7 +160,7 @@ export function AdminRoster() {
   const remove = async (r: RosterRow) => {
     if (!window.confirm(`Remove ${r.email} from the roster? They lose access to PlacementIQ; their account is not deleted.`)) return
     const { error } = await supabase.from('org_students').delete().eq('id', r.id)
-    if (error) return showToast(error.message)
+    if (error) return showToast(errMsg(error))
     load()
   }
 
@@ -376,7 +376,7 @@ export function AdminTeam() {
     if (!orgId) return
     setLoading(true)
     const { data, error } = await supabase.rpc('org_admins', { target_org: orgId })
-    if (error) showToast(error.message)
+    if (error) showToast(errMsg(error))
     setAdmins((data ?? []) as AdminRow[])
     setLoading(false)
   }, [orgId, showToast])
@@ -651,7 +651,7 @@ export function SuperOrgs() {
   const remove = async (o: Organization) => {
     if (!window.confirm(`Delete ${o.name}? Its roster, drives and admin roles are removed, and its students lose access.`)) return
     const { error } = await supabase.from('organizations').delete().eq('id', o.id)
-    if (error) return showToast(error.message)
+    if (error) return showToast(errMsg(error))
     reload()
   }
 
