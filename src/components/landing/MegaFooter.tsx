@@ -18,7 +18,8 @@ const track = (e: PointerEvent<HTMLElement>) => {
 }
 
 function FooterLink({ to, children }: { to: string; children: string }) {
-  const cls = 'group inline-flex items-center gap-1.5 text-[13.5px] text-white/60 transition-colors hover:text-white'
+  // py-1.5 gives every link a finger-sized (about 32 px) tap target on phones.
+  const cls = 'group inline-flex items-center gap-1.5 py-1.5 text-[13.5px] text-white/60 transition-colors hover:text-white'
   const inner = (
     <>
       <span className="h-px w-0 bg-[#8ef5d9] transition-all duration-300 group-hover:w-3" />
@@ -55,7 +56,7 @@ export function MegaFooter() {
           {columns.map((c) => (
             <nav key={c.title} aria-label={c.title}>
               <p className="font-mono text-[10.5px] uppercase tracking-[0.18em] text-white/35">{c.title}</p>
-              <ul className="mt-4 space-y-3">
+              <ul className="mt-3 space-y-1">
                 {c.links.map(([to, label]) => <li key={label}><FooterLink to={to}>{label}</FooterLink></li>)}
               </ul>
             </nav>
@@ -83,9 +84,9 @@ export function MegaFooter() {
         <span>© {new Date().getFullYear()} PlacementIQ</span>
         <span className="hidden sm:inline">Built for campus placement season</span>
         <div className="ml-auto flex flex-wrap items-center gap-5">
-          <Link to="/privacy" className="hover:text-white">Privacy</Link>
-          <Link to="/terms" className="hover:text-white">Terms</Link>
-          <Link to="/security" className="hover:text-white">Security</Link>
+          <Link to="/privacy" className="py-2 hover:text-white">Privacy</Link>
+          <Link to="/terms" className="py-2 hover:text-white">Terms</Link>
+          <Link to="/security" className="py-2 hover:text-white">Security</Link>
           <button onClick={toTop} className="group inline-flex items-center gap-1.5 rounded-full border border-white/15 px-3 py-1.5 text-white/70 transition hover:border-white/40 hover:text-white">
             Back to top <span className="transition-transform duration-200 group-hover:-translate-y-0.5">↑</span>
           </button>

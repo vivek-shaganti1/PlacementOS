@@ -167,7 +167,7 @@ function ProductPreview() {
           <span className="ml-3 rounded-full bg-white/70 px-3 py-0.5 text-[10.5px] text-ink-faint">placementiq.app/eligibility</span>
         </div>
         <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-[1fr_150px]">
-          <div className="grid grid-cols-4 gap-2.5">
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
             {buckets.map((b, bi) => (
               <div key={b.name}>
                 <div className="rounded-[12px] px-2 py-2 text-center" style={{ background: `${b.color}14`, border: `1px solid ${b.color}33` }}>
@@ -261,16 +261,16 @@ function Nav() {
   const pill = 'glass flex h-[46px] items-center rounded-full px-2'
   return (
     <div className="sticky top-0 z-40 px-4 pt-3">
-      <nav aria-label="Main" className="mx-auto flex max-w-[1160px] items-center justify-between gap-3 md:grid md:grid-cols-[1fr_auto_1fr]">
-        <div className={`${pill} hidden justify-self-start gap-0.5 md:flex`}>
+      <nav aria-label="Main" className="mx-auto flex max-w-[1160px] items-center justify-between gap-3 lg:grid lg:grid-cols-[1fr_auto_1fr]">
+        <div className={`${pill} hidden justify-self-start gap-0.5 lg:flex`}>
           {[['#features', 'Features'], ['#roles', 'For colleges'], ['#how', 'How it works'], ['#pricing', 'Pricing']].map(([h, l]) => (
             <a key={h} href={h} className="rounded-full px-3.5 py-1.5 text-[12.5px] font-medium text-ink-soft transition hover:bg-white/80 hover:text-ink">{l}</a>
           ))}
         </div>
-        <Link to="/" aria-label="PlacementIQ home" className={`${pill} px-4 md:col-start-2 md:justify-self-center`}>
+        <Link to="/" aria-label="PlacementIQ home" className={`${pill} px-4 lg:col-start-2 lg:justify-self-center`}>
           <Logo size={28} tagline={false} />
         </Link>
-        <div className={`${pill} gap-1 md:col-start-3 md:justify-self-end`}>
+        <div className={`${pill} gap-1 lg:col-start-3 lg:justify-self-end`}>
           <Link to="/login" className="hidden items-center gap-2 whitespace-nowrap rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold text-ink-soft hover:bg-white/80 hover:text-ink sm:inline-flex">
             Sign in <span className="kbd kbd-light">S</span>
           </Link>
@@ -473,7 +473,7 @@ function Roles() {
       <motion.h2 variants={reveal} className="mt-3 max-w-[760px] text-[clamp(2rem,1.4rem+2vw,3.2rem)] font-semibold leading-[1.05] tracking-[-0.04em]">
         Everyone sees <span className="font-display font-normal italic text-gradient">exactly</span> what they should.
       </motion.h2>
-      <motion.div variants={reveal} role="tablist" aria-label="Roles" onPointerEnter={() => setPaused(true)} onPointerLeave={() => setPaused(false)} onFocus={() => setPaused(true)} onBlur={() => setPaused(false)} className="glass mt-8 inline-flex flex-wrap gap-1 rounded-full p-1">
+      <motion.div variants={reveal} role="tablist" aria-label="Roles" onPointerEnter={() => setPaused(true)} onPointerLeave={() => setPaused(false)} onFocus={() => setPaused(true)} onBlur={() => setPaused(false)} className="glass scroll-thin mt-8 inline-flex max-w-full gap-1 overflow-x-auto rounded-full p-1 [scrollbar-width:none]">
         {roles.map((r) => (
           <button
             key={r.key}
@@ -483,7 +483,7 @@ function Roles() {
               setAuto(false)
               setActive(r.key)
             }}
-            className={`relative rounded-full px-4 py-2 text-[12.5px] font-semibold transition-colors ${active === r.key ? 'text-white' : 'text-ink-soft hover:text-ink'}`}
+            className={`relative shrink-0 whitespace-nowrap rounded-full px-4 py-2 text-[12.5px] font-semibold transition-colors ${active === r.key ? 'text-white' : 'text-ink-soft hover:text-ink'}`}
           >
             {active === r.key && (
               <motion.span layoutId="role-pill" className="absolute inset-0 overflow-hidden rounded-full bg-[oklch(0.2_0.045_285)]" transition={{ type: 'spring', stiffness: 380, damping: 32 }}>
@@ -538,7 +538,7 @@ function Roles() {
                     <p className="truncate text-[13px] font-semibold text-ink">{name}</p>
                     <p className="text-[11.5px] text-ink-mute">{note}</p>
                   </div>
-                  <div className="w-[34%]">
+                  <div className="hidden w-[34%] sm:block">
                     <span className="block h-[6px] overflow-hidden rounded-full bg-[oklch(0.92_0.015_285)]">
                       <motion.span className="block h-full origin-left rounded-full" style={{ background: color }} initial={{ scaleX: 0 }} animate={{ scaleX: v / 100 }} transition={{ delay: 0.15 + n * 0.06, duration: 0.7, ease }} />
                     </span>
@@ -590,7 +590,7 @@ export default function Landing() {
 
       <main className="relative z-10">
         {/* hero */}
-        <section className="relative mx-auto grid max-w-[1160px] grid-cols-1 items-center gap-14 px-6 pb-24 pt-16 lg:grid-cols-[0.85fr_1.15fr]">
+        <section className="relative mx-auto grid max-w-[1160px] grid-cols-1 items-center gap-10 px-6 pb-16 pt-12 sm:gap-14 sm:pb-24 sm:pt-16 lg:grid-cols-[0.85fr_1.15fr]">
           {/* 3D brand orb behind the product preview; a static glow everywhere WebGL is off. */}
           <div aria-hidden className="pointer-events-none absolute inset-y-0 right-[-8%] -z-10 hidden w-[70%] lg:block">
             {!intro && intensity[tier].webgl ? (
@@ -642,7 +642,7 @@ export default function Landing() {
           </div>
         </div>
 
-        <div className="h-24" />
+        <div className="h-12 sm:h-24" />
         <Manifesto />
 
         {/* features */}

@@ -58,7 +58,7 @@ export function Card({ title, action, children, className, icon }: { title?: str
   return (
     <motion.section {...revealProps} onPointerMove={trackSpotlight} className={`card spotlight min-w-0 p-4 sm:p-5 ${className ?? ''}`}>
       {(title || action) && (
-        <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
           {title && (
             <p className="flex items-center gap-2 text-[14px] font-semibold tracking-[-0.01em] text-ink">
               {icon}

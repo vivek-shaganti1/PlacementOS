@@ -513,7 +513,7 @@ function ProfitCard({ orgs, usage }: { orgs: Organization[]; usage: Record<strin
     <Card
       title="Profit and costs (yearly estimate)"
       action={
-        <select value={stack} onChange={(e) => pick(e.target.value as 'lean' | 'aws')} className="field h-[34px] w-auto text-[12px]" aria-label="Infrastructure">
+        <select value={stack} onChange={(e) => pick(e.target.value as 'lean' | 'aws')} className="field h-[34px] w-auto max-w-full text-[12px]" aria-label="Infrastructure">
           <option value="lean">Current stack: Supabase + Vercel ({inr(COSTS.infraMonthlyInr.lean)} / month)</option>
           <option value="aws">AWS production stack ({inr(COSTS.infraMonthlyInr.aws)} / month)</option>
         </select>

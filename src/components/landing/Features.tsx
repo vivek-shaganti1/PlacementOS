@@ -56,7 +56,7 @@ function EligibilityViz() {
         <div className="relative h-[150px] w-6 shrink-0 font-mono text-[9.5px] text-ink-faint">
           {[100, 75, 50, 25, 0].map((v) => <span key={v} className="absolute right-0 -translate-y-1/2" style={{ top: `${100 - v}%` }}>{v}</span>)}
         </div>
-        <div className="relative flex-1">
+        <div className="relative min-w-0 flex-1">
           <div className="relative h-[150px]">
             {[100, 75, 50, 25].map((v) => <span key={v} className="absolute inset-x-0 border-t border-[oklch(0.6_0.05_285/.1)]" style={{ top: `${100 - v}%` }} />)}
             <span className="absolute inset-x-0 bottom-0 border-t border-[oklch(0.6_0.05_285/.3)]" />
@@ -65,12 +65,12 @@ function EligibilityViz() {
                 <span className="absolute -top-[8px] right-0 rounded-full bg-white/90 px-1.5 font-mono text-[9.5px] ring-1 ring-line" style={{ color: c as string }}>{label} {v}</span>
               </span>
             ))}
-            <div className="absolute inset-0 flex items-end gap-[6px] px-1">
+            <div className="absolute inset-0 flex items-end gap-[3px] px-0.5 sm:gap-[6px] sm:px-1">
               {bars.map(([name, v], i) => {
                 const t = tierOf(v)
                 const dim = hover !== null && hover !== i
                 return (
-                  <div key={name} className="relative flex h-full flex-1 items-end justify-center" onPointerEnter={() => setHover(i)} onPointerLeave={() => setHover(null)}>
+                  <div key={name} className="relative flex h-full min-w-0 flex-1 items-end justify-center" onPointerEnter={() => setHover(i)} onPointerLeave={() => setHover(null)} onClick={() => setHover(hover === i ? null : i)}>
                     <motion.span
                       variants={{ hidden: { scaleY: 0 }, show: { scaleY: 1, transition: { delay: 0.1 + i * 0.045, duration: 0.7, ease } } }}
                       className="relative block w-full max-w-[30px] origin-bottom rounded-t-[4px] transition-opacity duration-150"
@@ -89,9 +89,12 @@ function EligibilityViz() {
             </div>
           </div>
           {/* x axis */}
-          <div className="mt-1.5 flex gap-[6px] px-1">
+          <div className="mt-1.5 flex gap-[3px] px-0.5 sm:gap-[6px] sm:px-1">
             {bars.map(([name], i) => (
-              <span key={name} className={`flex-1 truncate text-center text-[10px] ${hover === i ? 'font-semibold text-ink' : 'text-ink-faint'}`}>{name}</span>
+              <span key={name} title={name} className={`min-w-0 flex-1 overflow-hidden text-center text-[9.5px] sm:truncate sm:text-[10px] ${hover === i ? 'font-semibold text-ink' : 'text-ink-faint'}`}>
+                <span className="sm:hidden">{name.slice(0, 2)}</span>
+                <span className="hidden sm:inline">{name}</span>
+              </span>
             ))}
           </div>
         </div>
@@ -105,7 +108,7 @@ function ResumeViz() {
   const inView = useInView(ref, { once: true, margin: '-60px' })
   const checks = [['Quantified impact', true], ['ATS keywords', true], ['Action verbs', false]] as const
   return (
-    <div ref={ref} className="flex h-[170px] items-center gap-5">
+    <div ref={ref} className="flex min-h-[170px] flex-wrap items-center justify-center gap-x-5 gap-y-3 sm:justify-start">
       <div className="relative grid h-[124px] w-[124px] shrink-0 place-items-center">
         <svg viewBox="0 0 120 120" className="absolute inset-0 -rotate-90">
           <circle cx="60" cy="60" r="50" fill="none" stroke="oklch(0.92 0.015 285)" strokeWidth="11" />
