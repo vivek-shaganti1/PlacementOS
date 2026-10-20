@@ -43,6 +43,7 @@ const AdminClasses = lazy(() => import('./pages/AdminOrg').then((m) => ({ defaul
 const SuperAdmins = lazy(() => import('./pages/AdminOrg').then((m) => ({ default: m.SuperAdmins })))
 const ResumeAnalyzer = lazy(() => import('./pages/ResumeAnalyzer'))
 const Landing = lazy(() => import('./pages/Landing'))
+const Legal = lazy(() => import('./pages/Legal'))
 
 function Loader() {
   return (
@@ -219,6 +220,14 @@ function Gate() {
   const { session, loading, recovering, mustChangePassword, profile, profileError, signOut, role } = useAuth()
   const { pathname } = useLocation()
 
+  // Policy pages open for everyone, signed in or not.
+  const legal = ({ '/privacy': 'privacy', '/terms': 'terms', '/security': 'security' } as const)[pathname as '/privacy']
+  if (legal)
+    return (
+      <Suspense fallback={<Splash />}>
+        <Legal doc={legal} />
+      </Suspense>
+    )
   if (loading) return <Splash />
   if (!session) return <PublicRoutes />
   // Accounts created with a temporary password choose their own before anything else.

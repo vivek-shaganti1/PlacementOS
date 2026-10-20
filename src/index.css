@@ -228,3 +228,73 @@ h1, h2, h3 { text-wrap: balance; letter-spacing: -0.02em; }
   .glass, .card { background: oklch(1 0 0 / .95); }
   .glass-strong { background: #fff; }
 }
+
+/* ---------- landing: bento edges, scan line, typing, pulse ---------- */
+.bento::before {
+  content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none;
+  background: linear-gradient(140deg, oklch(0.65 0.22 285 / .55), oklch(0.8 0.12 200 / .35) 45%, transparent 70%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
+  opacity: 0; transition: opacity var(--dur-base) var(--ease-out);
+}
+.bento:hover::before { opacity: 1; }
+.bento:hover { transform: translateY(-3px); box-shadow: var(--shadow-2), inset 0 1px 0 oklch(1 0 0 / .9); }
+
+.scan-line {
+  position: absolute; top: 0; bottom: 0; width: 60px; pointer-events: none;
+  background: linear-gradient(90deg, transparent, oklch(1 0 0 / .55), transparent);
+  mix-blend-mode: overlay; animation: scan 4.5s var(--ease-inout) infinite;
+}
+@keyframes scan { 0% { left: -60px; } 70%, 100% { left: 100%; } }
+
+.typing-dot { animation: typing 0.9s var(--ease-inout) infinite; }
+@keyframes typing { 0%, 100% { transform: translateY(0); opacity: .4; } 50% { transform: translateY(-4px); opacity: 1; } }
+
+.pulse-dot { animation: pulse-ring 2.2s var(--ease-out) infinite; }
+@keyframes pulse-ring { 0% { box-shadow: 0 0 0 0 rgba(18,183,106,.45); } 70%, 100% { box-shadow: 0 0 0 10px rgba(18,183,106,0); } }
+
+/* ---------- landing: trust panel ---------- */
+.trust-grid {
+  background-image: linear-gradient(oklch(1 0 0 / .05) 1px, transparent 1px), linear-gradient(90deg, oklch(1 0 0 / .05) 1px, transparent 1px);
+  background-size: 48px 48px; mask-image: radial-gradient(ellipse at 30% 20%, #000 15%, transparent 70%);
+  animation: grid-pan 30s linear infinite;
+}
+@keyframes grid-pan { to { background-position: 48px 48px; } }
+.trust-card.spotlight::after { background: radial-gradient(260px circle at var(--mx, 50%) var(--my, 50%), oklch(0.85 0.12 175 / .12), transparent 60%); }
+.caret { display: inline-block; width: 7px; height: 14px; margin-left: 2px; vertical-align: -2px; background: #8ef5d9; animation: blink 1.1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+
+/* ---------- landing: mega footer wordmark ---------- */
+.mega-footer__grain {
+  opacity: .08;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.wordmark__text { display: grid; font-size: clamp(3.5rem, 16.4vw, 17rem); }
+.wordmark__text > span { grid-area: 1 / 1; }
+.wordmark__outline { color: transparent; -webkit-text-stroke: 1px oklch(1 0 0 / .14); transform: translate(.025em, -.04em); }
+.wordmark__fill, .wordmark__light {
+  color: transparent; -webkit-background-clip: text; background-clip: text;
+  -webkit-mask-image: linear-gradient(180deg, #000 45%, transparent 98%); mask-image: linear-gradient(180deg, #000 45%, transparent 98%);
+}
+.wordmark__fill {
+  background-image: linear-gradient(100deg, #6d4aff, #38bdf8 25%, #8ef5d9 45%, #f9a8d4 65%, #a78bfa 82%, #6d4aff);
+  background-size: 300% 100%; animation: wordmark-flow 14s linear infinite;
+}
+@keyframes wordmark-flow { to { background-position: 300% 0; } }
+.wordmark__light {
+  background-image: radial-gradient(260px circle at var(--mx, 50%) var(--my, 40%), oklch(1 0 0 / .9), transparent 60%);
+  opacity: 0; transition: opacity var(--dur-base) var(--ease-out);
+}
+@media (hover: hover) and (pointer: fine) {
+  .wordmark:hover .wordmark__light { opacity: .55; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scan-line, .typing-dot, .pulse-dot, .trust-grid, .caret, .wordmark__fill { animation: none !important; }
+  .scan-line { display: none; }
+  .bento:hover { transform: none; }
+}
+.role-progress { width: 0; animation-name: role-fill; animation-timing-function: linear; animation-fill-mode: forwards; }
+@keyframes role-fill { to { width: 100%; } }
+.legal-body ul { list-style: none; display: grid; gap: .4rem; }
+.legal-body li { position: relative; padding-left: 1rem; }
+.legal-body li::before { content: ''; position: absolute; left: 0; top: .7em; width: 6px; height: 6px; border-radius: 999px; background: oklch(0.6 0.22 285); }

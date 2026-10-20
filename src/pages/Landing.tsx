@@ -1,13 +1,17 @@
 import { AnimatePresence, motion, useMotionValue, useMotionValueEvent, useReducedMotion, useScroll, useSpring, useTransform, type Variants } from 'motion/react'
-import { lazy, Suspense, useEffect, useState, type FormEvent, type ReactNode } from 'react'
+import { lazy, Suspense, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Logo, LogoMark } from '../components/Logo'
-import { AnimatedValue, Aurora, trackSpotlight } from '../components/Page'
+import { AnimatedValue, Aurora } from '../components/Page'
 import { companyCatalog } from '../data/companies'
 import { Glow } from '../components/effects'
 import { CursorFollower, Magnetic, ScrollHighlight, ScrollProgress, SmoothScroll, TextReveal } from '../components/motion'
 import { intensity, useMotionTier } from '../lib/motion'
 import { inr, PLANS } from '../lib/pricing'
+import { Features } from '../components/landing/Features'
+import { HowItWorks } from '../components/landing/HowItWorks'
+import { MegaFooter } from '../components/landing/MegaFooter'
+import { Trust } from '../components/landing/Trust'
 
 // three.js loads only on devices that get WebGL, after the page is interactive.
 // Decorative: if the 3D chunk cannot load (slow network, or a deploy replaced it), keep the static glow.
@@ -35,7 +39,7 @@ function Pricing() {
       </motion.p>
       <div className="mt-12 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {Object.values(PLANS).map((p) => (
-          <motion.div key={p.name} variants={reveal} className={p.featured ? 'gradient-border rounded-[24px]' : ''}>
+          <motion.div key={p.name} variants={reveal} className={`transition-transform duration-300 hover:-translate-y-1 ${p.featured ? 'gradient-border rounded-[24px] shadow-[0_24px_60px_oklch(0.5_0.2_285/.25)]' : ''}`}>
             <div className={`${p.featured ? 'glass-strong' : 'glass'} flex h-full flex-col rounded-[24px] p-6`}>
               <div className="flex items-center justify-between">
                 <p className="text-[15px] font-semibold tracking-[-0.02em] text-ink">{p.name}</p>
@@ -51,7 +55,7 @@ function Pricing() {
               <ul className="mt-5 flex-1 space-y-2 text-[13px] text-ink-soft">
                 {p.features.map((f) => (
                   <li key={f} className="flex gap-2">
-                    <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />
+                    <span className="mt-[2px] grid h-4 w-4 shrink-0 place-items-center rounded-full bg-brand-tint text-[9px] font-bold text-brand-dark">✓</span>
                     {f}
                   </li>
                 ))}
@@ -230,24 +234,6 @@ function ProductPreview() {
   )
 }
 
-/* ---------------------------------------------------------------- bento */
-function Bento({ title, body, children, className }: { title: string; body: string; children: ReactNode; className?: string }) {
-  return (
-    <motion.div variants={reveal} onPointerMove={trackSpotlight} className={`card card-hover spotlight flex flex-col overflow-hidden p-6 ${className ?? ''}`}>
-      <div className="flex-1">{children}</div>
-      <p className="mt-5 text-[16px] font-semibold tracking-[-0.02em] text-ink">{title}</p>
-      <p className="mt-1.5 text-[13px] leading-[1.6] text-ink-mute">{body}</p>
-    </motion.div>
-  )
-}
-
-const steps = [
-  ['Create your profile', 'Academics, skills, projects and internships, stored in structured tables that only you can read.'],
-  ['Connect your evidence', 'Upload your resume and link GitHub, LeetCode, Codeforces and CodeChef. We pull real numbers.'],
-  ['Get scored against 66 recruiters', 'Every company has tier-specific requirements. You see your match, stack and exact gaps.'],
-  ['Close gaps and apply', 'Follow the roadmap, practise, log mocks, tailor your resume per JD, and track every application.'],
-]
-
 /* ---------------------------------------------------------------- announcement, nav, ask bar */
 function Announcement() {
   return (
@@ -352,10 +338,32 @@ function AskBar({ compact = false }: { compact?: boolean }) {
 
 /** The ask bar follows the reader once the hero has scrolled away, and steps aside for the final call to action. */
 function AskDock() {
-  const { scrollYProgress, scrollY } = useScroll()
-  const [show, setShow] = useState(false)
-  const update = () => setShow(scrollY.get() > window.innerHeight * 0.9 && scrollYProgress.get() < 0.93)
-  useMotionValueEvent(scrollY, 'change', update)
+  const { scrollY } = useScroll()
+  const [past, setPast] = useState(false)
+  const [closing, setClosing] = useState(false)
+  const [reading, setReading] = useState(false)
+  const idle = useRef<number>()
+  // Out of the way while you scroll down through content; back when you pause or scroll up.
+  useMotionValueEvent(scrollY, 'change', (y) => {
+    setPast(y > window.innerHeight * 0.9)
+    const down = y > (scrollY.getPrevious() ?? y)
+    setReading(down)
+    window.clearTimeout(idle.current)
+    if (down) idle.current = window.setTimeout(() => setReading(false), 1200)
+  })
+  useEffect(() => () => window.clearTimeout(idle.current), [])
+  // Steps aside while the final call to action or the footer is on screen, so it never covers them.
+  useEffect(() => {
+    const targets = ['#closing', 'footer'].map((q) => document.querySelector(q)).filter((x): x is Element => !!x)
+    const seen = new Set<Element>()
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((e) => (e.isIntersecting ? seen.add(e.target) : seen.delete(e.target)))
+      setClosing(seen.size > 0)
+    })
+    targets.forEach((t) => io.observe(t))
+    return () => io.disconnect()
+  }, [])
+  const show = past && !closing && !reading
   return (
     <AnimatePresence>
       {show && (
@@ -443,25 +451,52 @@ const roles = [
   },
 ] as const
 
+const ROLE_MS = 6000
+
 function Roles() {
+  const reduce = useReducedMotion()
   const [active, setActive] = useState<(typeof roles)[number]['key']>('student')
+  const [auto, setAuto] = useState(true)
+  const [paused, setPaused] = useState(false)
   const role = roles.find((r) => r.key === active)!
+  useEffect(() => {
+    if (!auto || paused || reduce) return
+    const t = window.setTimeout(() => {
+      const i = roles.findIndex((r) => r.key === active)
+      setActive(roles[(i + 1) % roles.length].key)
+    }, ROLE_MS)
+    return () => window.clearTimeout(t)
+  }, [active, auto, paused, reduce])
   return (
     <Section id="roles" className="pb-28">
       <motion.p variants={reveal} className="label-mono"><b>03</b> One platform, four desks</motion.p>
       <motion.h2 variants={reveal} className="mt-3 max-w-[760px] text-[clamp(2rem,1.4rem+2vw,3.2rem)] font-semibold leading-[1.05] tracking-[-0.04em]">
         Everyone sees <span className="font-display font-normal italic text-gradient">exactly</span> what they should.
       </motion.h2>
-      <motion.div variants={reveal} role="tablist" aria-label="Roles" className="glass mt-8 inline-flex flex-wrap gap-1 rounded-full p-1">
+      <motion.div variants={reveal} role="tablist" aria-label="Roles" onPointerEnter={() => setPaused(true)} onPointerLeave={() => setPaused(false)} onFocus={() => setPaused(true)} onBlur={() => setPaused(false)} className="glass mt-8 inline-flex flex-wrap gap-1 rounded-full p-1">
         {roles.map((r) => (
           <button
             key={r.key}
             role="tab"
             aria-selected={active === r.key}
-            onClick={() => setActive(r.key)}
+            onClick={() => {
+              setAuto(false)
+              setActive(r.key)
+            }}
             className={`relative rounded-full px-4 py-2 text-[12.5px] font-semibold transition-colors ${active === r.key ? 'text-white' : 'text-ink-soft hover:text-ink'}`}
           >
-            {active === r.key && <motion.span layoutId="role-pill" className="absolute inset-0 rounded-full bg-[oklch(0.2_0.045_285)]" transition={{ type: 'spring', stiffness: 380, damping: 32 }} />}
+            {active === r.key && (
+              <motion.span layoutId="role-pill" className="absolute inset-0 overflow-hidden rounded-full bg-[oklch(0.2_0.045_285)]" transition={{ type: 'spring', stiffness: 380, damping: 32 }}>
+                {/* Time until the next desk; restarts on every change and freezes while paused. */}
+                {auto && !reduce && (
+                  <span
+                    key={active}
+                    className="role-progress absolute inset-y-0 left-0 bg-white/15"
+                    style={{ animationDuration: `${ROLE_MS}ms`, animationPlayState: paused ? 'paused' : 'running' }}
+                  />
+                )}
+              </motion.span>
+            )}
             <span className="relative">{r.label}</span>
           </button>
         ))}
@@ -584,7 +619,7 @@ export default function Landing() {
               <AskBar />
             </motion.div>
             <motion.div variants={reveal} className="mt-5 flex flex-wrap items-center gap-3">
-              <Magnetic><Link to="/signup" className="btn-ink">Start free <span className="kbd">G</span></Link></Magnetic>
+              <Magnetic><Link to="/signup" className="btn-ink">Start free <span className="kbd hidden sm:inline-grid">G</span></Link></Magnetic>
               <a href="#how" className="btn-bracket">See how it works</a>
             </motion.div>
             <motion.div variants={reveal} className="mt-10 flex items-center gap-6 text-[12px] text-ink-mute">
@@ -617,60 +652,7 @@ export default function Landing() {
             One profile. Every recruiter. <span className="font-display font-normal italic text-ink-mute">No guesswork.</span>
           </motion.h2>
 
-          <div className="mt-12 grid grid-cols-1 gap-4 md:grid-cols-6">
-            <Bento className="md:col-span-4" title="Eligibility engine" body="Requirements per recruiter tier — FAANG, quant, AI, fintech, startups, services. Your match %, stack and exact skill gaps update the moment your profile changes.">
-              <div className="flex h-[150px] items-end gap-2">
-                {[38, 52, 61, 70, 76, 82, 88, 91, 86, 94, 72, 64].map((h, i) => (
-                  <motion.span
-                    key={i}
-                    variants={{ hidden: { scaleY: 0 }, show: { scaleY: 1, transition: { delay: i * 0.04, duration: 0.6, ease } } }}
-                    className="flex-1 origin-bottom rounded-t-[8px]"
-                    style={{ height: `${h}%`, background: h >= 85 ? 'linear-gradient(#34d399,#12b76a)' : h >= 70 ? 'linear-gradient(#fbbf24,#f79009)' : 'linear-gradient(#93c5fd,#2e90fa)' }}
-                  />
-                ))}
-              </div>
-            </Bento>
-            <Bento className="md:col-span-2" title="Resume intelligence" body="PDF and DOCX parsed in your browser, measured with six ATS checks, then reviewed by AI with rewrites of your actual bullets.">
-              <div className="grid h-[150px] place-items-center">
-                <div className="relative grid h-[120px] w-[120px] place-items-center rounded-full bg-[conic-gradient(#6d4aff_0_79%,oklch(0.92_0.015_285)_79%_100%)]">
-                  <div className="grid h-[96px] w-[96px] place-items-center rounded-full bg-white/95">
-                    <p className="text-[28px] font-semibold tracking-[-0.03em]"><AnimatedValue value="79" /></p>
-                  </div>
-                </div>
-              </div>
-            </Bento>
-            <Bento className="md:col-span-2" title="JD matcher" body="Paste any job description to get a fit score, matched and missing skills, and tailored bullets.">
-              <div className="flex h-[150px] flex-wrap content-center gap-1.5">
-                {['React', 'TypeScript', 'REST', 'Git', 'SQL'].map((t) => <span key={t} className="rounded-full border border-[#c9f0d9] bg-[#ecfdf3] px-2.5 py-1 text-[11px] font-semibold text-[#0d9a5b]">✓ {t}</span>)}
-                {['Kafka', 'Kubernetes'].map((t) => <span key={t} className="rounded-full border border-[#fbd5d1] bg-[#fef3f2] px-2.5 py-1 text-[11px] font-semibold text-[#d92d20]">+ {t}</span>)}
-              </div>
-            </Bento>
-            <Bento className="md:col-span-2" title="Verified coding profile" body="GitHub repos and languages, LeetCode, Codeforces and CodeChef stats become verified skill levels.">
-              <div className="grid h-[150px] grid-cols-2 content-center gap-2">
-                {[['GitHub', '22 repos'], ['LeetCode', '412 solved'], ['Codeforces', '1487'], ['CodeChef', '3★']].map(([p, v]) => (
-                  <div key={p} className="rounded-[12px] border border-white/80 bg-white/80 px-3 py-2">
-                    <p className="text-[10.5px] text-ink-mute">{p}</p>
-                    <p className="text-[14px] font-semibold text-ink">{v}</p>
-                  </div>
-                ))}
-              </div>
-            </Bento>
-            <Bento className="md:col-span-2" title="AI career assistant" body="Ask anything. Answers are grounded in your own profile, resume and computed eligibility — not generic advice.">
-              <div className="flex h-[150px] flex-col justify-center gap-2">
-                <span className="self-end rounded-[14px] rounded-br-[4px] bg-brand px-3 py-2 text-[11.5px] text-white">What should I fix for Uber?</span>
-                <span className="self-start rounded-[14px] rounded-bl-[4px] border border-white/80 bg-white/90 px-3 py-2 text-[11.5px] text-ink-soft">Cloud & DevOps 51 → 63 first, then System Design.</span>
-              </div>
-            </Bento>
-            <Bento className="md:col-span-6" title="Analytics that move with you" body="Daily snapshots of readiness, stacks, skills, problems solved and resume score — so you can see the trend, not just today.">
-              <svg viewBox="0 0 600 140" className="h-[150px] w-full" preserveAspectRatio="none">
-                <defs>
-                  <linearGradient id="lp-area" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#6d4aff" stopOpacity=".35" /><stop offset="1" stopColor="#6d4aff" stopOpacity="0" /></linearGradient>
-                </defs>
-                <motion.path d="M0 120 C60 112 90 100 140 96 S230 70 290 72 S390 40 450 38 S540 18 600 12 L600 140 L0 140Z" fill="url(#lp-area)" variants={{ hidden: { opacity: 0 }, show: { opacity: 1, transition: { delay: 0.4, duration: 0.8 } } }} />
-                <motion.path d="M0 120 C60 112 90 100 140 96 S230 70 290 72 S390 40 450 38 S540 18 600 12" fill="none" stroke="#6d4aff" strokeWidth="3" strokeLinecap="round" variants={{ hidden: { pathLength: 0 }, show: { pathLength: 1, transition: { duration: 1.6, ease } } }} />
-              </svg>
-            </Bento>
-          </div>
+          <Features />
         </Section>
 
         <Roles />
@@ -679,68 +661,37 @@ export default function Landing() {
         <Section id="how" className="pb-28">
           <motion.p variants={reveal} className="label-mono"><b>04</b> How it works</motion.p>
           <TextReveal className="mt-3 text-[clamp(2rem,1.4rem+2vw,3.2rem)] font-semibold leading-[1.05] tracking-[-0.04em]">From sign-up to offer, in four moves.</TextReveal>
-          <div className="relative mt-14 grid grid-cols-1 gap-5 md:grid-cols-4">
-            <motion.span
-              variants={{ hidden: { scaleX: 0 }, show: { scaleX: 1, transition: { duration: 1.4, ease } } }}
-              className="absolute left-[12%] right-[12%] top-[27px] hidden h-[2px] origin-left bg-gradient-to-r from-[#6d4aff] via-[#38bdf8] to-[#8ef5d9] md:block"
-            />
-            {steps.map(([t, b], i) => (
-              <motion.div key={t} variants={reveal} className="relative">
-                <span className="glass-strong relative grid h-14 w-14 place-items-center rounded-[18px] font-mono text-[15px] font-medium text-brand-dark">0{i + 1}</span>
-                <p className="mt-5 text-[16px] font-semibold tracking-[-0.02em]">{t}</p>
-                <p className="mt-1.5 text-[13px] leading-[1.6] text-ink-mute">{b}</p>
-              </motion.div>
-            ))}
-          </div>
+          <HowItWorks />
         </Section>
 
         {/* trust */}
         <Section id="trust" className="pb-28">
-          <motion.div variants={reveal} className="glass-dark relative overflow-hidden rounded-[30px] p-10 text-white md:p-14">
-            <div className="pointer-events-none absolute -right-20 -top-20 h-80 w-80 rounded-full bg-[oklch(0.6_0.22_285)] opacity-40 blur-[90px]" />
-            <p className="label-mono relative !text-white/55"><b className="!text-[#8ef5d9]">05</b> Under the hood</p>
-            <h2 className="relative mt-3 max-w-[640px] text-[clamp(1.8rem,1.3rem+1.6vw,2.8rem)] font-semibold leading-[1.08] tracking-[-0.04em]">
-              Your data is structured, private and yours.
-            </h2>
-            <div className="relative mt-10 grid grid-cols-1 gap-4 md:grid-cols-3">
-              {[
-                ['Row-level security', 'Every table — skills, projects, analyses, matches — is locked to your account at the database level.'],
-                ['Private resume storage', 'Resumes live in a private bucket under your user ID and open through short-lived signed links.'],
-                ['Keys stay server-side', 'AI and integration calls run in server functions. Nothing secret ever ships to the browser.'],
-              ].map(([t, b]) => (
-                <div key={t} className="rounded-[18px] border border-white/10 bg-white/[0.05] p-5">
-                  <p className="text-[15px] font-semibold">{t}</p>
-                  <p className="mt-1.5 text-[13px] leading-[1.6] text-white/65">{b}</p>
-                </div>
-              ))}
-            </div>
-          </motion.div>
+          <Trust />
         </Section>
 
         <Pricing />
 
         {/* CTA */}
-        <Section className="pb-24">
+        <Section id="closing" className="pb-24">
           <motion.div variants={reveal} className="gradient-border rounded-[30px]">
-            <div className="glass-strong rounded-[30px] px-8 py-14 text-center">
-              <LogoMark size={56} className="mx-auto" />
-              <h2 className="mx-auto mt-6 max-w-[640px] text-[clamp(2rem,1.4rem+2vw,3.2rem)] font-semibold leading-[1.05] tracking-[-0.04em]">
+            <div className="glass-strong relative overflow-hidden rounded-[30px] px-8 py-16 text-center">
+              <div aria-hidden className="prism opacity-70" />
+              <div aria-hidden className="pointer-events-none absolute left-1/2 top-[22%] h-40 w-40 -translate-x-1/2 rounded-full bg-[oklch(0.6_0.22_285)] opacity-30 blur-[60px]" />
+              <LogoMark size={56} className="relative mx-auto" />
+              <h2 className="relative mx-auto mt-6 max-w-[640px] text-[clamp(2rem,1.4rem+2vw,3.2rem)] font-semibold leading-[1.05] tracking-[-0.04em]">
                 Walk into every drive <span className="font-display font-normal italic text-gradient">prepared.</span>
               </h2>
-              <p className="mx-auto mt-4 max-w-[520px] text-[15px] text-ink-mute">Free for students. Your first full analysis takes about two minutes.</p>
-              <div className="mt-8 flex justify-center gap-3">
-                <Link to="/signup" className="btn-ink">Create your account <span className="kbd">G</span></Link>
+              <p className="relative mx-auto mt-4 max-w-[520px] text-[15px] text-ink-mute">Free for students. Your first full analysis takes about two minutes.</p>
+              <div className="relative mt-8 flex flex-wrap justify-center gap-3">
+                <Link to="/signup" className="btn-ink">Create your account <span className="kbd hidden sm:inline-grid">G</span></Link>
                 <Link to="/login" className="btn-bracket">I already have one</Link>
               </div>
             </div>
           </motion.div>
         </Section>
 
-        <footer className="mx-auto flex max-w-[1160px] flex-wrap items-center gap-4 px-6 pb-10 text-[12px] text-ink-faint">
-          <Logo size={26} tagline={false} />
-          <span className="ml-auto">© {new Date().getFullYear()} PlacementIQ · Built for campus placement season</span>
-        </footer>
       </main>
+      <MegaFooter />
     </div>
     </SmoothScroll>
   )
