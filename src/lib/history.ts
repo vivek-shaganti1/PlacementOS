@@ -29,9 +29,9 @@ export function useHistory() {
   useEffect(() => {
     let alive = true
     Promise.all([
-      supabase.from('progress_snapshots').select('day,readiness,eligible,nearly,can_become,not_eligible,avg_skill,problems_solved,resume_score').order('day', { ascending: false }).limit(90),
-      supabase.from('resume_analyses').select('overall,created_at,file_name').order('created_at', { ascending: true }).limit(50),
-      supabase.from('jd_matches').select('score,jd_title,created_at').order('created_at', { ascending: true }).limit(50),
+      supabase.from('progress_snapshots').select('day,readiness,eligible,nearly,can_become,not_eligible,avg_skill,problems_solved,resume_score').eq('user_id', profile.id).order('day', { ascending: false }).limit(90),
+      supabase.from('resume_analyses').select('overall,created_at,file_name').eq('user_id', profile.id).order('created_at', { ascending: true }).limit(50),
+      supabase.from('jd_matches').select('score,jd_title,created_at').eq('user_id', profile.id).order('created_at', { ascending: true }).limit(50),
     ]).then(([s, r, m]) => {
       if (!alive) return
       setData({

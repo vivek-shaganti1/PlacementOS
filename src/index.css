@@ -176,6 +176,7 @@ h1, h2, h3 { text-wrap: balance; letter-spacing: -0.02em; }
   filter: blur(28px); transform: translateY(-50%) rotate(-6deg); mix-blend-mode: multiply;
   animation: prism-drift 14s var(--ease-inout) infinite alternate;
 }
+.prism--static { animation: none; }
 .prism--thin { height: 3px; filter: blur(1.5px); opacity: .9; mix-blend-mode: normal; }
 @keyframes prism-drift {
   from { transform: translate3d(-6%, -50%, 0) rotate(-7deg); }

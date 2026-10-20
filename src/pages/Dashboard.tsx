@@ -39,9 +39,12 @@ export default function Dashboard() {
     .slice(0, 4)
 
   return (
-    <Page title={`Welcome back, ${first}`} subtitle="Your placement readiness, computed live from your profile, resume and coding activity." wide>
+    <Page title="Welcome back," accent={first} subtitle="Your placement readiness, computed live from your profile, resume and coding activity." wide>
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.25fr_1fr]">
-        <motion.section {...revealProps} className="glass-dark relative overflow-hidden rounded-[22px] p-5 text-white sm:p-6">
+        <motion.section {...revealProps} className="glass-dark relative flex flex-col overflow-hidden rounded-[24px] p-5 text-white sm:p-7">
+          {/* Static light: a soft spectral band and hairline grid (no motion in the app). */}
+          <div aria-hidden className="pointer-events-none absolute inset-0 [background-image:linear-gradient(oklch(1_0_0/.05)_1px,transparent_1px),linear-gradient(90deg,oklch(1_0_0/.05)_1px,transparent_1px)] [background-size:44px_44px] [mask-image:radial-gradient(ellipse_at_70%_30%,#000_20%,transparent_75%)]" />
+          <div aria-hidden className="prism prism--static !mix-blend-screen opacity-40" />
           <div className="pointer-events-none absolute -right-16 -top-20 h-72 w-72 rounded-full bg-[oklch(0.6_0.22_285)] opacity-45 blur-[80px]" />
           <div className="pointer-events-none absolute -bottom-24 left-20 h-60 w-60 rounded-full bg-[oklch(0.75_0.12_200)] opacity-25 blur-[80px]" />
           <div className="relative flex flex-col items-center gap-5 text-center sm:flex-row sm:gap-7 sm:text-left">
@@ -49,31 +52,50 @@ export default function Dashboard() {
               <Ring value={readiness} size={132} stroke={11} label="Readiness" sub={prev !== null ? `${readiness - prev >= 0 ? '+' : ''}${readiness - prev} vs yesterday` : 'Product-track companies'} />
             </div>
             <div className="flex-1">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-white/50">Next best step</p>
-              <p className="mt-2 text-[17px] font-semibold leading-[1.3] tracking-[-0.02em] sm:text-[19px]">
-                Lift <span className="text-[#8ef5d9]">{weakest[0]?.name}</span> from {weakest[0]?.level}% — it is the gap holding back the most companies.
+              <p className="flex items-center justify-center gap-2 font-mono text-[10.5px] font-medium uppercase tracking-[0.16em] text-white/55 sm:justify-start">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#8ef5d9] shadow-[0_0_0_4px_rgba(142,245,217,.15)]" /> Next best step
+              </p>
+              <p className="mt-3 text-[19px] font-semibold leading-[1.25] tracking-[-0.025em] sm:text-[22px]">
+                Lift <span className="font-display text-[1.12em] font-normal italic text-[#8ef5d9]">{weakest[0]?.name}</span> from {weakest[0]?.level}%. It is the gap holding back the most companies.
               </p>
               <div className="mt-4 flex flex-wrap justify-center gap-2 sm:justify-start">
-                <button onClick={() => navigate('/skill-gap')} className="rounded-[11px] bg-white px-3.5 py-2 text-[12.5px] font-semibold text-[#2c2075] transition hover:bg-white/90 active:scale-[.98]">
+                <button onClick={() => navigate('/skill-gap')} className="rounded-full bg-white px-4 py-2 text-[12.5px] font-semibold text-[#1b1640] shadow-[0_6px_18px_rgba(0,0,0,.25)] transition hover:bg-white/90 active:scale-[.98]">
                   Open Skill Gap
                 </button>
-                <button onClick={() => openAssistant(`Give me a 2-week plan to improve ${weakest[0]?.name}.`)} className="rounded-[11px] border border-white/20 bg-white/10 px-3.5 py-2 text-[12.5px] font-semibold text-white transition hover:bg-white/15">
+                <button onClick={() => openAssistant(`Give me a 2-week plan to improve ${weakest[0]?.name}.`)} className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-[12.5px] font-semibold text-white transition hover:bg-white/15">
                   Ask AI for a plan
                 </button>
-                <button onClick={() => navigate('/what-if')} className="rounded-[11px] border border-white/20 bg-white/10 px-3.5 py-2 text-[12.5px] font-semibold text-white transition hover:bg-white/15">
+                <button onClick={() => navigate('/what-if')} className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-[12.5px] font-semibold text-white transition hover:bg-white/15">
                   Try a what-if
                 </button>
               </div>
             </div>
           </div>
+          {/* Where all tracked companies sit today, as one bar. */}
+          <button onClick={() => navigate('/eligibility')} className="relative mt-6 block w-full text-left sm:mt-auto sm:pt-6" aria-label="Open eligibility stacks">
+            <div className="flex h-2.5 overflow-hidden rounded-full bg-white/10">
+              {counts.map(({ b, n }) => (
+                <span key={b} style={{ width: `${(n / Math.max(1, companies.length)) * 100}%`, background: STATUS[b] }} className="h-full first:rounded-l-full last:rounded-r-full" />
+              ))}
+            </div>
+            <div className="mt-2.5 flex flex-wrap gap-x-5 gap-y-1">
+              {counts.map(({ b, n }) => (
+                <span key={b} className="flex items-center gap-1.5 whitespace-nowrap text-[11.5px] text-white/70">
+                  <span className="h-1.5 w-1.5 rounded-full" style={{ background: STATUS[b] }} />
+                  {bucketMeta[b].title}
+                  <b className="font-mono font-medium text-white">{n}</b>
+                </span>
+              ))}
+            </div>
+          </button>
         </motion.section>
 
         <div className="grid grid-cols-2 gap-3">
-          <Stat label="Eligible companies" value={`${counts[0].n}`} sub={`of ${companies.length} tracked`} tone="text-[#0d9a5b]" />
+          <Stat label="Eligible companies" value={`${counts[0].n}`} sub={`of ${companies.length} tracked`} tone="text-[#0d9a5b]" trend={snapshots.map((x) => x.eligible)} trendColor="#12b76a" delta={snapshots.length > 1 ? counts[0].n - snapshots[snapshots.length - 2].eligible : null} />
           <Stat label="Applications" value={`${applications.filter((a) => a.user_id === student.id).length + applied.length}`} sub={`Campus drives + tracked · ${saved.length} shortlisted`} />
           <Stat label="Expected CTC" value={salary.expected ? `₹${salary.expected.toFixed(1)} LPA` : 'n/a'} sub={salary.expected ? `Likely ₹${salary.low}–${salary.high} LPA · best ₹${salary.bestRealistic} LPA` : 'Complete your profile'} tone="text-[#0d9a5b]" />
           <Stat label="Interview readiness" value={`${interview.score}`} sub={`Work on ${interview.weakest.join(' and ').toLowerCase()}`} tone="text-brand-dark" />
-          <Stat label="Profile strength" value={`${strength}%`} sub="Completeness & verification" tone="text-brand-dark" />
+          <Stat label="Profile strength" value={`${strength}%`} sub="Completeness & verification" tone="text-brand-dark" trend={snapshots.map((x) => x.avg_skill)} />
           <Stat label="Roadmap tasks" value={`${roadmapDone.length}`} sub="completed so far" />
         </div>
       </div>

@@ -26,7 +26,7 @@ export const trackSpotlight = (e: PointerEvent<HTMLElement>) => {
   e.currentTarget.style.setProperty('--my', `${e.clientY - r.top}px`)
 }
 
-export function Page({ title, subtitle, children, wide, actions }: { title: string; subtitle?: string; children: ReactNode; wide?: boolean; actions?: ReactNode }) {
+export function Page({ title, accent, subtitle, children, wide, actions }: { title: string; accent?: string; subtitle?: string; children: ReactNode; wide?: boolean; actions?: ReactNode }) {
   const { pathname } = useLocation()
   const { role } = useAuth()
   const meta = navMeta(role, pathname)
@@ -40,7 +40,10 @@ export function Page({ title, subtitle, children, wide, actions }: { title: stri
                 <b>{meta.number}</b> {meta.group}
               </p>
             )}
-            <h1 className="text-[22px] font-semibold tracking-[-0.03em] text-ink sm:text-[26px]">{title}</h1>
+            <h1 className="text-[24px] font-semibold leading-[1.1] tracking-[-0.035em] text-ink sm:text-[30px]">
+              {title}
+              {accent && <span className="font-display font-normal italic tracking-[-0.01em] text-gradient"> {accent}</span>}
+            </h1>
             {subtitle && <p className="mt-1 max-w-[680px] text-[13px] text-ink-mute">{subtitle}</p>}
           </div>
           {actions}
@@ -100,18 +103,73 @@ export function AnimatedValue({ value }: { value: string }) {
   )
 }
 
-export function Stat({ label, value, sub, tone, icon }: { label: string; value: string; sub?: string; tone?: string; icon?: ReactNode }) {
+/** Tiny trend line for stat tiles. Static (no draw-in animation): app numbers never animate on load. */
+export function Sparkline({ data, color = '#6d4aff', className }: { data: number[]; color?: string; className?: string }) {
+  if (data.length < 2) return null
+  const min = Math.min(...data)
+  const max = Math.max(...data)
+  const span = max - min || 1
+  const pts = data.map((v, i) => `${(i / (data.length - 1)) * 100},${28 - ((v - min) / span) * 24 - 2}`)
+  const id = `spark-${color.replace('#', '')}`
   return (
-    <motion.div {...revealProps} onPointerMove={trackSpotlight} className="card card-hover spotlight px-4 py-4">
-      <div className="flex items-center justify-between">
+    <svg viewBox="0 0 100 28" preserveAspectRatio="none" aria-hidden className={className ?? 'h-7 w-full'}>
+      <defs>
+        <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor={color} stopOpacity=".22" />
+          <stop offset="1" stopColor={color} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <polygon points={`0,28 ${pts.join(' ')} 100,28`} fill={`url(#${id})`} />
+      <polyline points={pts.join(' ')} fill="none" stroke={color} strokeWidth="1.6" strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+    </svg>
+  )
+}
+
+export function Stat({
+  label, value, sub, tone, icon, trend, delta, trendColor,
+}: {
+  label: string
+  value: string
+  sub?: string
+  tone?: string
+  icon?: ReactNode
+  /** Recent values, oldest first, drawn as a sparkline. */
+  trend?: number[]
+  /** Change since the previous period; shown as a chip. */
+  delta?: number | null
+  trendColor?: string
+}) {
+  return (
+    <motion.div {...revealProps} onPointerMove={trackSpotlight} className="card card-hover spotlight flex flex-col overflow-hidden px-4 pb-3 pt-4">
+      <div className="flex items-center justify-between gap-2">
         <p className="font-mono text-[10.5px] font-medium uppercase tracking-[0.1em] text-ink-mute">{label}</p>
-        {icon && <span className="text-ink-faint">{icon}</span>}
+        {icon && <span className="grid h-7 w-7 place-items-center rounded-[9px] bg-white/80 text-ink-faint ring-1 ring-line">{icon}</span>}
       </div>
-      <p className={`mt-2 text-[24px] font-semibold leading-none tracking-[-0.03em] ${tone ?? 'text-ink'}`}>
-        <AnimatedValue value={value} />
-      </p>
-      {sub && <p className="mt-2 text-[11px] text-ink-faint">{sub}</p>}
+      <div className="mt-2 flex items-baseline gap-2">
+        {/* App numbers render final immediately: counting up from 0 on load briefly shows wrong values. */}
+        <p className={`text-[26px] font-semibold leading-none tracking-[-0.035em] tabular-nums ${tone ?? 'text-ink'}`}>{value}</p>
+        {delta !== undefined && delta !== null && delta !== 0 && (
+          <span className={`rounded-full px-1.5 py-0.5 font-mono text-[10.5px] font-medium ${delta > 0 ? 'bg-[#ecfdf3] text-[#0d9a5b]' : 'bg-[#fef3f2] text-[#d92d20]'}`}>
+            {delta > 0 ? '+' : ''}
+            {delta}
+          </span>
+        )}
+      </div>
+      {sub && <p className="mt-1.5 text-[11px] leading-[1.45] text-ink-faint">{sub}</p>}
+      {trend && trend.length > 1 && <Sparkline data={trend} color={trendColor} className="-mx-1 mt-auto h-7 w-[calc(100%+8px)] pt-2" />}
     </motion.div>
+  )
+}
+
+/** Empty state with an icon, a short headline and the next step. */
+export function EmptyState({ icon, title, body, action }: { icon?: ReactNode; title: string; body?: string; action?: ReactNode }) {
+  return (
+    <div className="flex flex-col items-center px-4 py-8 text-center">
+      {icon && <span className="grid h-11 w-11 place-items-center rounded-[14px] bg-brand-tint text-brand-dark ring-1 ring-[oklch(0.88_0.06_285)]">{icon}</span>}
+      <p className="mt-3 text-[13.5px] font-semibold tracking-[-0.01em] text-ink">{title}</p>
+      {body && <p className="mt-1 max-w-[360px] text-[12.5px] leading-[1.55] text-ink-mute">{body}</p>}
+      {action && <div className="mt-4">{action}</div>}
+    </div>
   )
 }
 
@@ -153,7 +211,8 @@ export function Ring({ value, size = 120, stroke = 10, label, sub, color = '#6d4
           </linearGradient>
         </defs>
         <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="oklch(0.92 0.015 285)" strokeWidth={stroke} />
-        <motion.circle
+        {/* Drawn at its value straight away; it sits above the fold, where app screens do not animate on load. */}
+        <circle
           cx={size / 2}
           cy={size / 2}
           r={r}
@@ -162,14 +221,13 @@ export function Ring({ value, size = 120, stroke = 10, label, sub, color = '#6d4
           strokeWidth={stroke}
           strokeLinecap="round"
           strokeDasharray={c}
-          initial={{ strokeDashoffset: c }}
-          animate={{ strokeDashoffset: c * (1 - Math.max(0, Math.min(100, value)) / 100) }}
-          transition={{ duration: 1.2, ease }}
+          strokeDashoffset={c * (1 - Math.max(0, Math.min(100, value)) / 100)}
+          style={{ transition: 'stroke-dashoffset 600ms cubic-bezier(0.16,1,0.3,1)' }}
         />
       </svg>
       <div className="absolute text-center">
         <p className="text-[26px] font-semibold leading-none tracking-[-0.03em] text-ink">
-          <AnimatedValue value={`${Math.round(value)}`} />
+          <span className="tabular-nums">{Math.round(value)}</span>
         </p>
         {label && <p className="mt-1 text-[10.5px] font-medium text-ink-mute">{label}</p>}
         {sub && <p className="text-[10px] text-ink-faint">{sub}</p>}

@@ -18,7 +18,15 @@ export default function Jobs() {
   const [filter, setFilter] = useState<'all' | 'eligible' | 'applied'>('all')
   const [busy, setBusy] = useState<string | null>(null)
   const mine = useMemo(() => new Map(applications.filter((a) => a.user_id === p.id).map((a) => [a.job_id, a])), [applications, p.id])
-  const scored = useMemo(() => jobs.filter((j) => j.status !== 'draft').map((j) => ({ job: j, ev: evaluateJob(j, p) })), [jobs, p])
+  // Open drives first (ones you can apply to at the top), closed or past-deadline drives last.
+  const scored = useMemo(
+    () =>
+      jobs
+        .filter((j) => j.status !== 'draft')
+        .map((j) => ({ job: j, ev: evaluateJob(j, p) }))
+        .sort((a, b) => Number(isOpen(b.job)) - Number(isOpen(a.job)) || Number(b.ev.eligibleToApply) - Number(a.ev.eligibleToApply)),
+    [jobs, p],
+  )
   const selectedId = params.get('job')
   const selected = scored.find((s) => s.job.id === selectedId) ?? null
 

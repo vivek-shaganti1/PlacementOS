@@ -126,3 +126,7 @@ dist-ssr
 
 # macOS system files
 .DS_Store
+
+# Local-only preview harness (sample data, never committed)
+src/dev/
+dev.html
