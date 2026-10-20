@@ -21,37 +21,81 @@ function Bento({ n, icon, title, body, children, className }: { n: string; icon:
   )
 }
 
+// Match by recruiter for one sample student, sorted. Mass recruiters sit high; product, FAANG and AI tiers ask more.
 const bars = [
-  ['Infosys', 38], ['TCS', 52], ['Wipro', 61], ['Zoho', 70], ['Swiggy', 76], ['Razorpay', 82],
-  ['Deloitte', 88], ['Accenture', 91], ['Atlassian', 86], ['Uber', 94], ['Google', 72], ['NVIDIA', 64],
+  ['Infosys', 96], ['TCS', 94], ['Wipro', 91], ['Accenture', 89], ['Deloitte', 86], ['Zoho', 81],
+  ['Razorpay', 78], ['Swiggy', 74], ['Atlassian', 71], ['Uber', 63], ['Google', 58], ['NVIDIA', 49],
 ] as const
-const barColor = (h: number) => (h >= 85 ? 'linear-gradient(#34d399,#12b76a)' : h >= 70 ? 'linear-gradient(#fbbf24,#f79009)' : 'linear-gradient(#93c5fd,#2e90fa)')
+const tiers = [
+  { min: 85, name: 'Eligible', color: '#12b76a' },
+  { min: 75, name: 'Nearly', color: '#f79009' },
+  { min: 55, name: 'Can become', color: '#2e90fa' },
+  { min: 0, name: 'Not yet', color: '#f04438' },
+] as const
+const tierOf = (v: number) => tiers.find((t) => v >= t.min)!
 
 function EligibilityViz() {
   const [hover, setHover] = useState<number | null>(null)
+  const counts = tiers.map((t) => ({ ...t, n: bars.filter(([, v]) => tierOf(v) === t).length }))
   return (
-    <div className="relative h-[170px]">
-      {/* "Eligible" threshold */}
-      <div className="absolute inset-x-0 border-t border-dashed border-[#12b76a]/50" style={{ bottom: '85%' }}>
-        <span className="absolute -top-[9px] right-0 rounded-full bg-[#ecfdf3] px-1.5 font-mono text-[9.5px] text-[#0d9a5b]">eligible ≥ 85</span>
+    <div>
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <span className="font-mono text-[10.5px] uppercase tracking-[0.12em] text-ink-faint">Match by recruiter · sample student</span>
+        <div className="flex flex-wrap gap-3">
+          {counts.map((t) => (
+            <span key={t.name} className="flex items-center gap-1.5 text-[11px] text-ink-mute">
+              <span className="h-2 w-2 rounded-[3px]" style={{ background: t.color }} />
+              {t.name} <b className="font-mono font-medium text-ink-soft">{t.n}</b>
+            </span>
+          ))}
+        </div>
       </div>
-      <div className="relative flex h-full items-end gap-2">
-        {bars.map(([name, h], i) => (
-          <div key={name} className="relative flex h-full flex-1 items-end" onPointerEnter={() => setHover(i)} onPointerLeave={() => setHover(null)}>
-            <motion.span
-              variants={{ hidden: { scaleY: 0 }, show: { scaleY: 1, transition: { delay: i * 0.04, duration: 0.7, ease } } }}
-              className="block w-full origin-bottom rounded-t-[8px] transition-[filter] duration-150"
-              style={{ height: `${h}%`, background: barColor(h), filter: hover === null || hover === i ? 'none' : 'saturate(.35) opacity(.6)' }}
-            />
-            {hover === i && (
-              <span className="pointer-events-none absolute -top-1 left-1/2 z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-[8px] bg-[oklch(0.18_0.04_285)] px-2 py-1 font-mono text-[10.5px] text-white shadow-[var(--shadow-2)]">
-                {name} · {h}%
+
+      <div className="mt-4 flex gap-2">
+        {/* y axis */}
+        <div className="relative h-[150px] w-6 shrink-0 font-mono text-[9.5px] text-ink-faint">
+          {[100, 75, 50, 25, 0].map((v) => <span key={v} className="absolute right-0 -translate-y-1/2" style={{ top: `${100 - v}%` }}>{v}</span>)}
+        </div>
+        <div className="relative flex-1">
+          <div className="relative h-[150px]">
+            {[100, 75, 50, 25].map((v) => <span key={v} className="absolute inset-x-0 border-t border-[oklch(0.6_0.05_285/.1)]" style={{ top: `${100 - v}%` }} />)}
+            <span className="absolute inset-x-0 bottom-0 border-t border-[oklch(0.6_0.05_285/.3)]" />
+            {[[85, 'eligible', '#0d9a5b'], [75, 'nearly', '#b45309']].map(([v, label, c]) => (
+              <span key={label} className="absolute inset-x-0 z-10 border-t border-dashed" style={{ top: `${100 - (v as number)}%`, borderColor: `${c}66` }}>
+                <span className="absolute -top-[8px] right-0 rounded-full bg-white/90 px-1.5 font-mono text-[9.5px] ring-1 ring-line" style={{ color: c as string }}>{label} {v}</span>
               </span>
-            )}
+            ))}
+            <div className="absolute inset-0 flex items-end gap-[6px] px-1">
+              {bars.map(([name, v], i) => {
+                const t = tierOf(v)
+                const dim = hover !== null && hover !== i
+                return (
+                  <div key={name} className="relative flex h-full flex-1 items-end justify-center" onPointerEnter={() => setHover(i)} onPointerLeave={() => setHover(null)}>
+                    <motion.span
+                      variants={{ hidden: { scaleY: 0 }, show: { scaleY: 1, transition: { delay: 0.1 + i * 0.045, duration: 0.7, ease } } }}
+                      className="relative block w-full max-w-[30px] origin-bottom rounded-t-[4px] transition-opacity duration-150"
+                      style={{ height: `${v}%`, background: t.color, opacity: dim ? 0.3 : 1 }}
+                    >
+                      <span className="absolute inset-x-0 -top-[15px] text-center font-mono text-[9.5px] text-ink-soft">{v}</span>
+                    </motion.span>
+                    {hover === i && (
+                      <span className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-5 -translate-x-1/2 whitespace-nowrap rounded-[8px] bg-[oklch(0.18_0.04_285)] px-2.5 py-1.5 text-[11px] text-white shadow-[var(--shadow-2)]">
+                        <b>{name}</b> · {v}% · {t.name}
+                      </span>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
           </div>
-        ))}
+          {/* x axis */}
+          <div className="mt-1.5 flex gap-[6px] px-1">
+            {bars.map(([name], i) => (
+              <span key={name} className={`flex-1 truncate text-center text-[10px] ${hover === i ? 'font-semibold text-ink' : 'text-ink-faint'}`}>{name}</span>
+            ))}
+          </div>
+        </div>
       </div>
-      <span aria-hidden className="scan-line" />
     </div>
   )
 }
