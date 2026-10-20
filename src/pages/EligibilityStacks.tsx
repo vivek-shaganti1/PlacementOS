@@ -46,12 +46,17 @@ export default function EligibilityStacks() {
     <div className="flex min-h-0 flex-1 overflow-hidden">
       <div className="scroll-thin min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-3 py-5 sm:px-6 sm:py-6">
         <div className="mx-auto max-w-[676px]">
+          <p className="label-mono mb-2"><b>01</b> Overview</p>
           <div className="flex items-center gap-2">
-            <h1 className="text-[21px] font-bold tracking-[-.02em] text-ink">Company Eligibility Stacks</h1>
-            <IconInfo className="h-[15px] w-[15px] text-ink-faint" />
+            <h1 className="text-[24px] font-semibold leading-[1.1] tracking-[-0.035em] text-ink sm:text-[30px]">
+              Company Eligibility <span className="font-display font-normal italic tracking-[-0.01em] text-gradient">Stacks</span>
+            </h1>
+            <span title="Each company is scored against its own CGPA, backlog, academic and skill requirements." className="text-ink-faint">
+              <IconInfo className="h-[15px] w-[15px]" />
+            </span>
           </div>
-          <p className="mt-1 text-[12.5px] text-ink-mute">
-            AI analyzed your profile and categorized companies based on your eligibility.
+          <p className="mt-1.5 text-[13px] text-ink-mute">
+            Computed from your profile against each recruiter's requirements. Pick a company to see the exact gaps.
           </p>
 
           <div className="scroll-thin mt-5 flex gap-[10px] overflow-x-auto pb-3">
@@ -60,6 +65,7 @@ export default function EligibilityStacks() {
                 key={b}
                 bucket={b}
                 list={lists[b]}
+                total={total}
                 selectedId={selected?.id}
                 onSelect={select}
                 expanded={!!expanded[b]}
@@ -68,40 +74,29 @@ export default function EligibilityStacks() {
             ))}
           </div>
 
-          <div className="card mt-3 grid grid-cols-2 gap-2 px-3.5 py-3 sm:grid-cols-4">
-            {bucketOrder.map((b) => {
-              const m = bucketMeta[b]
-              return (
-                <div key={b} className="flex items-start gap-2">
-                  <span className={`mt-[3px] h-[13px] w-[13px] shrink-0 rounded-full border-[3px] border-white ring-2 ${m.ring} ${m.dot}`} />
-                  <div className="leading-tight">
-                    <p className={`text-[11.5px] font-semibold ${m.text}`}>{m.title}</p>
-                    <p className="mt-[2px] text-[10px] text-ink-faint sm:whitespace-nowrap">{m.hint}</p>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-
           <div className="card mt-4 p-4">
-            <p className="text-[14px] font-semibold text-ink">Overall Eligibility Summary</p>
+            <p className="text-[14px] font-semibold text-ink">Overall eligibility summary</p>
             <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-              <div className="rounded-[11px] border border-line bg-[#fafbfc] px-3 py-3">
-                <p className="text-[11px] font-medium text-ink-mute">Total Companies</p>
-                <p className="mt-1 text-[21px] font-bold text-ink">{total}</p>
+              <div className="flex flex-col rounded-[12px] border border-line bg-white/80 px-3 py-3">
+                <p className="font-mono text-[10.5px] uppercase tracking-[0.08em] text-ink-mute">Tracked</p>
+                <p className="mt-1.5 text-[24px] font-semibold leading-none tracking-[-0.03em] text-ink tabular-nums">{total}</p>
+                <span className="mt-auto flex h-[5px] overflow-hidden rounded-full pt-0" style={{ marginTop: 14 }}>
+                  {bucketOrder.map((b) => <span key={b} className={bucketMeta[b].dot} style={{ width: `${(lists[b].length / Math.max(1, total)) * 100}%` }} />)}
+                </span>
               </div>
               {bucketOrder.map((b) => {
                 const m = bucketMeta[b]
                 const n = lists[b].length
                 return (
-                  <div key={b} className={`rounded-[11px] border px-3 py-3 ${m.head}`}>
-                    <p className={`text-[11px] font-semibold ${m.text}`}>{m.title}</p>
-                    <p className="mt-1 text-[21px] font-bold text-ink">
-                      {n}
-                      <span className="ml-1.5 text-[11.5px] font-semibold text-ink-mute">
-                        ({Math.round((n / total) * 100)}%)
-                      </span>
+                  <div key={b} className={`flex flex-col rounded-[12px] border px-3 py-3 ${m.head}`}>
+                    <p className={`font-mono text-[10.5px] uppercase tracking-[0.08em] ${m.text}`}>{({ eligible: 'Eligible', nearly: 'Nearly', canBecome: 'Can become', notEligible: 'Not yet' } as const)[b]}</p>
+                    <p className="mt-1.5 flex items-baseline gap-1.5">
+                      <span className="text-[24px] font-semibold leading-none tracking-[-0.03em] text-ink tabular-nums">{n}</span>
+                      <span className="font-mono text-[11px] text-ink-mute">{Math.round((n / Math.max(1, total)) * 100)}%</span>
                     </p>
+                    <span className="mt-auto block h-[5px] overflow-hidden rounded-full bg-white/80" style={{ marginTop: 14 }}>
+                      <span className={`block h-full rounded-full ${m.dot}`} style={{ width: `${(n / Math.max(1, total)) * 100}%` }} />
+                    </span>
                   </div>
                 )
               })}
@@ -136,7 +131,7 @@ export default function EligibilityStacks() {
                     <IconBot className="h-[17px] w-[17px]" />
                   </span>
                   <div>
-                    <p className="text-[12.5px] font-semibold text-ink">AI Suggestion</p>
+                    <p className="text-[12.5px] font-semibold text-ink">Biggest lever</p>
                     <p className="mt-1 text-[11.5px] leading-[1.6] text-ink-mute">
                       {blockers.length
                         ? `Improving ${blockers.map(([s]) => s).join(' and ')} would move up to ${blockers[0][1]} companies from "Nearly" / "Can Become" towards Eligible.`
