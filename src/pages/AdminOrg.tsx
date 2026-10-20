@@ -8,7 +8,7 @@ import { callApi } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { useJobs } from '../lib/jobs'
 import { useApp } from '../lib/store'
-import { collegeEconomics, COSTS, inr, PLANS, type PlanKey } from '../lib/pricing'
+import { collegeEconomics, COSTS, usd, PLANS, type PlanKey } from '../lib/pricing'
 import { errMsg, supabase, type Organization } from '../lib/supabase'
 
 type RosterRow = { id: number; email: string; full_name: string; roll_number: string; branch: string; batch: string; section: string; program: string; user_id: string | null; invited_at: string | null; created_at: string }
@@ -500,7 +500,7 @@ function ProfitCard({ orgs, usage }: { orgs: Organization[]; usage: Record<strin
       // Project this month's real AI actions over a 10-month academic year.
       aiActionsPerYear: u ? u.ai_actions_month * (o.plan === 'trial' ? 1 : 10) : null,
       colleges: o.plan === 'trial' ? orgs.length : paying,
-      infraMonthly: COSTS.infraMonthlyInr[stack],
+      infraMonthly: COSTS.infraMonthlyUsd[stack],
       months: o.plan === 'trial' ? 1 : 12,
     })
     return { o, seats, e }
@@ -514,16 +514,16 @@ function ProfitCard({ orgs, usage }: { orgs: Organization[]; usage: Record<strin
       title="Profit and costs (yearly estimate)"
       action={
         <select value={stack} onChange={(e) => pick(e.target.value as 'lean' | 'aws')} className="field h-[34px] w-auto max-w-full text-[12px]" aria-label="Infrastructure">
-          <option value="lean">Current stack: Supabase + Vercel ({inr(COSTS.infraMonthlyInr.lean)} / month)</option>
-          <option value="aws">AWS production stack ({inr(COSTS.infraMonthlyInr.aws)} / month)</option>
+          <option value="lean">Current stack: Supabase + Vercel ({usd(COSTS.infraMonthlyUsd.lean)} / month)</option>
+          <option value="aws">AWS production stack ({usd(COSTS.infraMonthlyUsd.aws)} / month)</option>
         </select>
       }
     >
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat label="Revenue / year" value={inr(revenue)} sub="seats + platform fees" />
-        <Stat label="Estimated cost / year" value={inr(sum('cost'))} sub="AI, hosting, support, payments" />
-        <Stat label="Profit / year" value={inr(profit)} sub={revenue ? `${((profit / revenue) * 100).toFixed(1)}% margin` : 'no paying colleges yet'} />
-        <Stat label="Worst case profit" value={inr(revenue - sum('costWorst'))} sub="every student uses the full AI cap" />
+        <Stat label="Revenue / year" value={usd(revenue)} sub="seats + platform fees" />
+        <Stat label="Estimated cost / year" value={usd(sum('cost'))} sub="AI, hosting, support, payments" />
+        <Stat label="Profit / year" value={usd(profit)} sub={revenue ? `${((profit / revenue) * 100).toFixed(1)}% margin` : 'no paying colleges yet'} />
+        <Stat label="Worst case profit" value={usd(revenue - sum('costWorst'))} sub="every student uses the full AI cap" />
       </div>
       <div className="mt-4 overflow-x-auto">
         <table className="w-full min-w-[920px] text-left text-[12.5px]">
@@ -537,13 +537,13 @@ function ProfitCard({ orgs, usage }: { orgs: Organization[]; usage: Record<strin
               <tr key={o.id} className="border-b border-line/70 tabular-nums">
                 <td className="px-2 py-2.5 font-semibold text-ink">{o.short_name || o.name}<span className="ml-1.5 text-[11px] font-normal capitalize text-ink-faint">{o.plan}</span></td>
                 <td className="px-2 py-2.5">{seats}</td>
-                <td className="px-2 py-2.5">{inr(e.revenue)}</td>
-                <td className="px-2 py-2.5">{inr(e.ai)}</td>
-                <td className="px-2 py-2.5 text-ink-mute">{inr(e.aiWorst)}</td>
-                <td className="px-2 py-2.5">{inr(e.infra)}</td>
-                <td className="px-2 py-2.5">{inr(e.support)}</td>
-                <td className="px-2 py-2.5">{inr(e.variable)}</td>
-                <td className="px-2 py-2.5 font-semibold">{inr(e.profit)}</td>
+                <td className="px-2 py-2.5">{usd(e.revenue)}</td>
+                <td className="px-2 py-2.5">{usd(e.ai)}</td>
+                <td className="px-2 py-2.5 text-ink-mute">{usd(e.aiWorst)}</td>
+                <td className="px-2 py-2.5">{usd(e.infra)}</td>
+                <td className="px-2 py-2.5">{usd(e.support)}</td>
+                <td className="px-2 py-2.5">{usd(e.variable)}</td>
+                <td className="px-2 py-2.5 font-semibold">{usd(e.profit)}</td>
                 <td className={`px-2 py-2.5 font-semibold ${tone(e.margin)}`}>{e.revenue ? `${e.margin.toFixed(1)}%` : 'trial'}</td>
                 <td className={`px-2 py-2.5 ${tone(e.marginWorst)}`}>{e.revenue ? `${e.marginWorst.toFixed(1)}%` : 'n/a'}</td>
               </tr>
@@ -552,9 +552,9 @@ function ProfitCard({ orgs, usage }: { orgs: Organization[]; usage: Record<strin
         </table>
       </div>
       <p className="mt-3 text-[11.5px] leading-relaxed text-ink-faint">
-        Assumptions: one AI action costs about {inr(COSTS.aiActionInr * 100)} per 100 (Groq gpt-oss-120b, 5,000 input and 1,500 output tokens, plus 25% for retries);
-        hosting is shared across paying colleges; support {inr(COSTS.supportPerCollegeYear)} per college per year; payments 2% and sales 10% of revenue; storage and email
-        {' '}{inr(COSTS.storageEmailPerStudentYear)} per student per year. Projected AI uses this month's real usage over a 10-month year. GST is charged on top and not counted.
+        Assumptions: one AI action costs about {usd(COSTS.aiActionUsd * 100)} per 100 (Groq gpt-oss-120b, 5,000 input and 1,500 output tokens, plus 25% for retries);
+        hosting is shared across paying colleges; support {usd(COSTS.supportPerCollegeYear)} per college per year; payments 2% and sales 10% of revenue; storage and email
+        {' '}{usd(COSTS.storageEmailPerStudentYear)} per student per year. Projected AI uses this month's real usage over a 10-month year. Taxes are charged on top and not counted.
       </p>
     </Card>
   )
@@ -671,7 +671,7 @@ export function SuperOrgs() {
         <Stat label="Students joined" value={String(totals.students)} sub={`${totals.rostered} on rosters`} />
         <Stat label="Active, 30 days" value={String(totals.active)} sub="signed in recently" />
         <Stat label="Storage used" value={bytes(totals.storage)} sub="resumes and photos" />
-        <Stat label="Contract value" value={inr(totals.revenue)} sub="per year" />
+        <Stat label="Contract value" value={usd(totals.revenue)} sub="per year" />
       </div>
 
       <Card title={editing ? `Edit ${editing.name}` : 'Add a college'}>
@@ -705,12 +705,12 @@ export function SuperOrgs() {
                 }}
                 className="field mt-1"
               >
-                {Object.values(PLANS).map((p) => <option key={p.key} value={p.key}>{p.name}{p.pricePerSeat ? ` (${inr(p.pricePerSeat)} / seat)` : ''}</option>)}
+                {Object.values(PLANS).map((p) => <option key={p.key} value={p.key}>{p.name}{p.pricePerSeat ? ` (${usd(p.pricePerSeat)} / seat)` : ''}</option>)}
               </select>
             </label>
             {input('seat_limit', 'Student seats', 'unlimited', 'number')}
-            {input('price_per_seat', 'Price per seat / year (₹)', '0', 'number')}
-            {input('platform_fee', 'Platform fee / year (₹)', '0', 'number')}
+            {input('price_per_seat', 'Price per seat / year (US$)', '0', 'number')}
+            {input('platform_fee', 'Platform fee / year (US$)', '0', 'number')}
             {input('ai_monthly_limit', `AI actions / student / month (plan: ${PLANS[f.plan as PlanKey]?.aiPerMonth ?? 15})`, 'plan default', 'number')}
             <label className="block">
               <span className="text-[11.5px] font-medium text-ink-mute">Billing</span>
@@ -784,9 +784,9 @@ export function SuperOrgs() {
                       </td>
                       <td className="px-2 py-2.5">
                         <span className="block font-semibold capitalize text-ink">{o.plan}</span>
-                        <span className="block text-[11.5px] text-ink-mute">{inr(Number(o.price_per_seat))} / seat / {o.billing_cycle === 'monthly' ? 'month' : 'year'}{Number(o.platform_fee) ? ` + ${inr(Number(o.platform_fee))} fee` : ''}</span>
+                        <span className="block text-[11.5px] text-ink-mute">{usd(Number(o.price_per_seat))} / seat / {o.billing_cycle === 'monthly' ? 'month' : 'year'}{Number(o.platform_fee) ? ` + ${usd(Number(o.platform_fee))} fee` : ''}</span>
                         <span className="block text-[11px] text-ink-faint">{aiCapOf(o)} AI actions / student / month</span>
-                        <span className="block text-[11.5px] text-ink-mute">{inr(yearly(o, u))} per year</span>
+                        <span className="block text-[11.5px] text-ink-mute">{usd(yearly(o, u))} per year</span>
                         {o.renews_on && <span className="block text-[11px] text-ink-faint">Renews {o.renews_on}</span>}
                       </td>
                       <td className="whitespace-nowrap px-2 py-2.5 text-right text-[12px]">

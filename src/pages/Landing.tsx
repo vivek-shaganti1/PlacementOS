@@ -7,7 +7,7 @@ import { companyCatalog } from '../data/companies'
 import { Glow } from '../components/effects'
 import { CursorFollower, Magnetic, ScrollHighlight, ScrollProgress, SmoothScroll, TextReveal } from '../components/motion'
 import { intensity, useMotionTier } from '../lib/motion'
-import { inr, PLANS } from '../lib/pricing'
+import { usd, PLANS } from '../lib/pricing'
 import { Features } from '../components/landing/Features'
 import { HowItWorks } from '../components/landing/HowItWorks'
 import { MegaFooter } from '../components/landing/MegaFooter'
@@ -47,10 +47,10 @@ function Pricing() {
               </div>
               <p className="mt-4 text-[34px] font-semibold tracking-[-0.04em] text-ink">
                 {p.key === 'enterprise' && <span className="mr-1 text-[15px] font-medium text-ink-mute">from</span>}
-                {inr(p.pricePerSeat)}
+                {usd(p.pricePerSeat)}
               </p>
               <p className="text-[12px] text-ink-faint">{p.key === 'trial' ? '30 days' : 'per student / year'}</p>
-              <p className="mt-1 text-[12px] text-ink-mute">{p.platformFee ? `+ ${inr(p.platformFee)} platform fee / year` : 'No platform fee'} · {p.seats}</p>
+              <p className="mt-1 text-[12px] text-ink-mute">{p.platformFee ? `+ ${usd(p.platformFee)} platform fee / year` : 'No platform fee'} · {p.seats}</p>
               <p className="mt-3 text-[13px] leading-[1.55] text-ink-mute">{p.blurb}</p>
               <ul className="mt-5 flex-1 space-y-2 text-[13px] text-ink-soft">
                 {p.features.map((f) => (
@@ -74,7 +74,7 @@ function Pricing() {
         ))}
       </div>
       <motion.p variants={reveal} className="mt-5 text-[12px] text-ink-faint">
-        Prices exclude 18% GST. Seats are counted by students on your roster. The platform fee covers hosting, security, backups and onboarding for your college.
+        Prices in US dollars, excluding applicable taxes. Seats are counted by students on your roster. The platform fee covers hosting, security, backups and onboarding for your college.
         AI actions are assistant replies, resume analyses and job-description matches.
       </motion.p>
     </Section>
