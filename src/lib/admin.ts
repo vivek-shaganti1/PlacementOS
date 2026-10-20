@@ -30,12 +30,23 @@ export function useStudents() {
 
   const reload = useCallback(async () => {
     const tables = Object.entries(RELATED)
+    // The API returns at most 1000 rows per request, so every list is read page by page; a large college would
+    // otherwise silently lose students, skills or repos from the rankings.
+    const all = async <T,>(page: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>) => {
+      const out: T[] = []
+      for (let from = 0; ; from += 1000) {
+        const { data, error } = await page(from, from + 999)
+        if (error) return { data: null, error }
+        out.push(...(data ?? []))
+        if (!data || data.length < 1000) return { data: out, error: null }
+      }
+    }
     const [profiles, roles, ...related] = await Promise.all([
-      supabase.from('profiles').select('*').order('full_name'),
-      supabase.from('user_roles').select('user_id,role'),
+      all<Record<string, any>>((a, b) => supabase.from('profiles').select('*').order('full_name').order('id').range(a, b)),
+      all<{ user_id: string; role: string }>((a, b) => supabase.from('user_roles').select('user_id,role').range(a, b)),
       ...tables.map(([t, q]) => {
         const [col, dir] = q.order.split('.')
-        return supabase.from(t).select(q.select === '*' ? '*' : `user_id,${q.select}`).order(col, { ascending: dir !== 'desc' }).limit(5000)
+        return all<Record<string, any>>((a, b) => supabase.from(t).select(q.select === '*' ? '*' : `user_id,${q.select}`).order(col, { ascending: dir !== 'desc' }).order('user_id').range(a, b))
       }),
     ])
     const err = profiles.error ?? roles.error ?? related.find((r) => r.error)?.error

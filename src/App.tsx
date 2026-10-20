@@ -216,12 +216,13 @@ function PublicRoutes() {
 }
 
 function Gate() {
-  const { session, loading, recovering, profile, profileError, signOut, role } = useAuth()
+  const { session, loading, recovering, mustChangePassword, profile, profileError, signOut, role } = useAuth()
   const { pathname } = useLocation()
 
   if (loading) return <Splash />
   if (!session) return <PublicRoutes />
-  if (recovering || pathname === '/reset-password') return <Login initialMode="reset" />
+  // Accounts created with a temporary password choose their own before anything else.
+  if (recovering || mustChangePassword || pathname === '/reset-password') return <Login initialMode="reset" />
   if (!profile)
     return profileError ? (
       <Centered>

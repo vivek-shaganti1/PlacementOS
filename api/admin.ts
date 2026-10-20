@@ -2,7 +2,7 @@
 // POST { action: 'invite', org_id, role: 'student' | 'org_admin' | 'platform_admin', password? (creates logins instead of emailing), people: [{ email, full_name?, roll_number?, branch?, batch? }] }
 // The caller must be the super admin or an admin of org_id. Roster rows are written as the caller (RLS applies);
 // only the invite email itself uses the secret key, which never leaves the server.
-import { bearer, env, handle, HttpError, json, rest, SUPABASE_URL } from './_lib'
+import { bearer, env, handle, HttpError, json, rest, SUPABASE_URL, timeout } from './_lib'
 
 export const config = { runtime: 'edge' }
 
@@ -20,6 +20,7 @@ async function sendInvite(email: string, fullName: string, redirectTo: string): 
   const key = env('SUPABASE_SECRET_KEY')
   if (!key) return { email, status: 'saved', detail: 'Invite emails are not configured (SUPABASE_SECRET_KEY missing on the server).' }
   const res = await fetch(`${SUPABASE_URL}/auth/v1/invite?redirect_to=${encodeURIComponent(redirectTo)}`, {
+    signal: timeout(10_000),
     method: 'POST',
     headers: { apikey: key, 'content-type': 'application/json' },
     body: JSON.stringify({ email, data: fullName ? { full_name: fullName } : {} }),
@@ -27,7 +28,7 @@ async function sendInvite(email: string, fullName: string, redirectTo: string): 
   if (res.ok) return { email, status: 'invited' }
   const body = (await res.json().catch(() => ({}))) as { msg?: string; error_code?: string; message?: string }
   const msg = body.msg ?? body.message ?? `HTTP ${res.status}`
-  if (/already been registered|already registered|email_exists/i.test(msg + (body.error_code ?? ''))) return { email, status: 'existing', detail: 'Already has an account; linked automatically.' }
+  if (/already been registered|already registered|email_exists/i.test(msg + (body.error_code ?? ''))) return { email, status: 'existing', detail: 'Already has an account.' }
   if (res.status === 429) return { email, status: 'failed', detail: 'Email rate limit reached. Configure custom SMTP in Supabase to send more invites.' }
   return { email, status: 'failed', detail: msg }
 }
@@ -37,14 +38,16 @@ async function createLogin(email: string, fullName: string, password: string): P
   const key = env('SUPABASE_SECRET_KEY')
   if (!key) return { email, status: 'failed', detail: 'Creating logins needs SUPABASE_SECRET_KEY on the server.' }
   const res = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
+    signal: timeout(10_000),
     method: 'POST',
     headers: { apikey: key, authorization: `Bearer ${key}`, 'content-type': 'application/json' },
-    body: JSON.stringify({ email, password, email_confirm: true, user_metadata: fullName ? { full_name: fullName } : {} }),
+    // must_change_password: the app asks the person to choose their own password on first sign-in.
+    body: JSON.stringify({ email, password, email_confirm: true, user_metadata: { ...(fullName ? { full_name: fullName } : {}), must_change_password: true } }),
   })
-  if (res.ok) return { email, status: 'created', detail: 'Login created. Share the temporary password with them.' }
+  if (res.ok) return { email, status: 'created', detail: 'Login created. Share the temporary password with them; they must change it at first sign-in.' }
   const body = (await res.json().catch(() => ({}))) as { msg?: string; error_code?: string; message?: string }
   const msg = body.msg ?? body.message ?? `HTTP ${res.status}`
-  if (/already been registered|already registered|email_exists/i.test(msg + (body.error_code ?? ''))) return { email, status: 'existing', detail: 'Already has an account; linked automatically.' }
+  if (/already been registered|already registered|email_exists/i.test(msg + (body.error_code ?? ''))) return { email, status: 'existing', detail: 'Already has an account.' }
   return { email, status: 'failed', detail: msg }
 }
 
@@ -63,7 +66,8 @@ export default handle(async (req) => {
     if (!/^[0-9a-f-]{36}$/i.test(orgId)) throw new HttpError(400, 'Invalid organization')
     if (!isSuper && !roles.some((r) => r.role === 'org_admin' && r.org_id === orgId)) throw new HttpError(403, 'You do not administer this organization.')
   }
-  const people = (Array.isArray(body.people) ? body.people : []).slice(0, 200).map((p) => ({
+  // 50 per request keeps one call well inside the function time limit (each person is up to three upstream calls).
+  const people = (Array.isArray(body.people) ? body.people : []).slice(0, 50).map((p) => ({
     email: clip(p.email, 200).toLowerCase(),
     full_name: clip(p.full_name, 160),
     company: clip(p.company, 120),
@@ -78,10 +82,21 @@ export default handle(async (req) => {
   if (bad.length) throw new HttpError(422, `Invalid email: ${bad.slice(0, 5).join(', ')}`)
 
   const password = typeof body.password === 'string' ? body.password : ''
-  if (password && password.length < 8) throw new HttpError(422, 'Temporary password must be at least 8 characters.')
+  if (password && password.length < 12) throw new HttpError(422, 'Temporary password must be at least 12 characters.')
+  // Platform admins hold every college's data: they must accept an emailed invite, never a password set by someone else.
+  if (password && role === 'platform_admin') throw new HttpError(422, 'Platform admins must be invited by email, not created with a temporary password.')
   const redirectTo = `${new URL(req.url).origin}/reset-password`
   // With a temporary password, logins are created directly; otherwise an invite email is sent.
-  const provision = (p: { email: string; full_name: string }) => (password ? createLogin(p.email, p.full_name, password) : sendInvite(p.email, p.full_name, redirectTo))
+  // A login created with a password the caller knows must only ever reach this college's own people. An email that is
+  // pending anywhere else (another college's roster or admin list, a recruiter elsewhere, a platform admin) would
+  // otherwise be claimed with that password and granted the other role on first sign-in.
+  const mayProvision = async (email: string) =>
+    role === 'platform_admin' || ((await (await rest(token, 'rpc/can_provision', { method: 'POST', body: JSON.stringify({ target_org: orgId, target_email: email }) })).json()) as boolean)
+  const provision = async (p: { email: string; full_name: string }): Promise<Result> => {
+    if (!password) return sendInvite(p.email, p.full_name, redirectTo)
+    if (!(await mayProvision(p.email))) return { email: p.email, status: 'failed', detail: 'This email is already registered elsewhere on PlacementIQ. Send an email invite instead.' }
+    return createLogin(p.email, p.full_name, password)
+  }
   const results: Result[] = []
 
   if (role === 'student') {

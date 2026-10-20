@@ -2,7 +2,7 @@
 // POST { action: 'analyze', text, file_name }  -> parses the extracted resume text, scores it, saves to profile
 // POST { action: 'match', jd }                 -> matches the saved resume against a job description
 import { SKILLS } from '../src/lib/eligibility'
-import { bearer, consumeAi, deleteRows, groq, handle, HttpError, insertRows, json, loadProfile, parseJson, rest, saveProfile, STYLE_RULES, tidyDeep } from './_lib'
+import { bearer, consumeAi, deleteRows, env, groq, handle, HttpError, insertRows, json, loadProfile, parseJson, rest, saveProfile, STYLE_RULES, SUPABASE_URL, tidyDeep, timeout } from './_lib'
 
 export const config = { runtime: 'edge' }
 
@@ -209,7 +209,7 @@ export default handle(async (req) => {
     const text = String(body.text ?? '').replace(/\u0000/g, '').trim().slice(0, 40000)
     if (text.length < 200) throw new HttpError(422, 'Could not read enough text from this file. If it is a scanned image, export it as a text-based PDF.')
     await consumeAi(token, 'resume')
-    const analysis = await analyze(text, body.file_name ?? null, profile.target_roles || 'Software Engineer')
+    const analysis = await analyze(text, body.file_name ? String(body.file_name).slice(0, 200) : null, profile.target_roles || 'Software Engineer')
     const { analyzed_at, ...row } = analysis
     void analyzed_at
     await insertRows(token, 'resume_analyses', { ...row, user_id: profile.id })
@@ -229,13 +229,22 @@ export default handle(async (req) => {
       jd = `${job.company} — ${job.role} (${job.location})\n\n${job.description}`.trim()
     }
     if (jd.length < 80) throw new HttpError(422, 'Paste the full job description (at least a few lines).')
-    await consumeAi(token, 'jd_match')
     if (!profile.resume_text) throw new HttpError(422, 'Upload and analyze your resume first.')
+    await consumeAi(token, 'jd_match')
     const result = await match(profile.resume_text, jd)
     const { analyzed_at, ...row } = result
     void analyzed_at
     await insertRows(token, 'jd_matches', { ...row, jd_text: jd.slice(0, 20000), user_id: profile.id, job_id: jobId })
-    if (jobId) await rest(token, `job_applications?job_id=eq.${jobId}&user_id=eq.${profile.id}`, { method: 'PATCH', body: JSON.stringify({ ai_fit: result.score }), headers: { prefer: 'return=minimal' } })
+    // ai_fit is shown to recruiters and placement cells, so students cannot write it themselves (no update policy);
+    // the server writes it with the service key, scoped to this student's own application for this job.
+    const key = env('SUPABASE_SECRET_KEY')
+    if (jobId && key)
+      await fetch(`${SUPABASE_URL}/rest/v1/job_applications?job_id=eq.${jobId}&user_id=eq.${profile.id}`, {
+        signal: timeout(10_000),
+        method: 'PATCH',
+        headers: { apikey: key, authorization: `Bearer ${key}`, 'content-type': 'application/json', prefer: 'return=minimal' },
+        body: JSON.stringify({ ai_fit: result.score }),
+      })
     return json({ match: result })
   }
 

@@ -1,6 +1,6 @@
 // Connects a coding / code-hosting account: fetches public stats and caches them on the profile.
 // POST { platform: 'github' | 'leetcode' | 'codeforces' | 'codechef', username: string | null }
-import { bearer, deleteRows, env, handle, HttpError, insertRows, json, loadProfile, saveProfile } from './_lib'
+import { bearer, deleteRows, env, handle, HttpError, insertRows, json, loadProfile, rest, saveProfile, timeout } from './_lib'
 
 export const config = { runtime: 'edge' }
 
@@ -8,8 +8,12 @@ const UA = 'Mozilla/5.0 (compatible; PlacementIQ/1.0; +https://placementiq-os.ve
 const now = () => new Date().toISOString()
 const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : null)
 
+const MAX_BYTES = 5_000_000
+const tooLarge = (res: Response) => Number(res.headers.get('content-length') ?? 0) > MAX_BYTES
+
 async function getJson(url: string, init: RequestInit = {}) {
-  const res = await fetch(url, { ...init, headers: { 'user-agent': UA, ...(init.headers ?? {}) } })
+  const res = await fetch(url, { signal: timeout(8000), ...init, headers: { 'user-agent': UA, ...(init.headers ?? {}) } })
+  if (tooLarge(res)) throw new HttpError(502, 'That platform returned too much data. Try again later.')
   return { res, body: res.ok ? await res.json() : null }
 }
 
@@ -122,8 +126,9 @@ async function codeforces(username: string) {
 }
 
 async function codechef(username: string) {
-  const res = await fetch(`https://www.codechef.com/users/${encodeURIComponent(username)}`, { headers: { 'user-agent': UA }, redirect: 'follow' })
-  const html = res.ok ? await res.text() : ''
+  const res = await fetch(`https://www.codechef.com/users/${encodeURIComponent(username)}`, { signal: timeout(8000), headers: { 'user-agent': UA }, redirect: 'follow' })
+  if (tooLarge(res)) throw new HttpError(502, 'CodeChef returned too much data. Try again later.')
+  const html = res.ok ? (await res.text()).slice(0, MAX_BYTES) : ''
   if (!html.includes('rating-number') && !html.includes('Total Problems Solved')) throw new HttpError(404, `CodeChef user "${username}" not found.`)
   const rating = html.match(/<div class="rating-number">\s*(\d+)/)?.[1]
   const max = html.match(/Highest Rating\s*(\d+)/)?.[1]
@@ -160,7 +165,14 @@ export default handle(async (req) => {
   }
 
   const handleName = String(username).trim().replace(/^@/, '').replace(/^https?:\/\/[^/]+\/(u\/|users\/|profile\/)?/i, '').replace(/\/+$/, '')
-  if (!/^[A-Za-z0-9._-]{1,40}$/.test(handleName)) throw new HttpError(400, 'That does not look like a valid username.')
+  // Dots only as part of a name: "." or ".." would resolve to the platform's root path.
+  if (!/^(?!\.+$)[A-Za-z0-9._-]{1,40}$/.test(handleName)) throw new HttpError(400, 'That does not look like a valid username.')
+
+  // One sync per platform every 5 minutes per student, so nobody can burn the shared GitHub token or get the server
+  // rate-limited by the coding sites.
+  const [last] = (await (await rest(token, `coding_profiles?user_id=eq.${profile.id}&platform=eq.${p}&select=synced_at,username`)).json()) as { synced_at: string | null; username: string }[]
+  if (last?.synced_at && last.username.toLowerCase() === handleName.toLowerCase() && Date.now() - Date.parse(last.synced_at) < 5 * 60_000)
+    throw new HttpError(429, 'Synced a moment ago. You can sync this account again in a few minutes.')
 
   const fetched = await fetchers[p](handleName)
   const { all_repos, top_repos, ...stats } = fetched as typeof fetched & { all_repos?: unknown[]; top_repos?: unknown[] }

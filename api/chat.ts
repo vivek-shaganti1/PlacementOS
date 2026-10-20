@@ -63,7 +63,9 @@ export default handle(async (req) => {
   const content = await groq(
     [
       { role: 'system', content: systemPrompt(profile) },
-      ...messages.map((m) => ({ role: m.role === 'bot' ? ('assistant' as const) : ('user' as const), content: m.text })),
+      // Earlier replies come from the browser, so they are passed back as quoted context inside user turns rather than
+      // as assistant messages: a client cannot forge what the assistant "already said" to steer it.
+      ...messages.map((m) => ({ role: 'user' as const, content: m.role === 'bot' ? `(Your earlier reply, for context:)\n${m.text}` : m.text })),
     ],
     { maxTokens: 900, temperature: 0.5 },
   )

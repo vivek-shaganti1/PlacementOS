@@ -63,6 +63,7 @@ export default function ResumeAnalyzer() {
   const view = async () => {
     if (!p.resume_path) return
     const win = window.open('', '_blank')
+    if (win) win.opener = null
     const { data, error } = await supabase.storage.from('resumes').createSignedUrl(p.resume_path, 300)
     if (error || !data) {
       win?.close()

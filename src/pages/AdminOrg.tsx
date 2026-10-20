@@ -83,7 +83,7 @@ function LoginMethod({ password, setPassword }: { password: string; setPassword:
         <input type="radio" checked={mode === 'password'} onChange={() => setMode('password')} /> Create with a temporary password
       </label>
       {mode === 'password' && (
-        <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 8 characters" className="field h-[34px] sm:max-w-[220px]" />
+        <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 12 characters" autoComplete="off" className="field h-[34px] sm:max-w-[220px]" />
       )}
     </div>
   )

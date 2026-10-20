@@ -10,7 +10,8 @@ import { sectionLabel, yearLabel, yearOfStudy } from '../lib/academics'
 import { branchCode, evaluateJob, SKILL_SHORT, SKILLS, type JobPosting } from '../lib/eligibility'
 import { ctcText, isOpen, STATUS_META, useJobs, type JobApplication, type JobStatus } from '../lib/jobs'
 import { useApp } from '../lib/store'
-import { supabase } from '../lib/supabase'
+import { errMsg, supabase } from '../lib/supabase'
+import { safeUrl } from '../lib/links'
 
 const tone = (v: number) => (v >= 75 ? '#12b76a' : v >= 55 ? '#f79009' : '#f04438')
 
@@ -134,6 +135,7 @@ function StudentDrawer({ row, applications, jobs, orgName, onClose }: { row: Stu
   const openResume = async () => {
     if (!p.resume_path) return
     const win = window.open('', '_blank')
+    if (win) win.opener = null
     const { data, error } = await supabase.storage.from('resumes').createSignedUrl(p.resume_path, 300)
     if (error || !data) {
       win?.close()
@@ -160,9 +162,9 @@ function StudentDrawer({ row, applications, jobs, orgName, onClose }: { row: Stu
             <p className="text-[12px] text-ink-mute">Roll number: <span className="tabular-nums text-ink">{p.roll_number || 'not set'}</span></p>
             <p className="text-[12px] text-ink-mute">{[p.email, p.phone].filter(Boolean).join(' · ')}</p>
             <div className="mt-2 flex flex-wrap gap-2 text-[11.5px] font-semibold">
-              {p.linkedin_url && <a href={p.linkedin_url} target="_blank" rel="noreferrer" className="text-brand-dark hover:underline">LinkedIn</a>}
+              {safeUrl(p.linkedin_url) && <a href={safeUrl(p.linkedin_url)} target="_blank" rel="noreferrer" className="text-brand-dark hover:underline">LinkedIn</a>}
               {p.github_username && <a href={`https://github.com/${p.github_username}`} target="_blank" rel="noreferrer" className="text-brand-dark hover:underline">GitHub</a>}
-              {p.portfolio_url && <a href={p.portfolio_url} target="_blank" rel="noreferrer" className="text-brand-dark hover:underline">Portfolio</a>}
+              {safeUrl(p.portfolio_url) && <a href={safeUrl(p.portfolio_url)} target="_blank" rel="noreferrer" className="text-brand-dark hover:underline">Portfolio</a>}
               {p.resume_path && <button onClick={openResume} className="text-brand-dark hover:underline">Resume</button>}
             </div>
           </div>
@@ -211,7 +213,7 @@ function StudentDrawer({ row, applications, jobs, orgName, onClose }: { row: Stu
               {i.github.top_repos.map((r) => (
                 <div key={r.name} className="py-2 text-[12px]">
                   <div className="flex items-baseline gap-2">
-                    <a href={r.url} target="_blank" rel="noreferrer" className="font-semibold text-brand underline">{r.name}</a>
+                    <a href={safeUrl(r.url)} target="_blank" rel="noreferrer" className="font-semibold text-brand underline">{r.name}</a>
                     <span className="text-ink-faint">{[r.language, r.stars ? `${r.stars} stars` : ''].filter(Boolean).join(' · ')}</span>
                   </div>
                   {r.description && <p className="text-ink-mute">{r.description}</p>}
@@ -244,7 +246,7 @@ function StudentDrawer({ row, applications, jobs, orgName, onClose }: { row: Stu
         </ul>
         <p className="mt-4 text-[12px] font-semibold text-ink">Certifications ({p.certifications.length})</p>
         <ul className="mt-1.5 space-y-1 text-[12px] text-ink-soft">
-          {p.certifications.map((c) => <li key={c.name}>{c.credential_url ? <a href={c.credential_url} target="_blank" rel="noreferrer" className="underline">{c.name}</a> : c.name}<span className="text-ink-faint"> {[c.issuer, c.date].filter(Boolean).join(' · ')}</span></li>)}
+          {p.certifications.map((c) => <li key={c.name}>{safeUrl(c.credential_url) ? <a href={safeUrl(c.credential_url)} target="_blank" rel="noreferrer" className="underline">{c.name}</a> : c.name}<span className="text-ink-faint"> {[c.issuer, c.date].filter(Boolean).join(' · ')}</span></li>)}
           {!p.certifications.length && <li className="text-ink-faint">None listed.</li>}
         </ul>
         <p className="mt-4 text-[12px] font-semibold text-ink">Achievements ({p.achievements.length})</p>
@@ -338,7 +340,13 @@ export function AdminStudents() {
   const exportCsv = () => {
     const head = ['Rank', 'Name', 'Roll number', 'College', 'Email', 'Phone', 'Year', 'Branch', 'Section', 'Batch', 'CGPA', 'Backlogs', 'Projects', 'Internships', 'Applications', 'Readiness', 'Resume', 'DSA', 'Problems solved', 'Profile strength', 'Score']
     const lines = shown.map((r) => [r.rank, r.profile.full_name, r.profile.roll_number ?? '', orgName(r.profile.org_id), r.profile.email, r.profile.phone, yearLabel(yearOfStudy(r.profile.batch, r.profile.program)), r.profile.branch, r.profile.section, r.profile.batch, r.profile.cgpa, r.profile.backlogs, r.profile.projects.length, r.profile.internships.length, appsOf.get(r.profile.id)?.length ?? 0, r.readiness, r.resume ?? '', r.dsa, r.solved, r.strength, r.score])
-    const csv = [head, ...lines].map((l) => l.map((v) => `"${String(v ?? '').replace(/"/g, '""')}"`).join(',')).join('\n')
+    // A cell starting with = + - @ is a formula in Excel and Sheets; prefix it so student-entered text stays text.
+    const cell = (v: unknown) => {
+      let s = String(v ?? '')
+      if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`
+      return `"${s.replace(/"/g, '""')}"`
+    }
+    const csv = [head, ...lines].map((l) => l.map(cell).join(',')).join('\n')
     const a = document.createElement('a')
     a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
     a.download = `placementiq-students-${new Date().toISOString().slice(0, 10)}.csv`
@@ -650,8 +658,10 @@ export function AdminJobs() {
   const eligibleNotApplied = selected ? rows.filter((r) => r.profile.org_id === selected.org_id).filter((r) => !applications.some((a) => a.job_id === selected.id && a.user_id === r.profile.id) && evaluateJob(selected, r.profile).eligibleToApply).length : 0
 
   const setStatus = async (a: JobApplication, status: JobStatus) => {
+    // Offers and rejections notify the student immediately, so they are confirmed first.
+    if ((status === 'offer' || status === 'rejected') && !window.confirm(`Mark this applicant as ${STATUS_META[status].label.toLowerCase()}? The student is notified right away.`)) return
     const { error } = await supabase.from('job_applications').update({ status }).eq('job_id', a.job_id).eq('user_id', a.user_id)
-    if (error) return showToast(`Could not update: ${error.message}`)
+    if (error) return showToast(`Could not update: ${errMsg(error)}`)
     showToast(`Marked ${STATUS_META[status].label.toLowerCase()} — the student has been notified.`)
     reload()
   }

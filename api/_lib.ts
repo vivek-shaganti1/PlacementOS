@@ -10,7 +10,10 @@ export const SUPABASE_KEY =
 export const GROQ_MODEL = env('GROQ_MODEL') || 'openai/gpt-oss-120b'
 
 export const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })
+  new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } })
+
+/** Every outbound request gets a deadline so a slow upstream cannot hold a function until the platform kills it. */
+export const timeout = (ms: number) => AbortSignal.timeout(ms)
 
 export class HttpError extends Error {
   constructor(public status: number, message: string) {
@@ -38,6 +41,7 @@ export const bearer = (req: Request) => {
 /** Calls Supabase REST as the signed-in user, so RLS applies. */
 export async function rest(token: string, path: string, init: RequestInit = {}) {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    signal: timeout(10_000),
     ...init,
     headers: { apikey: SUPABASE_KEY, authorization: `Bearer ${token}`, 'content-type': 'application/json', ...(init.headers ?? {}) },
   })
@@ -48,7 +52,9 @@ export async function rest(token: string, path: string, init: RequestInit = {}) 
     if (/org_students_roll_key/.test(text)) throw new HttpError(409, 'That roll number is already used by another student in this college. Check the roll number or update that student instead.')
     if (/"code":"23505"/.test(text)) throw new HttpError(409, 'This record already exists.')
     if (/"code":"42501"|row-level security/.test(text)) throw new HttpError(403, 'You do not have permission to change this.')
-    throw new HttpError(502, `Database error: ${text.slice(0, 200)}`)
+    // Never echo raw database text (table, column and constraint names) to the browser; keep it in the server log.
+    console.error('db', res.status, path.split('?')[0], text.slice(0, 500))
+    throw new HttpError(502, 'The database rejected this request. Try again, or contact your placement cell if it keeps happening.')
   }
   return res
 }
@@ -59,6 +65,7 @@ export async function rest(token: string, path: string, init: RequestInit = {}) 
  */
 export async function consumeAi(token: string, kind: 'chat' | 'resume' | 'jd_match') {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/consume_ai`, {
+    signal: timeout(10_000),
     method: 'POST',
     headers: { apikey: SUPABASE_KEY, authorization: `Bearer ${token}`, 'content-type': 'application/json' },
     body: JSON.stringify({ action: kind }),
@@ -72,8 +79,21 @@ export async function consumeAi(token: string, kind: 'chat' | 'resume' | 'jd_mat
 }
 
 /** Loads the caller's own profile; doubles as token validation. */
+/** The user id inside a bearer token. Not a verification: every caller passes the token to Supabase, which verifies it. */
+export function tokenSubject(token: string): string {
+  try {
+    const part = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
+    const sub = (JSON.parse(atob(part.padEnd(part.length + ((4 - (part.length % 4)) % 4), '='))) as { sub?: string }).sub ?? ''
+    if (/^[0-9a-f-]{36}$/i.test(sub)) return sub
+  } catch {
+    /* fall through */
+  }
+  throw new HttpError(401, 'Session expired. Please sign in again.')
+}
+
 export async function loadProfile(token: string): Promise<Record<string, any>> {
-  const [profile] = (await (await rest(token, 'profiles?select=*&limit=1')).json()) as Record<string, any>[]
+  // Filter by the caller's own id: admins and recruiters can see other profiles, so "the first visible row" is not "mine".
+  const [profile] = (await (await rest(token, `profiles?select=*&id=eq.${tokenSubject(token)}&limit=1`)).json()) as Record<string, any>[]
   if (!profile) throw new HttpError(401, 'Not signed in')
   return profile
 }
@@ -125,6 +145,7 @@ export async function groq(messages: ChatMessage[], opts: { json?: boolean; maxT
   for (const model of MODELS) {
     for (let attempt = 0; attempt < 2; attempt++) {
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        signal: timeout(20_000),
         method: 'POST',
         headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
         body: JSON.stringify({

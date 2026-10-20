@@ -7,6 +7,10 @@ type AuthCtx = {
   session: Session | null
   loading: boolean
   recovering: boolean
+  /** Set when a password-reset link was expired or already used. */
+  linkError: string | null
+  /** The account was created with a temporary password and must choose its own before using the app. */
+  mustChangePassword: boolean
   profile: Profile | null
   isAdmin: boolean
   isSuperAdmin: boolean
@@ -31,6 +35,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [loading, setLoading] = useState(true)
   const [recovering, setRecovering] = useState(false)
+  const [linkError, setLinkError] = useState<string | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [profileError, setProfileError] = useState<string | null>(null)
   const [roles, setRoles] = useState<{ role: string; org_id: string | null }[]>([])
@@ -44,12 +49,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       window.history.replaceState(null, '', window.location.pathname)
       supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'recovery' }).then(({ error }) => {
         if (!error) setRecovering(true)
+        else setLinkError('This reset link has expired or was already used. Request a new one below.')
       })
     }
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session)
-      setLoading(false)
-    })
+    supabase.auth
+      .getSession()
+      .then(({ data }) => setSession(data.session))
+      .catch(() => setSession(null))
+      .finally(() => setLoading(false))
     const { data } = supabase.auth.onAuthStateChange((event, s) => {
       if (event === 'PASSWORD_RECOVERY') setRecovering(true)
       setSession(s)
@@ -58,6 +65,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const userId = session?.user.id
+
+  // A different account (or none) must never see the previous account's roles, profile or error.
+  useEffect(() => {
+    setProfile(null)
+    setRoles([])
+    setProfileError(null)
+  }, [userId])
 
   const refreshProfile = useCallback(async () => {
     if (!userId) {
@@ -69,12 +83,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       supabase.from('user_roles').select('role,org_id').eq('user_id', userId),
       ...Object.entries(RELATED).map(([table, q]) => {
         const [col, dir] = q.order.split('.')
-        let query = supabase.from(table).select(q.select).order(col, { ascending: dir !== 'desc' })
+        // Always this user's own rows: admins and recruiters can read other people's rows too.
+        let query = supabase.from(table).select(q.select).eq('user_id', userId).order(col, { ascending: dir !== 'desc' })
         if ('limit' in q) query = query.limit(q.limit)
         return query
       }),
     ])
-    const err = base.error ?? rel.find((x) => x.error)?.error
+    // The session may have changed while these requests were in flight; drop a stale answer.
+    if ((await supabase.auth.getSession()).data.session?.user.id !== userId) return
+    const err = base.error ?? role.error ?? rel.find((x) => x.error)?.error
     // A stored session the server no longer accepts (expired, or signed with rotated keys): sign out cleanly
     // so the visitor lands on the public pages instead of a dead end.
     if (err && /jwt|token|401|PGRST30/i.test(`${err.message} ${(err as { code?: string }).code ?? ''}`)) {
@@ -82,7 +99,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return
     }
     if (err) {
-      setProfileError(err.message)
+      console.error(err)
+      setProfileError('We could not load your account. Check your connection and try again.')
       return
     }
     if (!base.data) {
@@ -130,6 +148,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       session,
       loading,
       recovering,
+      linkError,
+      mustChangePassword: session?.user.user_metadata?.must_change_password === true,
       profile,
       isAdmin,
       isSuperAdmin,
@@ -139,12 +159,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       refreshProfile,
       updateProfile,
       signOut: async () => {
-        await supabase.auth.signOut()
+        // If the server cannot be reached, still forget the session on this device (shared campus computers).
+        const { error } = await supabase.auth.signOut()
+        if (error) await supabase.auth.signOut({ scope: 'local' })
         setProfile(null)
+        setRoles([])
+        setProfileError(null)
       },
       clearRecovery: () => setRecovering(false),
     }),
-    [session, loading, recovering, profile, isAdmin, isSuperAdmin, adminOrgIds, role, profileError, refreshProfile, updateProfile],
+    [session, loading, recovering, linkError, profile, isAdmin, isSuperAdmin, adminOrgIds, role, profileError, refreshProfile, updateProfile],
   )
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>

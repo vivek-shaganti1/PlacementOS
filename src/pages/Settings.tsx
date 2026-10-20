@@ -82,7 +82,7 @@ export default function Settings() {
 
       <Card title="Profile visibility">
         <div className="space-y-2">
-          {([['college', 'Visible to my college placement cell and alumni'], ['recruiters', 'Visible to verified recruiters as well'], ['private', 'Private — only I can see my profile']] as const).map(([v, label]) => (
+          {([['college', 'My placement cell, and recruiters of drives I apply to'], ['recruiters', 'My placement cell and recruiters (same as above today)'], ['private', 'Only me and my placement cell (hidden from recruiters, even for drives I apply to)']] as const).map(([v, label]) => (
             <label key={v} className="flex cursor-pointer items-center gap-2.5 rounded-[9px] px-2 py-2 hover:bg-[#f7f8fa]">
               <input type="radio" name="vis" checked={visibility === v} onChange={() => setVisibility(v)} className="h-4 w-4 accent-[#6d4aff]" />
               <span className="text-[12.5px] text-ink-soft">{label}</span>

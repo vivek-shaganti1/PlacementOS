@@ -5,6 +5,7 @@ import { Card, Meter, Page } from '../components/Page'
 import { useAuth, useProfile } from '../lib/auth'
 import { useApp } from '../lib/store'
 import { errMsg, supabase, type Internship, type Skill } from '../lib/supabase'
+import { safeUrl } from '../lib/links'
 
 const input =
   'mt-1 h-[36px] w-full rounded-[9px] border border-line bg-white px-3 text-[12.5px] outline-none focus:border-[#d5cbff] focus:ring-4 focus:ring-brand/10'
@@ -89,9 +90,11 @@ export default function Profile() {
   const uploadAvatar = async (file: File | undefined) => {
     if (!file || !session) return
     if (file.size > 2 * 1024 * 1024) return showToast('Photo must be under 2 MB.')
+    // The extension comes from the real file type, never from the name the user picked.
+    const ext = ({ 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp' } as Record<string, string>)[file.type]
+    if (!ext) return showToast('Use a PNG, JPG or WebP photo.')
     setUploading(true)
     try {
-      const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
       const path = `${session.user.id}/avatar-${Date.now()}.${ext}`
       const { error } = await supabase.storage.from('avatars').upload(path, file, { contentType: file.type })
       if (error) throw error
@@ -206,7 +209,7 @@ export default function Profile() {
               <li key={proj.title + i} className="group flex gap-2 text-[12.5px] text-ink-soft">
                 <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-brand" />
                 <span className="flex-1">
-                  <span className="font-semibold text-ink">{proj.url ? <a href={proj.url} target="_blank" rel="noreferrer" className="hover:underline">{proj.title}</a> : proj.title}</span>
+                  <span className="font-semibold text-ink">{safeUrl(proj.url) ? <a href={safeUrl(proj.url)} target="_blank" rel="noreferrer" className="hover:underline">{proj.title}</a> : proj.title}</span>
                   {proj.tech && <span className="text-ink-faint"> · {proj.tech}</span>}
                   {proj.description && <span className="block text-[11.5px] text-ink-mute">{proj.description}</span>}
                 </span>

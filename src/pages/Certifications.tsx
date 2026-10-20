@@ -4,6 +4,7 @@ import { useAuth, useProfile } from '../lib/auth'
 import { useCompanies } from '../lib/companies'
 import { useApp } from '../lib/store'
 import { errMsg } from '../lib/supabase'
+import { safeUrl } from '../lib/links'
 
 const catalog = [
   { name: 'AWS Certified Solutions Architect – Associate', skill: 'Cloud & DevOps', weeks: 6, url: 'https://aws.amazon.com/certification/certified-solutions-architect-associate/' },
@@ -65,8 +66,8 @@ export default function Certifications() {
                 <p className="text-[12.5px] font-semibold text-ink">{c.name}</p>
                 <p className="text-[11.5px] text-ink-mute">{[c.issuer, c.date].filter(Boolean).join(' · ') || 'Issuer not set'}</p>
               </div>
-              {c.credential_url && (
-                <a href={c.credential_url} target="_blank" rel="noreferrer" className="text-[11.5px] font-medium text-brand-dark hover:underline">Credential</a>
+              {safeUrl(c.credential_url) && (
+                <a href={safeUrl(c.credential_url)} target="_blank" rel="noreferrer" className="text-[11.5px] font-medium text-brand-dark hover:underline">Credential</a>
               )}
               <button onClick={() => save(p.certifications.filter((_, j) => j !== i), 'Certification removed.')} className="text-[11px] text-ink-faint opacity-0 hover:text-[#d92d20] group-hover:opacity-100">Remove</button>
             </div>

@@ -4,7 +4,7 @@ async function fromPdf(buf: ArrayBuffer) {
   const pdfjs = await import('pdfjs-dist')
   const worker = await import('pdfjs-dist/build/pdf.worker.min.mjs?url')
   pdfjs.GlobalWorkerOptions.workerSrc = worker.default
-  const doc = await pdfjs.getDocument({ data: new Uint8Array(buf) }).promise
+  const doc = await pdfjs.getDocument({ data: new Uint8Array(buf)}).promise
   const pages: string[] = []
   for (let i = 1; i <= Math.min(doc.numPages, 6); i++) {
     const content = await (await doc.getPage(i)).getTextContent()

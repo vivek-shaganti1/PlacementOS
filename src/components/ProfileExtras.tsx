@@ -7,6 +7,7 @@ import { useApp } from '../lib/store'
 import { errMsg, type Profile } from '../lib/supabase'
 import { allEvidence } from '../lib/verify'
 import { Card } from './Page'
+import { safeUrl } from '../lib/links'
 
 const input =
   'h-[34px] w-full rounded-[9px] border border-line bg-white px-3 text-[12.5px] outline-none focus:border-[#d5cbff] focus:ring-4 focus:ring-brand/10'
@@ -242,7 +243,7 @@ export function GithubProjects({ p }: { p: Profile }) {
         {gh.top_repos.map((r) => (
           <div key={r.name} className="rounded-[11px] border border-line p-3">
             <div className="flex items-center gap-2">
-              <a href={r.url} target="_blank" rel="noreferrer" className="flex-1 truncate text-[12.5px] font-semibold text-brand-dark hover:underline">{r.name}</a>
+              <a href={safeUrl(r.url)} target="_blank" rel="noreferrer" className="flex-1 truncate text-[12.5px] font-semibold text-brand-dark hover:underline">{r.name}</a>
               <span className="text-[11px] text-ink-faint">★ {r.stars}</span>
             </div>
             <p className="mt-0.5 line-clamp-2 text-[11.5px] text-ink-mute">{r.description ?? 'No description'}</p>

@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'motion/react'
 import { useState, type FormEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { Logo } from '../components/Logo'
 import { Aurora } from '../components/Page'
 import { useAuth } from '../lib/auth'
@@ -11,14 +11,15 @@ type Mode = 'signin' | 'signup' | 'forgot' | 'reset'
 const input = 'field mt-1 h-[42px] text-[13px]'
 
 export default function Login({ initialMode = 'signin' }: { initialMode?: Mode }) {
-  const { clearRecovery } = useAuth()
+  const { clearRecovery, linkError, mustChangePassword, refreshProfile } = useAuth()
+  const navigate = useNavigate()
   const [mode, setMode] = useState<Mode>(initialMode)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [roll, setRoll] = useState('')
   const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
+  const [error, setError] = useState(linkError ?? '')
   const [info, setInfo] = useState('')
 
   const switchTo = (m: Mode) => {
@@ -57,10 +58,12 @@ export default function Login({ initialMode = 'signin' }: { initialMode?: Mode }
         setInfo('If an account exists for that email, a reset link is on its way.')
       } else {
         if (password.length < 8) throw new Error('Use at least 8 characters for your password.')
-        const { error } = await supabase.auth.updateUser({ password })
+        // Clearing must_change_password here ends the forced change for accounts made with a temporary password.
+        const { error } = await supabase.auth.updateUser({ password, data: { must_change_password: false } })
         if (error) throw error
         clearRecovery()
-        window.history.replaceState(null, '', '/dashboard')
+        await refreshProfile()
+        navigate('/', { replace: true })
       }
     } catch (err) {
       setError(errMsg(err))
@@ -73,7 +76,7 @@ export default function Login({ initialMode = 'signin' }: { initialMode?: Mode }
     signin: ['Welcome back', 'Sign in to see your eligibility stacks.', 'Sign in'],
     signup: ['Create your account', 'For students your college has added to PlacementIQ.', 'Create account'],
     forgot: ['Reset your password', 'We will email you a link to choose a new one.', 'Send reset link'],
-    reset: ['Choose a new password', 'Enter a new password for your account.', 'Update password'],
+    reset: ['Choose a new password', mustChangePassword ? 'You signed in with a temporary password. Choose your own to continue.' : 'Enter a new password for your account.', 'Update password'],
   }
   const [title, sub, cta] = titles[mode]
 

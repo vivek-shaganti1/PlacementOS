@@ -135,9 +135,24 @@ const FRIENDLY: [RegExp, string][] = [
   [/email not confirmed/i, 'Confirm your email first: open the link we sent you, then sign in.'],
 ]
 
+// Database wording (table, column, constraint and policy names) is logged for debugging but never shown to users.
+const TECHNICAL = /violates|constraint|relation |column |schema|PGRST|row-level security|policy|syntax error|function .*does not exist|duplicate key|JWT|permission denied for/i
+const BY_CODE: Record<string, string> = {
+  '23505': 'This already exists.',
+  '23503': 'This refers to something that no longer exists. Refresh and try again.',
+  '23514': 'One of the values is not allowed. Check the form and try again.',
+  '42501': 'You do not have permission to do that.',
+  PGRST301: 'Your session has expired. Sign in again.',
+}
+
 export const errMsg = (e: unknown) => {
   const raw = e && typeof e === 'object' && 'message' in e ? String((e as { message: unknown }).message) : 'Something went wrong.'
-  return FRIENDLY.find(([re]) => re.test(raw))?.[1] ?? raw
+  const friendly = FRIENDLY.find(([re]) => re.test(raw))?.[1]
+  if (friendly) return friendly
+  if (!TECHNICAL.test(raw)) return raw
+  console.error(e)
+  const code = e && typeof e === 'object' && 'code' in e ? String((e as { code: unknown }).code) : ''
+  return BY_CODE[code] ?? 'Something went wrong while saving. Try again, and contact your placement cell if it keeps happening.'
 }
 
 export type Organization = {
