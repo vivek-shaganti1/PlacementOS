@@ -2,7 +2,9 @@
 // a stack (bucket), per-criterion results and skill gaps. Pure functions, shared by the
 // browser and the /api functions.
 import { companyCatalog } from '../data/companies'
+import { coreCatalog } from '../data/coreCompanies'
 import type { Bucket, Category, Company, CompanyBase, Criterion, Requirements } from '../data/types'
+import { branchCodesOf, skillShort, TRACK_BY_ID, tracksFor } from './branches'
 
 export const SKILLS = [
   'Data Structures & Algorithms',
@@ -15,16 +17,8 @@ export const SKILLS = [
   'Aptitude & Reasoning',
 ] as const
 
-export const SKILL_SHORT: Record<string, string> = {
-  'Data Structures & Algorithms': 'DSA',
-  'System Design': 'System Design',
-  'React / Frontend': 'Frontend',
-  'Node.js / Backend': 'Backend',
-  'Databases (SQL + NoSQL)': 'Databases',
-  'Machine Learning': 'ML',
-  'Cloud & DevOps': 'Cloud',
-  'Aptitude & Reasoning': 'Aptitude',
-}
+/** Short labels for every skill in every track (charts and compact chips). */
+export const SKILL_SHORT: Record<string, string> = new Proxy({} as Record<string, string>, { get: (_, k) => skillShort(String(k)) })
 
 export type StudentLike = {
   cgpa: number
@@ -35,12 +29,15 @@ export type StudentLike = {
   projects: unknown[]
   internships: unknown[]
   integrations?: { github?: { original_repos?: number } } | null
+  branch?: string | null
+  tracks?: string[] | null
 }
 
 type Template = Omit<Requirements, 'skills'> & { skills: number[] }
+type CoreTemplate = Omit<Requirements, 'skills'> & { skills: Record<string, number> }
 
 // Skill order matches SKILLS: DSA, System Design, Frontend, Backend, Databases, ML, Cloud, Aptitude
-const templates: Record<Category, Template> = {
+const templates: Record<string, Template> = {
   top:        { minCgpa: 7.5, maxBacklogs: 0, minClassX: 70, minClassXII: 70, minInternships: 1, minProjects: 3, skills: [88, 72, 60, 70, 70, 45, 60, 70] },
   quant:      { minCgpa: 8.5, maxBacklogs: 0, minClassX: 85, minClassXII: 85, minInternships: 1, minProjects: 2, skills: [95, 55, 35, 60, 60, 60, 40, 92] },
   ai:         { minCgpa: 8.0, maxBacklogs: 0, minClassX: 75, minClassXII: 75, minInternships: 1, minProjects: 3, skills: [85, 68, 40, 65, 65, 85, 70, 72] },
@@ -52,6 +49,29 @@ const templates: Record<Category, Template> = {
   service:    { minCgpa: 6.0, maxBacklogs: 1, minClassX: 60, minClassXII: 60, minInternships: 0, minProjects: 1, skills: [55, 30, 50, 55, 55, 25, 40, 70] },
   consulting: { minCgpa: 6.5, maxBacklogs: 0, minClassX: 60, minClassXII: 60, minInternships: 0, minProjects: 1, skills: [55, 40, 50, 55, 60, 35, 50, 75] },
 }
+
+/**
+ * Core recruiters: typical campus cut-offs (CGPA 6–7, no active backlogs, 60% in Class X/XII) and the core subjects
+ * their written test and technical interview cover, as levels out of 100.
+ */
+const acad = (minCgpa: number, maxBacklogs = 0, minProjects = 1) => ({ minCgpa, maxBacklogs, minClassX: 60, minClassXII: 60, minInternships: 0, minProjects })
+const coreTemplates: Partial<Record<Category, CoreTemplate>> = {
+  semiconductor: { ...acad(7, 0, 2), minClassX: 70, minClassXII: 70, skills: { 'Digital Design': 78, 'Verilog / SystemVerilog': 75, 'Verification & Timing (UVM/STA)': 55, 'Analog & CMOS Circuits': 65, 'Aptitude & Reasoning': 70 } },
+  embedded: { ...acad(6.5, 0, 2), skills: { 'Embedded C': 72, 'Microcontrollers & Protocols': 68, 'PCB Design': 40, 'RTOS & Embedded Linux': 50, 'Digital Design': 55, 'Aptitude & Reasoning': 65 } },
+  telecom: { ...acad(6.5), skills: { 'Signals & Systems': 65, 'Communication Systems': 70, Networking: 60, 'MATLAB / Simulink': 50, 'Aptitude & Reasoning': 65 } },
+  electrical: { ...acad(6.5), skills: { 'Electrical Machines': 65, 'Power Systems': 65, 'Power Electronics': 60, 'Control Systems': 55, 'MATLAB / Simulink': 40, 'Aptitude & Reasoning': 65 } },
+  energy: { ...acad(6.5), skills: { 'Power Systems': 68, 'Electrical Machines': 55, 'Power Electronics': 50, 'Aptitude & Reasoning': 65 } },
+  automation: { ...acad(6.5), skills: { 'PLC & Industrial Automation': 65, 'Control Systems': 60, 'Instrumentation & Sensors': 60, 'Electrical Machines': 45, 'Aptitude & Reasoning': 65 } },
+  automotive: { ...acad(6.5), skills: { 'Automobile & Vehicle Systems': 62, 'CAD Modelling': 60, 'Thermodynamics & Fluids': 60, 'FEA / CFD Simulation': 45, 'Aptitude & Reasoning': 65 } },
+  manufacturing: { ...acad(6, 1), skills: { 'Manufacturing & Industrial Engineering': 62, 'CAD Modelling': 45, 'Thermodynamics & Fluids': 50, 'Strength of Materials & Design': 55, 'Aptitude & Reasoning': 65 } },
+  engineering_services: { ...acad(6, 1), skills: { 'CAD Modelling': 65, 'Engineering Drawing & GD&T': 60, 'Strength of Materials & Design': 50, 'FEA / CFD Simulation': 40, 'Aptitude & Reasoning': 60 } },
+  construction: { ...acad(6, 1), skills: { 'Structural Analysis & Design (IS codes)': 60, 'Structural Software (STAAD / ETABS)': 45, 'AutoCAD & BIM (Revit)': 50, 'Construction Planning & Estimation': 50, 'Geotechnical & Transportation': 50, 'Aptitude & Reasoning': 65 } },
+  process: { ...acad(6.5), skills: { 'Chemical Thermodynamics & Transport': 65, 'Reaction Engineering': 60, 'Process Simulation (Aspen / DWSIM)': 45, 'Process Control & Safety': 55, 'Aptitude & Reasoning': 65 } },
+  biotech: { ...acad(6, 1), skills: { 'Molecular Biology & Lab Techniques': 65, 'Bioprocess Engineering': 55, Bioinformatics: 40, 'Aptitude & Reasoning': 60 } },
+  security: { ...acad(7, 0, 2), minClassX: 65, minClassXII: 65, skills: { Networking: 70, 'Security Fundamentals': 72, 'Linux & Scripting': 60, 'Data Structures & Algorithms': 55, 'Aptitude & Reasoning': 65 } },
+}
+const CORE_CATEGORIES = Object.keys(coreTemplates) as Category[]
+const coreCategoryOf = new Map(coreCatalog.map((c) => [c.name, c.category]))
 
 const categories: Record<string, Category> = {
   Google: 'top', Microsoft: 'top', Amazon: 'top', Apple: 'top', Meta: 'top', Netflix: 'top', Uber: 'top', Stripe: 'top', SpaceX: 'top',
@@ -69,17 +89,27 @@ export const categoryLabel: Record<Category, string> = {
   top: 'Top product (FAANG-tier)', quant: 'Quant / HFT', ai: 'AI & deep tech', product: 'Product company',
   fintech: 'Banking & fintech', startup: 'High-growth startup', infra: 'Infra, cloud & data', hardware: 'Hardware & semiconductors',
   service: 'IT services', consulting: 'Consulting',
+  semiconductor: 'Semiconductors & VLSI', embedded: 'Embedded & IoT', telecom: 'Telecom & RF', electrical: 'Electrical equipment',
+  energy: 'Power & energy', automation: 'Industrial automation', automotive: 'Automotive', manufacturing: 'Manufacturing & metals',
+  engineering_services: 'Engineering services', construction: 'Construction & infrastructure', process: 'Process & chemicals',
+  biotech: 'Biotech & pharma', security: 'Cyber security',
 }
 
 const hash = (s: string) => [...s].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7)
 const clamp = (v: number, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, v))
 
 export function requirementsFor(c: Pick<CompanyBase, 'name'>): { category: Category; requirements: Requirements } {
-  const category = categories[c.name] ?? 'service'
-  const t = templates[category]
+  const core = coreCategoryOf.get(c.name)
   const h = hash(c.name)
   // Small deterministic per-company variation so companies in a tier are not identical.
-  const skills = Object.fromEntries(SKILLS.map((name, i) => [name, clamp(t.skills[i] + (((h >>> (i * 3)) % 7) - 3), 20, 98)]))
+  const vary = (v: number, i: number) => clamp(v + (((h >>> (i * 3)) % 7) - 3), 20, 98)
+  if (core && coreTemplates[core]) {
+    const t = coreTemplates[core]!
+    return { category: core, requirements: { ...t, skills: Object.fromEntries(Object.entries(t.skills).map(([name, v], i) => [name, vary(v, i)])) } }
+  }
+  const category = categories[c.name] ?? 'service'
+  const t = templates[category as keyof typeof templates] ?? templates.service
+  const skills = Object.fromEntries(SKILLS.map((name, i) => [name, vary(t.skills[i], i)]))
   return { category, requirements: { ...t, skills } }
 }
 
@@ -102,7 +132,9 @@ export function evaluate(base: CompanyBase, p: StudentLike, override?: { categor
   // Skills: every percentage point below a required level costs 1.2 points, so several small
   // gaps add up the way they do in a real interview loop.
   const gaps: Company['gaps'] = []
-  for (const name of SKILLS) {
+  // Every skill this company tests (software, VLSI, civil, ...), not a fixed list.
+  const required = Object.keys(r.skills)
+  for (const name of required) {
     const need = r.skills[name]
     const have = levelOf(p, name)
     if (have < need) gaps.push({ skill: name, have, need })
@@ -134,7 +166,7 @@ export function evaluate(base: CompanyBase, p: StudentLike, override?: { categor
     { label: 'Class XII Percentage', required: `${r.minClassXII}%`, yours: p.class_xii ? `${p.class_xii}%` : 'Not set', met: p.class_xii >= r.minClassXII },
     { label: 'Internship Experience', required: r.minInternships ? `${r.minInternships} internship` : 'Preferred', yours: `${internships} internship${internships === 1 ? '' : 's'}`, met: internships >= r.minInternships },
     { label: 'Projects', required: `${r.minProjects}+ projects`, yours: `${projects} project${projects === 1 ? '' : 's'}`, met: projects >= r.minProjects },
-    ...SKILLS.filter((n) => r.skills[n] >= 55).map((n) => ({
+    ...required.filter((n) => r.skills[n] >= 55).map((n) => ({
       label: n,
       required: `${r.skills[n]}%`,
       yours: `${levelOf(p, n)}%`,
@@ -145,10 +177,16 @@ export function evaluate(base: CompanyBase, p: StudentLike, override?: { categor
   return { ...base, category, requirements: r, match, bucket, breakdown: { academic, skills, experience, projects: projectScore }, criteria, gaps }
 }
 
-export const evaluateAll = (p: StudentLike): Company[] => companyCatalog.map((c) => evaluate(c, p)).sort((a, b) => b.match - a.match)
+/** The recruiters relevant to a student: every company whose category hires for one of the student's tracks. */
+export function catalogFor(p: Pick<StudentLike, 'branch' | 'tracks'>): CompanyBase[] {
+  const cats = new Set(tracksFor(p).flatMap((t) => TRACK_BY_ID.get(t)?.categories ?? []))
+  return [...companyCatalog.filter((c) => cats.has(categories[c.name] ?? 'service')), ...coreCatalog.filter((c) => cats.has(c.category))]
+}
 
-/** Product-track companies most students are aiming for; readiness is measured against these. */
-export const TARGET_CATEGORIES: Category[] = ['top', 'product', 'startup', 'fintech']
+export const evaluateAll = (p: StudentLike): Company[] => catalogFor(p).map((c) => evaluate(c, p)).sort((a, b) => b.match - a.match)
+
+/** Product-track companies most software students are aiming for; readiness is measured against these and core recruiters. */
+export const TARGET_CATEGORIES: Category[] = ['top', 'product', 'startup', 'fintech', ...CORE_CATEGORIES]
 
 export function readinessOf(companies: Company[]) {
   const target = companies.filter((c) => TARGET_CATEGORIES.includes(c.category))
@@ -181,21 +219,8 @@ export type JobPosting = {
   org_id?: string | null
 }
 
-// Common branch spellings, so "CSE" on a job matches "Computer Science & Engineering" on a profile.
-const BRANCH_ALIASES: [string, RegExp][] = [
-  ['CSE', /\b(cse|computer science|cs)\b/i],
-  ['IT', /\b(it|information technology)\b/i],
-  ['AIML', /\b(aiml|ai ?& ?ml|ai ?\/ ?ml|artificial intelligence|machine learning)\b/i],
-  ['DS', /\b(ds|data science)\b/i],
-  ['ECE', /\b(ece|electronics( and| &)? communication)\b/i],
-  ['EEE', /\b(eee|electrical)\b/i],
-  ['MECH', /\b(mech|mechanical)\b/i],
-  ['CIVIL', /\b(civil)\b/i],
-]
-const branchCodes = (s: string) => {
-  const codes = BRANCH_ALIASES.filter(([, re]) => re.test(s)).map(([c]) => c)
-  return codes.length ? codes : [s.trim().toUpperCase()]
-}
+// Every BTech branch spelling (see lib/branches), so "CSE" on a job matches "Computer Science & Engineering" on a profile.
+const branchCodes = branchCodesOf
 /** One short code for grouping students by branch (CSE, ECE, EEE, ...); unknown branches keep their own name. */
 export const branchCode = (s: string) => (s.trim() ? branchCodes(s)[0] : 'Unassigned')
 export const branchMatches = (jobBranches: string[], branch: string) =>
@@ -211,7 +236,8 @@ export function evaluateJob(job: JobPosting, p: StudentLike & { branch?: string;
   const requirements: Requirements = {
     minCgpa: Number(job.min_cgpa), maxBacklogs: job.max_backlogs, minClassX: Number(job.min_class_x), minClassXII: Number(job.min_class_xii),
     minInternships: job.min_internships, minProjects: job.min_projects,
-    skills: Object.fromEntries(SKILLS.map((s) => [s, Number(job.skill_requirements?.[s] ?? 0)])),
+    // The skills the drive asked for (any track); unset skills are not requirements.
+    skills: Object.fromEntries(Object.entries(job.skill_requirements ?? {}).map(([s, v]) => [s, Number(v) || 0]).filter(([, v]) => (v as number) > 0)),
   }
   const result = evaluate(base, p, { category: requirementsFor(base).category, requirements })
   const branchOk = branchMatches(job.branches, p.branch ?? '')

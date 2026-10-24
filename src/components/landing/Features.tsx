@@ -233,7 +233,7 @@ export function Features() {
       <Bento n="03 · jd match" icon={<IconTarget className="h-4 w-4" />} className="md:col-span-2" title="JD matcher" body="Paste any job description to get a fit score, matched and missing skills, and tailored bullets.">
         <JdViz />
       </Bento>
-      <Bento n="04 · evidence" icon={<IconSpark className="h-4 w-4" />} className="md:col-span-2" title="Verified coding profile" body="GitHub repos and languages, LeetCode, Codeforces and CodeChef stats become verified skill levels.">
+      <Bento n="04 · evidence" icon={<IconSpark className="h-4 w-4" />} className="md:col-span-2" title="Verified evidence, every branch" body="Verilog, KiCad, CAD and Simulink files in GitHub, Credly badges, NPTEL certificates, GATE scores, LeetCode and Hugging Face become verified skill levels.">
         <CodingViz />
       </Bento>
       <Bento n="05 · assistant" icon={<IconBot className="h-4 w-4" />} className="md:col-span-2" title="AI career assistant" body="Ask anything. Answers are grounded in your own profile, resume and computed eligibility, not generic advice.">

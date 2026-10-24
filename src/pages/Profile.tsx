@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import Avatar from '../components/Avatar'
-import { Achievements, Completeness, ConnectedAccounts, GithubProjects, VerifiedSkills } from '../components/ProfileExtras'
+import { Achievements, Completeness, ConnectedAccounts, Credentials, GithubProjects, TrackPicker, VerifiedSkills } from '../components/ProfileExtras'
 import { Card, Meter, Page } from '../components/Page'
 import { useAuth, useProfile } from '../lib/auth'
 import { useApp } from '../lib/store'
@@ -293,7 +293,9 @@ export default function Profile() {
         </Card>
       </div>
 
+      <TrackPicker p={p} />
       <ConnectedAccounts p={p} />
+      <Credentials p={p} />
       <VerifiedSkills p={p} />
       <GithubProjects p={p} />
       <Achievements p={p} />

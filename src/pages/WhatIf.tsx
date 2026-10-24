@@ -5,7 +5,8 @@ import { Card, Page, Stat } from '../components/Page'
 import { bucketMeta, bucketOrder } from '../data/companies'
 import type { Bucket } from '../data/types'
 import { useProfile } from '../lib/auth'
-import { SKILL_SHORT, SKILLS } from '../lib/eligibility'
+import { SKILL_SHORT } from '../lib/eligibility'
+import { skillsFor } from '../lib/branches'
 import { bucketChanges, snapshot } from '../lib/predict'
 
 const delta = (n: number, unit = '') => (n > 0 ? `+${n}${unit}` : n < 0 ? `${n}${unit}` : `no change`)
@@ -17,7 +18,9 @@ const lpa = (n: number) => `₹${n.toFixed(1)} LPA`
  */
 export default function WhatIf() {
   const profile = useProfile()
-  const baseSkills = useMemo(() => Object.fromEntries(SKILLS.map((s) => [s, profile.skills.find((x) => x.name === s)?.level ?? 0])), [profile.skills])
+  // The student's own track skills (a civil student moves structural skills, not React).
+  const SKILLS = useMemo(() => skillsFor(profile), [profile.tracks, profile.branch])
+  const baseSkills = useMemo(() => Object.fromEntries(SKILLS.map((s) => [s, profile.skills.find((x) => x.name === s)?.level ?? 0])), [profile.skills, SKILLS])
   const baseMock = profile.mock_feedback.length ? profile.mock_feedback.reduce((a, m) => a + Number(m.score), 0) / profile.mock_feedback.length : 0
   const initial = { cgpa: profile.cgpa, backlogs: profile.backlogs, skills: baseSkills, extraProjects: 0, extraInternships: 0, mock: Math.round(baseMock * 10) / 10 }
   const [s, setS] = useState(initial)

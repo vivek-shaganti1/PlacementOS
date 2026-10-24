@@ -30,7 +30,7 @@ export const PLANS: Record<PlanKey, Plan> = {
   basic: {
     key: 'basic', name: 'Basic', pricePerSeat: 5, platformFee: 699, aiPerMonth: 40, seats: 'From 500 students',
     blurb: 'For a college running its placement season on PlacementIQ.',
-    features: ['Eligibility engine and resume analyzer', 'AI career assistant and JD matching', 'GitHub, LeetCode, Codeforces, CodeChef sync', 'Campus drives, applications and rankings', 'Year, branch and section monitoring', '40 AI actions per student / month'],
+    features: ['Eligibility engine and resume analyzer', 'AI career assistant and JD matching', 'Verified evidence for every branch: GitHub design files, Credly, NPTEL, GATE, coding platforms', 'Campus drives, applications and rankings', 'Year, branch and section monitoring', '40 AI actions per student / month'],
   },
   pro: {
     key: 'pro', name: 'Pro', pricePerSeat: 9, platformFee: 699, aiPerMonth: 80, seats: 'From 500 students', featured: true,

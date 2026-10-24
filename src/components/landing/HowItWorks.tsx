@@ -1,11 +1,15 @@
 import { motion, useReducedMotion, useScroll, useTransform, type MotionValue } from 'motion/react'
 import { useRef } from 'react'
 import { IconRoadmap, IconSpark, IconStacks, IconUser } from '../Icons'
+import { companyCatalog } from '../../data/companies'
+import { coreCatalog } from '../../data/coreCompanies'
+
+const RECRUITERS = companyCatalog.length + coreCatalog.length
 
 const steps = [
   { title: 'Create your profile', body: 'Academics, skills, projects and internships, stored in structured tables that only you can read.', Icon: IconUser, meta: '2 min' },
-  { title: 'Connect your evidence', body: 'Upload your resume and link GitHub, LeetCode, Codeforces and CodeChef. We pull real numbers.', Icon: IconSpark, meta: '4 platforms' },
-  { title: 'Get scored against 66 recruiters', body: 'Every company has tier-specific requirements. You see your match, stack and exact gaps.', Icon: IconStacks, meta: '< 1 ms' },
+  { title: 'Connect your evidence', body: 'Upload your resume and link what proves your branch: design files on GitHub, Credly badges, NPTEL certificates, a GATE scorecard, coding platforms.', Icon: IconSpark, meta: '9 sources' },
+  { title: `Get scored against ${RECRUITERS} recruiters`, body: 'Software, VLSI, embedded, power, mechanical, civil, chemical and more. You see your match, stack and exact gaps.', Icon: IconStacks, meta: '< 1 ms' },
   { title: 'Close gaps and apply', body: 'Follow the roadmap, practise, log mocks, tailor your resume per job, and track every application.', Icon: IconRoadmap, meta: 'every drive' },
 ]
 

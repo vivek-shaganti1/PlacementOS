@@ -1,7 +1,7 @@
 import type { Session } from '@supabase/supabase-js'
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { assembleProfile, COLLECTIONS, RELATED, type RelatedRows } from './profileShape'
-import { supabase, type Profile, type ProfilePatch } from './supabase'
+import { supabase, type Profile, type ProfilePatch, type Credential } from './supabase'
 
 type AuthCtx = {
   session: Session | null
@@ -78,9 +78,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setProfile(null)
       return
     }
-    const [base, role, ...rel] = await Promise.all([
+    const [base, role, creds, ...rel] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', userId).maybeSingle(),
       supabase.from('user_roles').select('role,org_id').eq('user_id', userId),
+      // NPTEL certificates and GATE scorecards. Optional: an error (e.g. before the migration) just means none yet.
+      supabase.from('credentials').select('*').eq('user_id', userId).order('created_at', { ascending: false }),
       ...Object.entries(RELATED).map(([table, q]) => {
         const [col, dir] = q.order.split('.')
         // Always this user's own rows: admins and recruiters can read other people's rows too.
@@ -110,7 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfileError(null)
     setRoles((role.data ?? []) as { role: string; org_id: string | null }[])
     const rows = Object.fromEntries(Object.keys(RELATED).map((t, i) => [t, rel[i].data ?? []])) as RelatedRows
-    setProfile(assembleProfile(base.data, rows))
+    setProfile({ ...assembleProfile(base.data, rows), credentials: (creds.data ?? []) as Credential[] })
   }, [userId])
 
   useEffect(() => {

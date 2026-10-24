@@ -1,5 +1,6 @@
 // Derives skill levels from verifiable evidence: coding-platform stats, GitHub repos and the parsed resume.
-import type { Integrations, ResumeAnalysis } from './supabase'
+import type { Credential, Integrations, ResumeAnalysis } from './supabase'
+import { FILE_SIGNALS, SKILL_BY_NAME } from './branches'
 
 export type Evidence = { level: number; sources: string[] }
 
@@ -77,8 +78,82 @@ export function techEvidence(i: Integrations, resume: ResumeAnalysis | null): Re
   return out
 }
 
-export function allEvidence(i: Integrations, resume: ResumeAnalysis | null): Record<string, Evidence> {
-  const out = techEvidence(i, resume)
+/**
+ * Levels for every track skill from objective sources, each rule a fixed formula:
+ * - design files in GitHub repositories (Verilog, KiCad, CAD, Simulink, ...): 35 + 12 per repository, up to 4
+ * - GitHub languages: 30 + 9 per repository using one, up to 5
+ * - verified Credly badges matching the skill: 55, +10 per additional badge, up to 85
+ * - NPTEL certificates verified on nptel.ac.in for this skill: 60, or 40 + half the course score when it is known
+ * - GATE score confirmed by the placement cell, for its paper's subjects: 25 + 73 × score / 1000
+ * - Hugging Face (ML, deep learning): 40 + 8 per model, dataset or space (up to 5) + up to 15 for downloads
+ * - CTFtime (security): 45 + rating points / 4, up to 90
+ * - resume or repository keywords only support other evidence (+3 each, up to 9); alone they read as at most 45
+ * The best source sets the level; each further independent source adds 4. Capped at 92 (an interview still decides).
+ */
+export function trackEvidence(
+  skills: string[],
+  i: Integrations,
+  resume: ResumeAnalysis | null,
+  credentials: Credential[] = [],
+): Record<string, Evidence> {
+  const out: Record<string, Evidence> = {}
+  const gh = i.github
+  const badges = i.credly?.badges ?? []
+  const text = [
+    ...(gh?.topics ?? []),
+    ...(gh?.top_repos ?? []).flatMap((r) => [r.name, r.description ?? '', ...r.topics]),
+    ...(resume?.extracted.skills ?? []),
+    ...(resume?.extracted.projects ?? []).flatMap((p) => [p.tech, p.description]),
+  ].join(' ').toLowerCase()
+  const has = (k: string) => new RegExp(`(^|[^a-z0-9])${k.replace(/[.+*?()[\]\\/&]/g, '\\$&')}([^a-z0-9]|$)`).test(text)
+
+  for (const name of skills) {
+    const rule = SKILL_BY_NAME.get(name)
+    if (!rule) continue
+    const found: { level: number; source: string }[] = []
+
+    const repos = new Set<string>()
+    for (const f of rule.files ?? []) for (const r of gh?.signals?.[f]?.repos ?? []) repos.add(r)
+    if (repos.size) {
+      const kinds = (rule.files ?? []).filter((f) => gh?.signals?.[f]?.repos.length).map((f) => FILE_SIGNALS[f].label)
+      found.push({ level: 35 + 12 * Math.min(4, repos.size), source: `${repos.size} GitHub repo${repos.size === 1 ? '' : 's'} with ${kinds.slice(0, 2).join(' and ')}` })
+    }
+    const parts = (gh?.kicad ?? []).reduce((a, k) => a + k.parts, 0)
+    if (rule.files?.includes('pcb') && parts) found.push({ level: Math.min(80, 45 + Math.round(parts / 3)), source: `${parts} components in KiCad schematics` })
+
+    const langRepos = gh ? gh.languages.filter((l) => rule.langs?.includes(l.name)).reduce((a, l) => a + l.repos, 0) : 0
+    if (langRepos) found.push({ level: 30 + 9 * Math.min(5, langRepos), source: `${langRepos} repo${langRepos === 1 ? '' : 's'} in ${rule.langs!.filter((l) => gh!.languages.some((x) => x.name === l)).slice(0, 2).join(', ')}` })
+
+    const matched = badges.filter((b) => (rule.badges ?? []).some((k) => `${b.name} ${b.issuer}`.toLowerCase().includes(k)))
+    if (matched.length) found.push({ level: Math.min(85, 55 + 10 * (matched.length - 1)), source: `Credly: ${matched.slice(0, 2).map((b) => b.name).join(', ')}` })
+
+    const nptel = credentials.filter((c) => c.kind === 'nptel' && c.status === 'verified' && c.skill === name)
+    for (const c of nptel) found.push({ level: c.score != null ? Math.round(40 + Number(c.score) / 2) : 60, source: `NPTEL: ${c.title || c.ref}` })
+
+    const gate = credentials.find((c) => c.kind === 'gate' && c.status === 'verified' && rule.gate?.includes(String(c.data.paper ?? '')))
+    if (gate?.score != null) found.push({ level: Math.round(25 + (73 * Number(gate.score)) / 1000), source: `GATE ${gate.data.paper} score ${gate.score}` })
+
+    const hf = i.huggingface
+    if (rule.huggingface && hf && hf.models + hf.datasets + hf.spaces > 0)
+      found.push({ level: Math.min(95, 40 + 8 * Math.min(5, hf.models + hf.datasets + hf.spaces) + Math.min(15, Math.round(5 * Math.log10(hf.downloads + 1)))), source: `Hugging Face: ${hf.models} models, ${hf.datasets} datasets` })
+
+    const ctf = i.ctftime
+    if (rule.ctf && ctf) found.push({ level: Math.min(90, Math.round(45 + ctf.rating_points / 4)), source: `CTFtime: ${ctf.team}, ${Math.round(ctf.rating_points)} rating points` })
+
+    const kw = (rule.keywords ?? []).filter(has).length
+    if (!found.length && !kw) continue
+    const best = found.length ? Math.max(...found.map((f) => f.level)) : Math.min(45, 25 + 6 * kw)
+    const level = best + 4 * Math.max(0, found.length - 1) + (found.length ? 3 * Math.min(3, kw) : 0)
+    out[name] = { level: Math.min(92, clamp(level)), sources: [...found.map((f) => f.source), ...(kw ? [`${kw} matching keyword${kw === 1 ? '' : 's'} in resume or repos`] : [])] }
+  }
+  return out
+}
+
+export function allEvidence(i: Integrations, resume: ResumeAnalysis | null, ctx?: { skills?: string[]; credentials?: Credential[] }): Record<string, Evidence> {
+  // Track evidence first, then the original software rules on top, so existing software levels are unchanged.
+  const track = ctx?.skills ? trackEvidence(ctx.skills, i, resume, ctx.credentials ?? []) : {}
+  const out = { ...track, ...techEvidence(i, resume) }
+  for (const [k, v] of Object.entries(track)) if (out[k] && v.level > out[k].level) out[k] = v
   const dsa = dsaEvidence(i)
   if (dsa) out['Data Structures & Algorithms'] = dsa
   else if (resume?.skill_levels?.['Data Structures & Algorithms'])

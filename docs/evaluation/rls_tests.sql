@@ -1,5 +1,5 @@
 -- Access-control test suite for PlacementIQ (run inside one transaction that is rolled back; nothing persists).
--- T40–T45 need migration 20261024000100_verified_academics_and_stats.sql.
+-- T40–T45 need migration 20261024000100_verified_academics_and_stats.sql; T46–T48 need 20261025000000_branch_tracks_and_evidence.sql.
 -- psql "<connection>" -f docs/evaluation/rls_tests.sql
 begin;
 
@@ -251,6 +251,31 @@ do $$ begin
   insert into public.job_applications (job_id, user_id, status) values ('d4000000-0000-4000-8000-0000000000d4', 'a1000000-0000-4000-8000-0000000000a1', 'applied');
   insert into t_results values ('T45 no applying on placeholder academics', false);
 exception when others then insert into t_results values ('T45 no applying on placeholder academics', true);
+end $$;
+reset role;
+
+-- credentials (migration 20261025000000): server-written, reviewed only by the placement cell
+insert into public.credentials (id, user_id, kind, ref, title, score, status, data)
+values ('ce000000-0000-4000-8000-0000000000ce', 'a1000000-0000-4000-8000-0000000000a1', 'gate', 'EC25S00000001', 'GATE 2025', 640, 'pending', '{"paper":"EC"}');
+select set_config('request.jwt.claims', '{"sub":"a1000000-0000-4000-8000-0000000000a1","role":"authenticated"}', true);
+set local role authenticated;
+do $$ begin
+  insert into public.credentials (user_id, kind, ref, status, verified_by) values ('a1000000-0000-4000-8000-0000000000a1', 'nptel', 'NPTEL24EE42S99999999', 'verified', 'platform');
+  insert into t_results values ('T46 student cannot insert a verified certificate', false);
+exception when others then insert into t_results values ('T46 student cannot insert a verified certificate', true);
+end $$;
+do $$ begin
+  perform public.review_credential('ce000000-0000-4000-8000-0000000000ce', true);
+  insert into t_results values ('T47 student cannot confirm their own GATE score', false);
+exception when others then insert into t_results values ('T47 student cannot confirm their own GATE score', true);
+end $$;
+reset role;
+select set_config('request.jwt.claims', '{"sub":"ad000000-0000-4000-8000-0000000000ad","role":"authenticated"}', true);
+set local role authenticated;
+do $$ begin
+  perform public.review_credential('ce000000-0000-4000-8000-0000000000ce', true);
+  insert into t_results values ('T48 placement cell confirms a GATE score', (select status = 'verified' from public.credentials where id = 'ce000000-0000-4000-8000-0000000000ce'));
+exception when others then insert into t_results values ('T48 placement cell confirms a GATE score', false);
 end $$;
 reset role;
 

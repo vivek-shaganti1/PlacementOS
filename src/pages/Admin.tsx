@@ -8,9 +8,10 @@ import { useAdminOrgs, useRecruiter, useStudents, type StudentRow } from '../lib
 import { useAuth } from '../lib/auth'
 import { sectionLabel, yearLabel, yearOfStudy } from '../lib/academics'
 import { branchCode, evaluateJob, SKILL_SHORT, SKILLS, type JobPosting } from '../lib/eligibility'
+import { FILE_SIGNALS, TRACK_BY_ID, TRACKS, tracksFor, type FileSignal } from '../lib/branches'
 import { ctcText, isOpen, STATUS_META, useJobs, type JobApplication, type JobStatus } from '../lib/jobs'
 import { useApp } from '../lib/store'
-import { errMsg, supabase } from '../lib/supabase'
+import { errMsg, supabase, type Credential } from '../lib/supabase'
 import { safeUrl } from '../lib/links'
 import { plural } from '../lib/format'
 import { HoldButton } from '../components/HoldButton'
@@ -131,6 +132,79 @@ function FeedbackSummary() {
 }
 
 /* ================================================================ students */
+/**
+ * Objective evidence beyond coding platforms: design files found in GitHub, KiCad components, Credly badges, Hugging Face,
+ * CTFtime, NPTEL certificates and GATE scorecards. The placement cell confirms GATE scorecards here after opening the PDF.
+ */
+function EvidencePanel({ p }: { p: StudentRow['profile'] }) {
+  const { showToast } = useApp()
+  const [creds, setCreds] = useState<Credential[]>([])
+  const load = () =>
+    supabase.from('credentials').select('*').eq('user_id', p.id).order('created_at', { ascending: false }).then(({ data }) => setCreds((data ?? []) as Credential[]))
+  useEffect(() => {
+    load()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [p.id])
+  const i = p.integrations ?? {}
+  const signals = Object.entries(i.github?.signals ?? {}) as [FileSignal, { repos: string[]; files: number }][]
+  const parts = [...new Set((i.github?.kicad ?? []).flatMap((k) => k.components))]
+  const review = async (id: string, approve: boolean) => {
+    const { error } = await supabase.rpc('review_credential', { target: id, approve })
+    if (error) return showToast(errMsg(error))
+    showToast(approve ? 'GATE score confirmed.' : 'Scorecard rejected.')
+    load()
+  }
+  const openPdf = async (path: string) => {
+    const win = window.open('', '_blank')
+    if (win) win.opener = null
+    const { data, error } = await supabase.storage.from('resumes').createSignedUrl(path, 120)
+    if (error || !data) {
+      win?.close()
+      return showToast(`Could not open the scorecard: ${error ? errMsg(error) : 'not found'}`)
+    }
+    if (win) win.location.href = data.signedUrl
+  }
+  const empty = !signals.length && !parts.length && !i.credly?.badges.length && !i.huggingface && !i.ctftime && !creds.length
+  return (
+    <div className="mt-5">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-[12px] font-semibold text-ink">Verified evidence</p>
+        <span className="text-[11px] text-ink-faint">Tracks: {tracksFor(p).map((t) => TRACK_BY_ID.get(t)?.label).join(', ')}</span>
+      </div>
+      {empty && <p className="mt-1 text-[12px] text-ink-mute">No design files, badges or certificates yet.</p>}
+      {signals.length > 0 && (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {signals.map(([sig, v]) => (
+            <span key={sig} title={v.repos.join(', ')} className="rounded-full border border-[#c9f0d9] bg-[#ecfdf3] px-2 py-0.5 text-[11px] font-medium text-[#067647]">{FILE_SIGNALS[sig].label} · {plural(v.repos.length, 'repo')}</span>
+          ))}
+        </div>
+      )}
+      {parts.length > 0 && <p className="mt-2 text-[12px] text-ink-soft"><b className="font-semibold">KiCad components:</b> {parts.slice(0, 18).join(', ')}</p>}
+      {!!i.credly?.badges.length && <p className="mt-2 text-[12px] text-ink-soft"><b className="font-semibold">Credly:</b> {i.credly.badges.slice(0, 6).map((b) => `${b.name} (${b.issuer})`).join(' · ')}</p>}
+      {i.huggingface && <p className="mt-2 text-[12px] text-ink-soft"><b className="font-semibold">Hugging Face:</b> {plural(i.huggingface.models, 'model')}, {plural(i.huggingface.datasets, 'dataset')}, {i.huggingface.downloads.toLocaleString('en-US')} downloads</p>}
+      {i.ctftime && <p className="mt-2 text-[12px] text-ink-soft"><b className="font-semibold">CTFtime:</b> {i.ctftime.team}, {Math.round(i.ctftime.rating_points)} rating points ({i.ctftime.year})</p>}
+      {creds.length > 0 && (
+        <div className="mt-2 divide-y divide-line rounded-[12px] border border-line bg-white/70">
+          {creds.map((c) => (
+            <div key={c.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-[12px]">
+              <span className="font-semibold text-ink">{c.kind === 'gate' ? c.title : `NPTEL · ${c.title || c.ref}`}</span>
+              <span className="text-ink-mute">{c.kind === 'gate' ? `Score ${c.score}${c.data.air ? ` · AIR ${c.data.air}` : ''} · reg. ${c.ref}` : c.skill}</span>
+              <span className="text-[11px] font-medium text-ink-faint">{c.status === 'verified' ? (c.verified_by === 'college' ? 'Confirmed' : 'Verified at source') : c.status}</span>
+              {c.kind === 'gate' && c.file_path && <button onClick={() => openPdf(c.file_path!)} className="text-brand-dark underline">Open PDF</button>}
+              {c.kind === 'gate' && c.status === 'pending' && (
+                <span className="ml-auto flex gap-2">
+                  <button onClick={() => review(c.id, true)} className="rounded-md bg-[#12b76a] px-2.5 py-1 text-[11px] font-semibold text-white">Confirm</button>
+                  <button onClick={() => review(c.id, false)} className="rounded-md border border-line px-2.5 py-1 text-[11px] font-medium text-[#d92d20]">Reject</button>
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 /** Where a student's academics come from, so the placement cell and recruiters know which numbers to trust. */
 function AcademicsBadge({ source }: { source?: 'default' | 'student' | 'college' }) {
   if (!source) return null
@@ -228,6 +302,8 @@ function StudentDrawer({ row, applications, jobs, orgName, onClose }: { row: Stu
             ))}
           </tbody>
         </table>
+
+        <EvidencePanel p={p} />
 
         {i.github?.top_repos.length ? (
           <>
@@ -563,7 +639,7 @@ function JobForm({ initial, onDone }: { initial?: JobPosting; onDone: () => void
           min_cgpa: String(initial.min_cgpa), max_backlogs: String(initial.max_backlogs), min_class_x: String(initial.min_class_x),
           min_class_xii: String(initial.min_class_xii), min_internships: String(initial.min_internships), min_projects: String(initial.min_projects),
           branches: initial.branches.join(', '), batches: initial.batches.join(', '), deadline: initial.deadline ?? '', status: initial.status,
-          skills: Object.fromEntries(SKILLS.map((s) => [s, Number(initial.skill_requirements[s] ?? 0)])),
+          skills: Object.fromEntries(Object.entries(initial.skill_requirements ?? {}).map(([s, v]) => [s, Number(v) || 0])) as Record<string, number>,
         }
       : { ...emptyJob, company: recruiter?.company ?? '' },
   )
@@ -571,6 +647,11 @@ function JobForm({ initial, onDone }: { initial?: JobPosting; onDone: () => void
     if (isRecruiter && recruiter && !initial) setF((x) => ({ ...x, company: recruiter.company }))
   }, [isRecruiter, recruiter, initial])
   const [busy, setBusy] = useState(false)
+  // The track whose skills the sliders show: the one that best covers the drive's existing requirements.
+  const [track, setTrack] = useState(() => {
+    const keys = Object.keys(f.skills).filter((k) => f.skills[k] > 0)
+    return [...TRACKS].sort((a, b) => b.skills.filter((x) => keys.includes(x)).length - a.skills.filter((x) => keys.includes(x)).length)[0]?.id ?? 'software'
+  })
   const set = (k: keyof typeof f, v: string) => setF({ ...f, [k]: v })
   const list = (v: string) => v.split(',').map((x) => x.trim()).filter(Boolean)
 
@@ -661,12 +742,23 @@ function JobForm({ initial, onDone }: { initial?: JobPosting; onDone: () => void
           </select>
         </label>
       </div>
-      <p className="text-[12px] font-semibold text-ink">Required skill levels <span className="font-normal text-ink-faint">(0 = not required)</span></p>
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="text-[12px] font-semibold text-ink">Required skill levels <span className="font-normal text-ink-faint">(0 = not required)</span></p>
+        {/* Which skill set this role tests: software for IT drives, VLSI for chip companies, structural for civil, ... */}
+        <select className="field h-[32px] w-full max-w-full text-[12px] sm:ml-auto sm:w-auto" value={track} onChange={(e) => {
+          const t = e.target.value
+          setTrack(t)
+          // A new drive starts from the chosen track's skills (aptitude 60, the rest set by the recruiter).
+          if (!initial) setF({ ...f, skills: Object.fromEntries((TRACK_BY_ID.get(t)?.skills ?? []).map((sk) => [sk, sk === 'Aptitude & Reasoning' ? 60 : 0])) })
+        }} aria-label="Role type">
+          {TRACKS.map((t) => <option key={t.id} value={t.id}>{t.label}</option>)}
+        </select>
+      </div>
       <div className="grid grid-cols-1 gap-x-6 gap-y-2 sm:grid-cols-2">
-        {SKILLS.map((s) => (
+        {[...new Set([...(TRACK_BY_ID.get(track)?.skills ?? []), ...Object.keys(f.skills).filter((k) => f.skills[k] > 0)])].map((s) => (
           <label key={s} className="block">
-            <span className="flex justify-between text-[11.5px] text-ink-soft"><span>{s}</span><b className="tabular-nums">{f.skills[s]}</b></span>
-            <input type="range" min={0} max={100} step={5} value={f.skills[s]} onChange={(e) => setF({ ...f, skills: { ...f.skills, [s]: Number(e.target.value) } })} className="w-full accent-[#6d4aff]" />
+            <span className="flex justify-between text-[11.5px] text-ink-soft"><span>{s}</span><b className="tabular-nums">{f.skills[s] ?? 0}</b></span>
+            <input type="range" min={0} max={100} step={5} value={f.skills[s] ?? 0} onChange={(e) => setF({ ...f, skills: { ...f.skills, [s]: Number(e.target.value) } })} className="w-full accent-[#6d4aff]" aria-label={s} />
           </label>
         ))}
       </div>

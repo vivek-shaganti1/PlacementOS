@@ -5,7 +5,8 @@ import { bucketMeta } from '../data/companies'
 import type { Category } from '../data/types'
 import { useProfile } from '../lib/auth'
 import { useCompanies } from '../lib/companies'
-import { categoryLabel, readinessOf, SKILL_SHORT, SKILLS } from '../lib/eligibility'
+import { categoryLabel, readinessOf, SKILL_SHORT } from '../lib/eligibility'
+import { skillsFor } from '../lib/branches'
 import { shortDate, useHistory } from '../lib/history'
 
 const short = SKILL_SHORT
@@ -23,13 +24,14 @@ export default function Analytics() {
   const { companies, byBucket } = useCompanies()
   const { snapshots, resumes, matches, loading } = useHistory()
   const categories = [...new Set(companies.map((c) => c.category))] as Category[]
-  const [tier, setTier] = useState<Category>('top')
+  const [tier, setTier] = useState<Category>(() => (categories.includes('top') ? 'top' : categories[0]))
+  const SKILLS = skillsFor(p)
 
   const tierCompanies = companies.filter((c) => c.category === tier)
   const radar = SKILLS.map((s) => ({
     skill: short[s],
     a: p.skills.find((x) => x.name === s)?.level ?? 0,
-    b: Math.round(tierCompanies.reduce((a, c) => a + c.requirements.skills[s], 0) / Math.max(1, tierCompanies.length)),
+    b: Math.round(tierCompanies.reduce((a, c) => a + (c.requirements.skills[s] ?? 0), 0) / Math.max(1, tierCompanies.length)),
   }))
   const byCategory = categories
     .map((cat) => {

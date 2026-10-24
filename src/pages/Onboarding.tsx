@@ -4,13 +4,13 @@ import { LogoMark } from '../components/Logo'
 import { Aurora, Meter, Ring } from '../components/Page'
 import { callApi } from '../lib/api'
 import { useAuth, useProfile } from '../lib/auth'
-import { SKILLS } from '../lib/eligibility'
+import { BRANCHES as ALL_BRANCHES, familyOf, skillsForTracks, TRACK_BY_ID, tracksFor, tracksForBranch } from '../lib/branches'
 import { resumeImports, uploadAndAnalyzeResume } from '../lib/resumeFlow'
 import { errMsg } from '../lib/supabase'
 import { allEvidence } from '../lib/verify'
 import { plural } from '../lib/format'
 
-const BRANCHES = ['Computer Science & Engineering', 'Information Technology', 'CSE (AI & ML)', 'CSE (Data Science)', 'Electronics & Communication', 'Electrical & Electronics', 'Mechanical', 'Civil']
+const BRANCHES = ALL_BRANCHES.map((b) => b.name)
 const STEPS = ['About you', 'Academics', 'Resume', 'Accounts', 'Skills'] as const
 const ease = [0.16, 1, 0.3, 1] as const
 
@@ -47,8 +47,20 @@ export default function Onboarding() {
     codeforces: p.codeforces_username ?? '',
     codechef: p.codechef_username ?? '',
     portfolio_url: p.portfolio_url ?? '',
+    credly: p.integrations?.credly?.username ?? '',
+    huggingface: p.integrations?.huggingface?.username ?? '',
+    ctftime: p.integrations?.ctftime?.username ?? '',
   })
-  const evidence = allEvidence(p.integrations ?? {}, p.resume_analysis)
+  // What the student is preparing for, from their branch (ECE: embedded and software, Civil: structural, ...).
+  const [tracks, setTracks] = useState<string[]>(() => tracksFor(p))
+  const [tracksTouched, setTracksTouched] = useState(!!p.tracks?.length)
+  useEffect(() => {
+    if (!tracksTouched) setTracks(tracksFor({ branch: about.branch }))
+  }, [about.branch, tracksTouched])
+  const SKILLS = skillsForTracks(tracks)
+  const computing = familyOf(about.branch) === 'computing'
+  const wantsCoding = SKILLS.includes('Data Structures & Algorithms')
+  const evidence = allEvidence(p.integrations ?? {}, p.resume_analysis, { skills: SKILLS, credentials: p.credentials })
   const [levels, setLevels] = useState<Record<string, number>>(() =>
     Object.fromEntries(SKILLS.map((s) => [s, evidence[s]?.level ?? p.skills.find((x) => x.name === s)?.level ?? 0])),
   )
@@ -56,7 +68,7 @@ export default function Onboarding() {
   // When the skills step opens, pre-fill from the freshly synced evidence (the profile has just been refreshed).
   useEffect(() => {
     if (step !== 4) return
-    setLevels((l) => Object.fromEntries(SKILLS.map((s) => [s, evidence[s]?.level ?? l[s]])))
+    setLevels((l) => Object.fromEntries(SKILLS.map((s) => [s, evidence[s]?.level ?? l[s] ?? 0])))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [step, p.integrations, p.resume_analysis])
 
@@ -78,7 +90,18 @@ export default function Onboarding() {
     if (step === 0) {
       if (!about.full_name.trim() || !about.college.trim() || !about.branch.trim() || !/^\d{4}$/.test(about.batch.trim()) || !about.phone.trim())
         return setError('Fill in your name, phone, college, branch and a 4-digit graduation batch.')
-      if (await run('Saving…', () => updateProfile(Object.fromEntries(Object.entries(about).map(([k, v]) => [k, v.trim()]))))) setStep(1)
+      if (!tracks.length) return setError('Pick at least one track you are preparing for.')
+      const fields = Object.fromEntries(Object.entries(about).map(([k, v]) => [k, v.trim()]))
+      const saved = await run('Saving…', async () => {
+        try {
+          await updateProfile({ ...fields, tracks })
+        } catch (e) {
+          // Before the tracks column exists the branch default is used; never block onboarding on it.
+          if (!/tracks/i.test(String((e as Error).message))) throw e
+          await updateProfile(fields)
+        }
+      })
+      if (saved) setStep(1)
     } else if (step === 1) {
       const n = { cgpa: Number(acad.cgpa), backlogs: Number(acad.backlogs), class_x: Number(acad.class_x), class_xii: Number(acad.class_xii) }
       if (!(n.cgpa > 0 && n.cgpa <= 10)) return setError('CGPA must be between 0 and 10.')
@@ -91,10 +114,11 @@ export default function Onboarding() {
     } else if (step === 3) {
       const gh = links.github.trim()
       const li = links.linkedin_url.trim()
-      if (!gh) return setError('Add your GitHub username — your projects and tech stack are read from it.')
+      if (!gh && computing) return setError('Add your GitHub username — your projects and tech stack are read from it.')
       if (!/linkedin\.com\/in\//i.test(li)) return setError('Add your LinkedIn profile URL (linkedin.com/in/…).')
       const ok = await run('Connecting your accounts…', async () => {
-        const platforms = (['github', 'leetcode', 'codeforces', 'codechef'] as const).filter((k) => links[k].trim() && links[k].trim() !== p[`${k}_username`])
+        const current: Record<string, string | null | undefined> = { github: p.github_username, leetcode: p.leetcode_username, codeforces: p.codeforces_username, codechef: p.codechef_username, credly: p.integrations?.credly?.username, huggingface: p.integrations?.huggingface?.username, ctftime: p.integrations?.ctftime?.username }
+        const platforms = (['github', 'leetcode', 'codeforces', 'codechef', 'credly', 'huggingface', 'ctftime'] as const).filter((k) => links[k].trim() && links[k].trim() !== current[k])
         const failures: string[] = []
         for (const platform of platforms) {
           setBusy(`Syncing ${platform}…`)
@@ -111,7 +135,7 @@ export default function Onboarding() {
       await refreshProfile()
       if (ok) setStep(4)
     } else {
-      await run('Finishing…', () => updateProfile({ skills: SKILLS.map((name) => ({ name, level: levels[name] })), onboarded_at: new Date().toISOString() }))
+      await run('Finishing…', () => updateProfile({ skills: SKILLS.map((name) => ({ name, level: levels[name] ?? 0 })), onboarded_at: new Date().toISOString() }))
     }
   }
 
@@ -180,6 +204,30 @@ export default function Onboarding() {
                       <Field label="Target role"><input className="field" value={about.target_roles} onChange={(e) => setAbout({ ...about, target_roles: e.target.value })} /></Field>
                     </div>
                   </div>
+                  <div>
+                    <p className="text-[12px] font-medium text-ink-soft">What are you preparing for? <span className="font-normal text-ink-faint">Up to 3. This decides which skills and recruiters you are measured against.</span></p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {tracksForBranch(about.branch).map((t) => {
+                        const on = tracks.includes(t.id)
+                        return (
+                          <button
+                            key={t.id}
+                            type="button"
+                            aria-pressed={on}
+                            title={t.blurb}
+                            onClick={() => {
+                              setTracksTouched(true)
+                              setTracks((cur) => (on ? cur.filter((x) => x !== t.id) : cur.length >= 3 ? cur : [...cur, t.id]))
+                            }}
+                            className={`rounded-full border px-3 py-1.5 text-[12px] font-medium transition-colors ${on ? 'border-brand bg-brand-tint text-brand-dark' : 'border-line bg-white text-ink-soft hover:bg-[#faf8ff]'}`}
+                          >
+                            {t.label}
+                          </button>
+                        )
+                      })}
+                    </div>
+                    {tracks.length > 0 && <p className="mt-1.5 text-[11px] text-ink-faint">{tracks.map((t) => TRACK_BY_ID.get(t)?.blurb).join(' ')}</p>}
+                  </div>
                 </div>
               )}
 
@@ -225,13 +273,20 @@ export default function Onboarding() {
               {step === 3 && (
                 <div className="space-y-4">
                   <h2 className="text-[22px] font-semibold tracking-[-0.03em]">Connect your accounts</h2>
-                  <p className="text-[12.5px] text-ink-mute">GitHub gives us your real projects and tech stack; coding platforms give us your DSA level. Public data only.</p>
+                  <p className="text-[12.5px] text-ink-mute">
+                    {computing
+                      ? 'GitHub gives us your real projects and tech stack; coding platforms give us your DSA level. Public data only.'
+                      : 'Put your design files in a GitHub repository (Verilog, KiCad, CAD, Simulink, STAAD, Aspen, ...): we read which files are there, and KiCad schematics down to the components. Credly badges and NPTEL certificates are verified at the source. Public data only.'}
+                  </p>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    <Field label="GitHub username (required)"><input className="field" value={links.github} onChange={(e) => setLinks({ ...links, github: e.target.value })} placeholder="your-github" /></Field>
+                    <Field label={computing ? 'GitHub username (required)' : 'GitHub username'}><input className="field" value={links.github} onChange={(e) => setLinks({ ...links, github: e.target.value })} placeholder="your-github" /></Field>
                     <Field label="LinkedIn URL (required)"><input className="field" value={links.linkedin_url} onChange={(e) => setLinks({ ...links, linkedin_url: e.target.value })} placeholder="linkedin.com/in/you" /></Field>
-                    <Field label="LeetCode username"><input className="field" value={links.leetcode} onChange={(e) => setLinks({ ...links, leetcode: e.target.value })} /></Field>
-                    <Field label="Codeforces handle"><input className="field" value={links.codeforces} onChange={(e) => setLinks({ ...links, codeforces: e.target.value })} /></Field>
-                    <Field label="CodeChef username"><input className="field" value={links.codechef} onChange={(e) => setLinks({ ...links, codechef: e.target.value })} /></Field>
+                    <Field label="Credly username" hint="Verified badges: Cisco, IBM, AWS, Autodesk, NI, Ansys…"><input className="field" value={links.credly} onChange={(e) => setLinks({ ...links, credly: e.target.value })} placeholder="credly.com/users/…" /></Field>
+                    {tracks.includes('ai_data') && <Field label="Hugging Face username"><input className="field" value={links.huggingface} onChange={(e) => setLinks({ ...links, huggingface: e.target.value })} /></Field>}
+                    {tracks.includes('cyber') && <Field label="CTFtime team id" hint="The number in your team page URL"><input className="field" value={links.ctftime} onChange={(e) => setLinks({ ...links, ctftime: e.target.value })} /></Field>}
+                    {wantsCoding && <Field label="LeetCode username"><input className="field" value={links.leetcode} onChange={(e) => setLinks({ ...links, leetcode: e.target.value })} /></Field>}
+                    {wantsCoding && <Field label="Codeforces handle"><input className="field" value={links.codeforces} onChange={(e) => setLinks({ ...links, codeforces: e.target.value })} /></Field>}
+                    {wantsCoding && <Field label="CodeChef username"><input className="field" value={links.codechef} onChange={(e) => setLinks({ ...links, codechef: e.target.value })} /></Field>}
                     <Field label="Portfolio / website"><input className="field" value={links.portfolio_url} onChange={(e) => setLinks({ ...links, portfolio_url: e.target.value })} /></Field>
                   </div>
                 </div>
@@ -241,13 +296,13 @@ export default function Onboarding() {
                 <div className="space-y-4">
                   <h2 className="text-[22px] font-semibold tracking-[-0.03em]">Confirm your skill levels</h2>
                   <p className="text-[12.5px] text-ink-mute">
-                    Pre-filled from your resume, GitHub and coding stats where we found evidence. Adjust anything that looks off — be honest, recruiters test these.
+                    Pre-filled wherever we found evidence (design files, badges, certificates, coding stats, your resume). Adjust anything that looks off — be honest, recruiters test these.
                   </p>
                   <div className="grid grid-cols-1 gap-x-6 gap-y-4 sm:grid-cols-2">
                     {SKILLS.map((s) => (
                       <div key={s}>
-                        <Meter label={s} value={levels[s]} tone={levels[s] >= 75 ? '#12b76a' : levels[s] >= 55 ? '#f79009' : '#f04438'} />
-                        <input type="range" min={0} max={100} value={levels[s]} onChange={(e) => setLevels({ ...levels, [s]: Number(e.target.value) })} className="mt-1 w-full accent-[#6d4aff]" aria-label={s} />
+                        <Meter label={s} value={levels[s] ?? 0} tone={(levels[s] ?? 0) >= 75 ? '#12b76a' : (levels[s] ?? 0) >= 55 ? '#f79009' : '#f04438'} />
+                        <input type="range" min={0} max={100} value={levels[s] ?? 0} onChange={(e) => setLevels({ ...levels, [s]: Number(e.target.value) })} className="mt-1 w-full accent-[#6d4aff]" aria-label={s} />
                         <p className="text-[10.5px] text-ink-faint">{evidence[s] ? `Evidence: ${evidence[s].sources.join(' · ')}` : 'Self-rated'}</p>
                       </div>
                     ))}

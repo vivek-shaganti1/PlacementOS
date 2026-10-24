@@ -1,3 +1,4 @@
+import type { FileSignal } from './branches'
 import { createClient } from '@supabase/supabase-js'
 
 // Defaults point at the production project. The publishable key is safe to ship to browsers
@@ -37,6 +38,10 @@ export type Profile = {
   class_xii: number
   /** Where the academics came from: never entered, self-reported at onboarding (then locked), or the college roster. */
   academics_source?: 'default' | 'student' | 'college'
+  /** Career tracks the student prepares for (lib/branches). Empty means the branch default. */
+  tracks?: string[]
+  /** NPTEL certificates and GATE scorecards (lib/branches evidence). */
+  credentials?: Credential[]
   avatar_url: string | null
   skills: Skill[]
   projects: Project[]
@@ -79,7 +84,27 @@ export type GithubStats = {
   languages: { name: string; repos: number }[]
   topics: string[]
   top_repos: { name: string; description: string | null; language: string | null; stars: number; url: string; topics: string[]; updated_at: string }[]
+  /** Design and project files found in the repositories' file trees (Verilog, KiCad, CAD, Simulink, ...). */
+  signals?: Partial<Record<FileSignal, { repos: string[]; files: number }>>
+  /** Components read from KiCad schematics: the parts actually placed in the student's circuits. */
+  kicad?: { repo: string; file: string; parts: number; components: string[] }[]
   synced_at: string
+}
+export type CredlyStats = { username: string; badges: { name: string; issuer: string; issued_at: string | null; url: string }[]; synced_at: string }
+export type HuggingfaceStats = { username: string; models: number; datasets: number; spaces: number; downloads: number; likes: number; top: { id: string; kind: string; downloads: number }[]; synced_at: string }
+export type CtftimeStats = { username: string; team: string; rating_points: number; events: number; country_place: number | null; year: number; synced_at: string }
+export type Credential = {
+  id: string
+  kind: 'nptel' | 'gate'
+  ref: string
+  title: string
+  skill: string
+  score: number | null
+  data: Record<string, unknown>
+  status: 'verified' | 'pending' | 'rejected'
+  verified_by: 'platform' | 'college' | null
+  file_path: string | null
+  created_at: string
 }
 export type LeetcodeStats = { username: string; solved: number; easy: number; medium: number; hard: number; ranking: number | null; contest_rating: number | null; contests: number; top_percentage: number | null; synced_at: string }
 export type CodeforcesStats = { username: string; rating: number | null; max_rating: number | null; rank: string | null; solved: number; contests: number; synced_at: string }
@@ -90,6 +115,9 @@ export type Integrations = {
   leetcode?: LeetcodeStats
   codeforces?: CodeforcesStats
   codechef?: CodechefStats
+  credly?: CredlyStats
+  huggingface?: HuggingfaceStats
+  ctftime?: CtftimeStats
 }
 
 export type Certification = { name: string; issuer: string; date: string; credential_url?: string }

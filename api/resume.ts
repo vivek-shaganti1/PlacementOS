@@ -1,7 +1,7 @@
 // Resume analysis and job-description matching.
 // POST { action: 'analyze', text, file_name }  -> parses the extracted resume text, scores it, saves to profile
 // POST { action: 'match', jd }                 -> matches the saved resume against a job description
-import { SKILLS } from '../src/lib/eligibility'
+import { skillsForTracks, TRACK_BY_ID, tracksFor } from '../src/lib/branches'
 import { bearer, consumeAi, deleteRows, env, groq, handle, HttpError, insertVerified, json, loadProfile, parseJson, rest, saveProfile, STYLE_RULES, SUPABASE_URL, tidyDeep, timeout } from './_lib'
 
 export const config = { runtime: 'edge' }
@@ -42,7 +42,7 @@ const hasMetric = (line: string) =>
   /\d\s?(%|x\b|\+|k\b|ms\b|lpa\b)|[$₹]\s?\d/i.test(line) ||
   (line.match(/\d+(\.\d+)?/g) ?? []).some((n) => n.length >= 2 && !/^(19|20)\d\d$/.test(n))
 
-function measure(text: string) {
+function measure(text: string, tracks: string[] = ['software']) {
   const words = (text.match(/\S+/g) ?? []).length
   const lines = text.split(/\n+/).map((l) => l.trim()).filter(Boolean)
   const bulletLines = lines
@@ -60,14 +60,21 @@ function measure(text: string) {
   }
   const tech = findTech(text)
   const sdeCore = ['data structures', 'algorithms', 'dsa', 'oop', 'sql', 'git', 'rest', 'rest api', 'dbms', 'operating systems', 'system design', 'java', 'python', 'c++', 'javascript', 'react', 'node.js', 'node', 'docker', 'aws']
-  const coreHits = sdeCore.filter((k) => tech.includes(k)).length
+  // Keywords recruiters scan for in the student's own tracks (Verilog for VLSI, STAAD for structural, ...).
+  const software = tracks.length === 1 && tracks[0] === 'software'
+  const lower = text.toLowerCase()
+  const trackWords = [...new Set(tracks.filter((t) => t !== 'software').flatMap((t) => TRACK_BY_ID.get(t)?.resumeKeywords ?? []))]
+  const coreHits = software
+    ? sdeCore.filter((k) => tech.includes(k)).length
+    : Math.round(((sdeCore.filter((k) => tech.includes(k)).length * (tracks.includes('software') ? 0.4 : 0)) + trackWords.filter((k) => new RegExp(`(^|[^a-z0-9])${esc(k)}([^a-z0-9]|$)`).test(lower)).length))
+  const keywordLabel = software ? 'Keyword match for SDE roles' : `Keyword match for ${tracks.map((t) => TRACK_BY_ID.get(t)?.label ?? t).join(' / ')} roles`
 
   const ratio = (a: number, b: number) => (b ? a / b : 0)
   const lengthScore = words < 200 ? 35 : words < 350 ? 70 : words <= 800 ? 100 : words <= 1100 ? 75 : 50
   const order = ['Education', 'Experience', 'Projects', 'Skills']
   const checks = [
     { label: 'Impact quantified with metrics', score: Math.min(100, Math.round((ratio(quantified, bullets) / 0.6) * 100)) },
-    { label: 'Keyword match for SDE roles', score: Math.min(100, Math.round((coreHits / 10) * 100)) },
+    { label: keywordLabel, score: Math.min(100, Math.round((coreHits / 10) * 100)) },
     {
       label: 'Formatting & ATS readability',
       score: Math.round(40 * (Object.values(contact).filter(Boolean).length / 4) + 45 * Math.min(1, sections.length / 4) + 15 * (bullets >= 6 ? 1 : bullets / 6)),
@@ -96,9 +103,10 @@ type AiAnalysis = {
   skill_levels: Record<string, number>
 }
 
-async function analyze(text: string, fileName: string | null, targetRole: string) {
-  const m = measure(text)
-  const prompt = `You are an expert technical recruiter and ATS reviewer for Indian campus placements. Analyze the resume below for a "${targetRole}" role.
+async function analyze(text: string, fileName: string | null, targetRole: string, tracks: string[] = ['software']) {
+  const m = measure(text, tracks)
+  const SKILLS = skillsForTracks(tracks)
+  const prompt = `You are an expert technical recruiter and ATS reviewer for Indian campus placements. Analyze the resume below for a "${targetRole}" role (career tracks: ${tracks.map((t) => TRACK_BY_ID.get(t)?.label ?? t).join(", ")}; judge depth in those fields, not software, unless software is one of them).
 Measured facts (computed by code, trust them): ${JSON.stringify({ words: m.words, bullet_lines: m.bullets, quantified_bullets: m.quantified, bullets_starting_with_action_verbs: m.actionVerbs, sections_found: m.sections, contact: m.contact, technologies_found: m.tech })}
 Check scores already computed: ${JSON.stringify(m.checks)}
 
@@ -209,7 +217,7 @@ export default handle(async (req) => {
     const text = String(body.text ?? '').replace(/\u0000/g, '').trim().slice(0, 40000)
     if (text.length < 200) throw new HttpError(422, 'Could not read enough text from this file. If it is a scanned image, export it as a text-based PDF.')
     await consumeAi(token, 'resume')
-    const analysis = await analyze(text, body.file_name ? String(body.file_name).slice(0, 200) : null, profile.target_roles || 'Software Engineer')
+    const analysis = await analyze(text, body.file_name ? String(body.file_name).slice(0, 200) : null, profile.target_roles || 'Software Engineer', tracksFor(profile))
     const { analyzed_at, ...row } = analysis
     void analyzed_at
     await insertVerified(token, profile.id, 'resume_analyses', row)

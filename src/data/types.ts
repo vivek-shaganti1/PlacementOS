@@ -9,7 +9,11 @@ export type Alumnus = {
   avatar: string
 }
 
-export type Category = 'top' | 'quant' | 'ai' | 'product' | 'fintech' | 'startup' | 'infra' | 'hardware' | 'service' | 'consulting'
+export type Category =
+  | 'top' | 'quant' | 'ai' | 'product' | 'fintech' | 'startup' | 'infra' | 'hardware' | 'service' | 'consulting'
+  // core (non-software) recruiters
+  | 'semiconductor' | 'embedded' | 'telecom' | 'electrical' | 'energy' | 'automation' | 'automotive' | 'manufacturing'
+  | 'engineering_services' | 'construction' | 'process' | 'biotech' | 'security'
 
 export type Requirements = {
   minCgpa: number

@@ -1,5 +1,5 @@
 // Assembles the app's Profile object from the normalized tables. Shared by the browser and /api.
-import { SKILLS } from './eligibility'
+import { skillsFor } from './branches'
 import type { Integrations, JdMatch, Profile, ResumeAnalysis } from './supabase'
 
 /** The tables (and select lists) that make up a profile, in a fixed order. */
@@ -20,7 +20,9 @@ export type RelatedRows = { [K in keyof typeof RELATED]: any[] }
 
 export function assembleProfile(base: Record<string, any>, r: RelatedRows): Profile {
   const levels = new Map(r.user_skills.map((s) => [s.skill as string, Number(s.level)]))
-  const extra = r.user_skills.map((s) => s.skill as string).filter((s) => !(SKILLS as readonly string[]).includes(s))
+  // The student's own track skills first (software for CS, VLSI for an ECE chip-design student, ...), then anything else they added.
+  const core = skillsFor({ tracks: base.tracks as string[] | undefined, branch: base.branch as string | undefined })
+  const extra = r.user_skills.map((s) => s.skill as string).filter((s) => !core.includes(s))
 
   const integrations: Integrations = {}
   for (const c of r.coding_profiles) {
@@ -78,7 +80,8 @@ export function assembleProfile(base: Record<string, any>, r: RelatedRows): Prof
     cgpa: Number(base.cgpa),
     class_x: Number(base.class_x),
     class_xii: Number(base.class_xii),
-    skills: [...SKILLS, ...extra].map((name) => ({ name, level: levels.get(name) ?? 0 })),
+    tracks: (base.tracks as string[] | undefined) ?? [],
+    skills: [...core, ...extra].map((name) => ({ name, level: levels.get(name) ?? 0 })),
     projects: r.projects.map((p) => ({ title: p.title, tech: p.tech, description: p.description, url: p.url, source: p.source })),
     internships: r.internships.map((i) => ({ org: i.org, role: i.role, period: i.period })),
     certifications: r.certifications.map((c) => ({ name: c.name, issuer: c.issuer, date: c.issued_on, ...(c.credential_url ? { credential_url: c.credential_url } : {}) })),

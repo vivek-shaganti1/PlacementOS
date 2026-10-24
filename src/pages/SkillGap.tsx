@@ -6,7 +6,7 @@ import CompanyLogo from '../components/CompanyLogo'
 import { Card, Meter, Page } from '../components/Page'
 import { useProfile } from '../lib/auth'
 import { useCompanies } from '../lib/companies'
-import { categoryLabel, SKILL_SHORT, SKILLS } from '../lib/eligibility'
+import { categoryLabel, SKILL_SHORT } from '../lib/eligibility'
 import { useApp } from '../lib/store'
 
 const tone = (v: number) => (v >= 75 ? '#12b76a' : v >= 60 ? '#f79009' : '#f04438')
@@ -20,6 +20,8 @@ export default function SkillGap() {
   const [targetId, setTargetId] = useState(() => companies.find((c) => c.bucket !== 'eligible')?.id ?? companies[0].id)
   const target = byId(targetId) ?? companies[0]
   const req = target.requirements.skills
+  // The skills this company actually tests (software, VLSI, civil, ...).
+  const names = Object.keys(req)
   const level = (n: string) => student.skills.find((s) => s.name === n)?.level ?? 0
   const m = bucketMeta[target.bucket]
   const verified = student.integrations?.leetcode || student.integrations?.codeforces || student.integrations?.codechef || student.integrations?.github
@@ -51,12 +53,12 @@ export default function SkillGap() {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <Card title="Your level">
           <div className="space-y-3">
-            {SKILLS.map((n) => <Meter key={n} label={n} value={level(n)} tone={level(n) >= req[n] ? '#12b76a' : tone(level(n))} />)}
+            {names.map((n) => <Meter key={n} label={n} value={level(n)} tone={level(n) >= req[n] ? '#12b76a' : tone(level(n))} />)}
           </div>
         </Card>
         <Card title={`Required for ${target.name}`}>
           <div className="space-y-3">
-            {SKILLS.map((n) => <Meter key={n} label={n} value={req[n]} tone="#6d4aff" />)}
+            {names.map((n) => <Meter key={n} label={n} value={req[n]} tone="#6d4aff" />)}
           </div>
         </Card>
       </div>
@@ -66,13 +68,13 @@ export default function SkillGap() {
           aName="You"
           bName={`${target.name} requires`}
           height={330}
-          data={SKILLS.map((n) => ({ skill: SKILL_SHORT[n], a: level(n), b: req[n] }))}
+          data={names.map((n) => ({ skill: SKILL_SHORT[n], a: level(n), b: req[n] }))}
         />
       </Card>
 
       <Card title="Academic & experience requirements">
         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          {target.criteria.filter((c) => !(SKILLS as readonly string[]).includes(c.label)).map((c) => (
+          {target.criteria.filter((c) => !names.includes(c.label)).map((c) => (
             <div key={c.label} className={`rounded-[11px] border px-3 py-2.5 ${c.met ? 'border-[#c9f0d9] bg-[#f6fef9]' : 'border-[#fbd5d1] bg-[#fef8f7]'}`}>
               <p className="text-[11px] text-ink-mute">{c.label}</p>
               <p className="mt-0.5 text-[12.5px] font-semibold text-ink">{c.yours} <span className="font-normal text-ink-faint">/ needs {c.required}</span></p>

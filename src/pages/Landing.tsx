@@ -4,6 +4,10 @@ import { Link, useNavigate } from 'react-router-dom'
 import { Logo, LogoMark } from '../components/Logo'
 import { AnimatedValue, Aurora } from '../components/Page'
 import { companyCatalog } from '../data/companies'
+import { coreCatalog } from '../data/coreCompanies'
+
+/** Software and core recruiters together (the landing counts them; each student sees the ones for their tracks). */
+const RECRUITERS = companyCatalog.length + coreCatalog.length
 import { Glow } from '../components/effects'
 import { CursorFollower, Magnetic, ScrollHighlight, ScrollProgress, SmoothScroll, TextReveal } from '../components/motion'
 import { intensity, useMotionTier } from '../lib/motion'
@@ -435,7 +439,7 @@ function Manifesto() {
 const roles = [
   {
     key: 'student', label: 'Students', title: 'A reason for every company, and the next step.',
-    points: ['Four eligibility stacks across 66 recruiters', 'What-If Simulator before you study', 'Resume and JD matching with AI rewrites'],
+    points: [`Four eligibility stacks across ${RECRUITERS} recruiters, for every branch`, 'What-If Simulator before you study', 'Resume and JD matching with AI rewrites'],
     rows: [['Razorpay', 'Eligible', '#12b76a', 91], ['Atlassian', 'Nearly', '#f79009', 82], ['Google', 'Can become', '#2e90fa', 71], ['Jane Street', 'Stretch', '#f04438', 48]],
   },
   {
@@ -627,7 +631,7 @@ export default function Landing() {
               <a href="#how" className="btn-bracket">See how it works</a>
             </motion.div>
             <motion.div variants={reveal} className="mt-10 flex items-center gap-6 text-[12px] text-ink-mute">
-              {[['66', 'recruiters scored'], ['4', 'platforms synced'], ['< 10s', 'resume analysis']].map(([n, l]) => (
+              {[[String(RECRUITERS), 'recruiters scored'], ['9', 'evidence sources'], ['< 10s', 'resume analysis']].map(([n, l]) => (
                 <div key={l}>
                   <p className="text-[22px] font-semibold tracking-[-0.03em] text-ink"><AnimatedValue value={n} /></p>
                   <p className="font-mono text-[10.5px] uppercase tracking-[0.1em] text-ink-faint">{l}</p>
@@ -639,7 +643,7 @@ export default function Landing() {
         </section>
 
         {/* marquee */}
-        <p className="mb-3 text-center font-mono text-[10.5px] uppercase tracking-[0.18em] text-ink-faint">Every student scored against 66 recruiters</p>
+        <p className="mb-3 text-center font-mono text-[10.5px] uppercase tracking-[0.18em] text-ink-faint">Every student scored against {RECRUITERS} recruiters</p>
         <div className="relative border-y border-white/60 bg-white/30 py-5 backdrop-blur-md [mask-image:linear-gradient(90deg,transparent,#000_12%,#000_88%,transparent)]">
           <div className="marquee__track flex w-max gap-10 whitespace-nowrap text-[15px] font-semibold tracking-[-0.01em] text-ink-faint">
             {[...names, ...names].map((n, i) => <span key={i}>{n}</span>)}
