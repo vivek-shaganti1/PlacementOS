@@ -40,14 +40,19 @@ export default function Login({ initialMode = 'signin' }: { initialMode?: Mode }
       } else if (mode === 'signup') {
         if (password.length < 8) throw new Error('Use at least 8 characters for your password.')
         // Registration happens on the server: only students on a college roster (with a matching roll number)
-        // can register, and the account is ready immediately, with no confirmation email.
+        // can register. By default the account is ready immediately; with SIGNUP_VERIFY_EMAIL on, it is finished from an email link.
         const res = await fetch('/api/signup', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ email: email.trim(), password, full_name: name.trim(), roll_number: roll.trim() }),
         })
-        const body = (await res.json().catch(() => ({}))) as { error?: string }
+        const body = (await res.json().catch(() => ({}))) as { error?: string; verify?: boolean }
         if (!res.ok) throw new Error(body.error || `Sign-up failed (${res.status})`)
+        // Email verification on: the account is finished from the link in their inbox, not here.
+        if (body.verify) {
+          setInfo(`Check ${email.trim()} for a link to finish creating your account.`)
+          return
+        }
         const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
         if (error) throw error
       } else if (mode === 'forgot') {
@@ -81,9 +86,9 @@ export default function Login({ initialMode = 'signin' }: { initialMode?: Mode }
   const [title, sub, cta] = titles[mode]
 
   return (
-    <div className="relative min-h-screen overflow-hidden">
+    <div className="relative min-h-svh overflow-hidden">
       <Aurora />
-      <div className="relative z-10 mx-auto grid min-h-screen max-w-[1120px] grid-cols-1 items-center gap-10 px-6 py-10 lg:grid-cols-[1.05fr_1fr]">
+      <div className="relative z-10 mx-auto grid min-h-svh max-w-[1120px] grid-cols-1 items-center gap-10 px-6 py-10 lg:grid-cols-[1.05fr_1fr]">
         <motion.div
           initial={{ opacity: 0, x: -24 }}
           animate={{ opacity: 1, x: 0 }}
@@ -135,7 +140,7 @@ export default function Login({ initialMode = 'signin' }: { initialMode?: Mode }
             {mode === 'signup' && (
               <label className="block">
                 <span className="text-[11.5px] font-medium text-ink-mute">Full name</span>
-                <input required value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" className={input} />
+                <input required maxLength={120} value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" className={input} />
               </label>
             )}
 
@@ -170,7 +175,7 @@ export default function Login({ initialMode = 'signin' }: { initialMode?: Mode }
 
             <AnimatePresence>
               {error && (
-                <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="rounded-[11px] border border-[#fbd5d1] bg-[#fef3f2]/90 px-3 py-2 text-[12px] text-[#d92d20]">
+                <motion.p role="alert" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="rounded-[11px] border border-[#fbd5d1] bg-[#fef3f2]/90 px-3 py-2 text-[12px] text-[#d92d20]">
                   {error}
                 </motion.p>
               )}

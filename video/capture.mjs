@@ -57,7 +57,7 @@ async function scrollTo(page, y) {
   await settle(p, 2000)
   await shot(p, 'login')
   await p.locator('input[type=email]').first().fill('23eg105f59@anurag.edu.in')
-  await p.locator('input[type=password]').first().fill('placementiq-demo')
+  await p.locator('input[type=password]').first().fill('example-password')
   await wait(400)
   await shot(p, 'login-filled')
   await c.close()

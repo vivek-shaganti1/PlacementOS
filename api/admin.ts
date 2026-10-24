@@ -2,7 +2,7 @@
 // POST { action: 'invite', org_id, role: 'student' | 'org_admin' | 'platform_admin', password? (creates logins instead of emailing), people: [{ email, full_name?, roll_number?, branch?, batch? }] }
 // The caller must be the super admin or an admin of org_id. Roster rows are written as the caller (RLS applies);
 // only the invite email itself uses the secret key, which never leaves the server.
-import { bearer, env, handle, HttpError, json, rest, SUPABASE_URL, timeout } from './_lib'
+import { bearer, env, handle, HttpError, json, rest, SUPABASE_URL, timeout, tokenSubject } from './_lib'
 
 export const config = { runtime: 'edge' }
 
@@ -13,7 +13,8 @@ const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 const clip = (v: unknown, n: number) => String(v ?? '').trim().slice(0, n)
 
 async function callerRoles(token: string) {
-  return (await (await rest(token, 'user_roles?select=role,org_id')).json()) as { role: string; org_id: string | null }[]
+  // Only the caller's own roles: a platform admin can read every user's roles, and those must not count as the caller's.
+  return (await (await rest(token, `user_roles?select=role,org_id&user_id=eq.${tokenSubject(token)}`)).json()) as { role: string; org_id: string | null }[]
 }
 
 async function sendInvite(email: string, fullName: string, redirectTo: string): Promise<Result> {
@@ -34,6 +35,29 @@ async function sendInvite(email: string, fullName: string, redirectTo: string): 
 }
 
 /** Creates a confirmed login with a temporary password. No email is sent, so mail rate limits do not apply. */
+/**
+ * Whether a login with a caller-chosen password may be created for this email in this college. Read with the secret key
+ * because a college admin cannot see other colleges' domains. A college's own domain is fine; another college's domain
+ * never is (that account would later pick up a role granted there). Students must also be on one of this college's
+ * domains when the college has set any.
+ */
+async function domainAllowed(email: string, orgId: string, role: string): Promise<boolean> {
+  const key = env('SUPABASE_SECRET_KEY')
+  if (!key) return false
+  const domain = email.split('@')[1]?.toLowerCase() ?? ''
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/organizations?select=id,email_domains`, {
+    signal: timeout(10_000),
+    headers: { apikey: key, authorization: `Bearer ${key}` },
+  })
+  if (!res.ok) return false
+  const orgs = (await res.json()) as { id: string; email_domains: string[] | null }[]
+  const has = (o: { email_domains: string[] | null }) => (o.email_domains ?? []).some((d) => d.toLowerCase().replace(/^@/, '') === domain)
+  if (orgs.some((o) => o.id !== orgId && has(o))) return false
+  const own = orgs.find((o) => o.id === orgId)
+  if (role === 'student' && own && (own.email_domains ?? []).length > 0 && !has(own)) return false
+  return true
+}
+
 async function createLogin(email: string, fullName: string, password: string): Promise<Result> {
   const key = env('SUPABASE_SECRET_KEY')
   if (!key) return { email, status: 'failed', detail: 'Creating logins needs SUPABASE_SECRET_KEY on the server.' }
@@ -95,6 +119,8 @@ export default handle(async (req) => {
   const provision = async (p: { email: string; full_name: string }): Promise<Result> => {
     if (!password) return sendInvite(p.email, p.full_name, redirectTo)
     if (!(await mayProvision(p.email))) return { email: p.email, status: 'failed', detail: 'This email is already registered elsewhere on PlacementIQ. Send an email invite instead.' }
+    if (!(await domainAllowed(p.email, orgId, role)))
+      return { email: p.email, status: 'failed', detail: 'This email is outside your college\'s domains. Send an email invite instead, so only the owner of the mailbox can sign in.' }
     return createLogin(p.email, p.full_name, password)
   }
   const results: Result[] = []

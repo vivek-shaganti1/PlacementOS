@@ -7,6 +7,10 @@ export const config = { runtime: 'edge' }
 
 type Msg = { role: 'user' | 'bot'; text: string }
 
+// Profile lists go into every prompt, so they are bounded: one AI action must stay one small model call.
+const cap = (v: unknown, n: number): any[] => (Array.isArray(v) ? v.slice(0, n) : [])
+const clip = (v: unknown, n: number) => String(v ?? '').slice(0, n)
+
 const bucketName: Record<string, string> = { eligible: 'Eligible', nearly: 'Nearly Eligible', canBecome: 'Can Become Eligible', notEligible: 'Not Eligible' }
 
 function systemPrompt(p: Record<string, any>) {
@@ -36,10 +40,10 @@ Name: ${p.full_name} | Target role: ${p.target_roles}
 Program: ${p.meta}, ${p.branch}, batch ${p.batch}, ${p.college}
 CGPA: ${p.cgpa}/10 | Active backlogs: ${p.backlogs} | Class X: ${p.class_x}% | Class XII: ${p.class_xii}%
 Skills (0-100): ${JSON.stringify(p.skills)}
-Projects: ${JSON.stringify(p.projects)}
-Internships: ${JSON.stringify(p.internships)}
-Certifications: ${JSON.stringify((p.certifications ?? []).map((c: any) => c.name))}
-Achievements: ${JSON.stringify((p.achievements ?? []).map((a: any) => a.title))}
+Projects: ${JSON.stringify(cap(p.projects, 8).map((x: any) => ({ title: clip(x.title, 80), tech: clip(x.tech, 120), description: clip(x.description, 200) })))}
+Internships: ${JSON.stringify(cap(p.internships, 6).map((x: any) => ({ org: clip(x.org, 80), role: clip(x.role, 80), period: clip(x.period, 40) })))}
+Certifications: ${JSON.stringify(cap(p.certifications, 10).map((c: any) => clip(c.name, 100)))}
+Achievements: ${JSON.stringify(cap(p.achievements, 8).map((a: any) => clip(a.title, 120)))}
 Coding profiles: ${coding.length ? coding.join(' | ') : 'none connected'}
 Resume: ${ra ? `score ${ra.overall}/100. ${ra.summary} Improvements: ${(ra.improvements ?? []).join('; ')}` : 'not analyzed yet'}
 

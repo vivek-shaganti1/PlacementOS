@@ -75,7 +75,9 @@ export async function consumeAi(token: string, kind: 'chat' | 'resume' | 'jd_mat
   const msg = err.message ?? ''
   if (msg.startsWith('AI_QUOTA: ')) throw new HttpError(429, msg.slice('AI_QUOTA: '.length))
   if (res.status === 401) throw new HttpError(401, 'Session expired. Please sign in again.')
-  throw new HttpError(403, msg || 'AI is not available for this account.')
+  // Anything else is a database message; never pass its wording to the browser.
+  console.error('consume_ai', res.status, msg.slice(0, 200))
+  throw new HttpError(403, 'AI is not available for this account.')
 }
 
 /** Loads the caller's own profile; doubles as token validation. */
@@ -106,7 +108,8 @@ export async function loadStudent(token: string) {
     entries.map(async ([table, q]) => {
       const [col, dir = 'asc'] = q.order.split('.')
       const limit = 'limit' in q ? `&limit=${q.limit}` : ''
-      return (await rest(token, `${table}?select=${q.select}&order=${col}.${dir}${limit}`)).json()
+      // Scoped to this student explicitly as well as by RLS (admins and recruiters can see other students' rows).
+      return (await rest(token, `${table}?select=${q.select}&user_id=eq.${base.id}&order=${col}.${dir}${limit}`)).json()
     }),
   )
   return assembleProfile(base, Object.fromEntries(entries.map(([t], i) => [t, rows[i]])) as RelatedRows) as Record<string, any> & { id: string }

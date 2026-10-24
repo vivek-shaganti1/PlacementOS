@@ -168,10 +168,10 @@ export default handle(async (req) => {
   // Dots only as part of a name: "." or ".." would resolve to the platform's root path.
   if (!/^(?!\.+$)[A-Za-z0-9._-]{1,40}$/.test(handleName)) throw new HttpError(400, 'That does not look like a valid username.')
 
-  // One sync per platform every 5 minutes per student, so nobody can burn the shared GitHub token or get the server
-  // rate-limited by the coding sites.
+  // One sync per platform every 5 minutes per student, whatever the username, so nobody can burn the shared GitHub
+  // token (or get the server rate-limited by the coding sites) by cycling through usernames.
   const [last] = (await (await rest(token, `coding_profiles?user_id=eq.${profile.id}&platform=eq.${p}&select=synced_at,username`)).json()) as { synced_at: string | null; username: string }[]
-  if (last?.synced_at && last.username.toLowerCase() === handleName.toLowerCase() && Date.now() - Date.parse(last.synced_at) < 5 * 60_000)
+  if (last?.synced_at && Date.now() - Date.parse(last.synced_at) < 5 * 60_000)
     throw new HttpError(429, 'Synced a moment ago. You can sync this account again in a few minutes.')
 
   const fetched = await fetchers[p](handleName)
