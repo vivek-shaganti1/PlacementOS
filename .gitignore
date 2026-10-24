@@ -132,3 +132,6 @@ dist-ssr
 # Local-only preview harness (sample data, never committed)
 src/dev/
 dev.html
+
+# Rendered videos are large binaries: keep them out of the repository
+*.mp4
