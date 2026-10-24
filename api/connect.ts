@@ -1,6 +1,6 @@
 // Connects a coding / code-hosting account: fetches public stats and caches them on the profile.
 // POST { platform: 'github' | 'leetcode' | 'codeforces' | 'codechef', username: string | null }
-import { bearer, deleteRows, env, handle, HttpError, insertRows, json, loadProfile, rest, saveProfile, timeout } from './_lib'
+import { bearer, deleteRows, env, handle, HttpError, insertVerified, json, loadProfile, rest, saveProfile, timeout } from './_lib'
 
 export const config = { runtime: 'edge' }
 
@@ -178,11 +178,12 @@ export default handle(async (req) => {
   const { all_repos, top_repos, ...stats } = fetched as typeof fetched & { all_repos?: unknown[]; top_repos?: unknown[] }
   void top_repos
   const s = stats as Record<string, any>
-  await insertRows(
+  // Written by the server only: these numbers are what "verified" skill levels and recruiters rely on.
+  await insertVerified(
     token,
+    profile.id,
     'coding_profiles',
     {
-      user_id: profile.id,
       platform: p,
       username: s.username,
       solved: p === 'github' ? s.original_repos : s.solved,
@@ -195,7 +196,7 @@ export default handle(async (req) => {
   )
   if (p === 'github') {
     await deleteRows(token, 'github_repos', `user_id=eq.${profile.id}`)
-    if (all_repos?.length) await insertRows(token, 'github_repos', all_repos.map((r) => ({ ...(r as object), user_id: profile.id })))
+    if (all_repos?.length) await insertVerified(token, profile.id, 'github_repos', all_repos as Record<string, unknown>[])
   }
   await saveProfile(token, profile.id, { [`${p}_username`]: s.username })
   return json({ ok: true, stats })

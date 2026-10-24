@@ -28,9 +28,12 @@ const fields = [
   ['class_xii', 'Class XII %', 'number'],
 ] as const
 type FieldKey = (typeof fields)[number][0]
+const ACADEMIC: FieldKey[] = ['cgpa', 'backlogs', 'class_x', 'class_xii']
 
 export default function Profile() {
   const p = useProfile()
+  // Unknown (before the database migration) counts as not locked, which is the previous behaviour.
+  const academicsLocked = p.academics_source === 'student' || p.academics_source === 'college'
   const { updateProfile, session } = useAuth()
   const { showToast } = useApp()
 
@@ -62,7 +65,7 @@ export default function Profile() {
     e.preventDefault()
     // An empty field is "missing", not 0 (Number('') is 0, which would silently save CGPA 0).
     const num = (k: FieldKey) => (String(form[k] ?? '').trim() === '' ? NaN : Number(form[k]))
-    const empty = (['cgpa', 'backlogs', 'class_x', 'class_xii'] as FieldKey[]).find((k) => String(form[k] ?? '').trim() === '')
+    const empty = academicsLocked ? undefined : ACADEMIC.find((k) => String(form[k] ?? '').trim() === '')
     const names: Partial<Record<FieldKey, string>> = { cgpa: 'CGPA', backlogs: 'Active backlogs', class_x: 'Class X %', class_xii: 'Class XII %' }
     const bad =
       empty ? `${names[empty]} is required.`
@@ -72,6 +75,8 @@ export default function Profile() {
       : !form.full_name.trim() ? 'Name is required.'
       : ''
     if (bad) return showToast(bad)
+    // Locked academics are not sent at all: only the placement cell can change them now.
+    const academics = academicsLocked ? {} : { cgpa: num('cgpa'), backlogs: num('backlogs'), class_x: num('class_x'), class_xii: num('class_xii') }
     save(
       {
         full_name: form.full_name.trim(),
@@ -82,10 +87,7 @@ export default function Profile() {
         branch: form.branch.trim(),
         batch: form.batch.trim(),
         college: form.college.trim(),
-        cgpa: num('cgpa'),
-        backlogs: num('backlogs'),
-        class_x: num('class_x'),
-        class_xii: num('class_xii'),
+        ...academics,
       },
       'Profile updated. Eligibility re-calculated.',
     )
@@ -146,19 +148,32 @@ export default function Profile() {
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <Card title="Personal & academic details">
           <form className="grid grid-cols-1 gap-x-3 gap-y-2.5 sm:grid-cols-2" onSubmit={submitDetails}>
-            {fields.map(([k, label, type]) => (
-              <label key={k} className={`block ${['full_name', 'email', 'college'].includes(k) ? 'sm:col-span-2' : ''}`}>
-                <span className="text-[11.5px] font-medium text-ink-mute">{label}</span>
-                <input
-                  type={type}
-                  step={type === 'number' ? 'any' : undefined}
-                  value={form[k]}
-                  maxLength={type === 'number' ? undefined : 160}
-                  onChange={(e) => setForm({ ...form, [k]: e.target.value })}
-                  className={input}
-                />
-              </label>
-            ))}
+            {fields.map(([k, label, type]) => {
+              const locked = academicsLocked && ACADEMIC.includes(k)
+              return (
+                <label key={k} className={`block ${['full_name', 'email', 'college'].includes(k) ? 'sm:col-span-2' : ''}`}>
+                  <span className="text-[11.5px] font-medium text-ink-mute">{label}</span>
+                  <input
+                    type={type}
+                    step={type === 'number' ? 'any' : undefined}
+                    value={form[k]}
+                    maxLength={type === 'number' ? undefined : 160}
+                    readOnly={locked}
+                    aria-describedby={locked ? 'academics-note' : undefined}
+                    onChange={(e) => setForm({ ...form, [k]: e.target.value })}
+                    className={`${input} ${locked ? 'cursor-not-allowed bg-[oklch(0.96_0.008_285)] text-ink-mute' : ''}`}
+                  />
+                </label>
+              )
+            })}
+            {academicsLocked && (
+              <p id="academics-note" className="flex items-start gap-2 text-[11.5px] leading-[1.5] text-ink-mute sm:col-span-2">
+                <span className={`mt-[3px] inline-block h-2 w-2 shrink-0 rounded-full ${p.academics_source === 'college' ? 'bg-[#12b76a]' : 'bg-[#f79009]'}`} />
+                {p.academics_source === 'college'
+                  ? 'Academics verified by your placement cell. Recruiters see these numbers as verified.'
+                  : 'Academics are locked after onboarding so recruiters can rely on them. Ask your placement cell to correct anything wrong.'}
+              </p>
+            )}
             <div className="pt-1 sm:col-span-2">
               <button disabled={busy} className={btnPrimary}>Save changes</button>
             </div>

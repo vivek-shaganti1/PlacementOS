@@ -38,6 +38,8 @@ export default function Jobs() {
   const rows = scored.filter(({ job, ev }) => (filter === 'eligible' ? ev.eligibleToApply && isOpen(job) : filter === 'applied' ? mine.has(job.id) : true))
 
   const apply = async (job: JobPosting, match: number) => {
+    // Drives check real academics; until they are entered the profile only holds placeholder values.
+    if (p.academics_source === 'default') return showToast('Add your CGPA, backlogs and Class X/XII marks in My Profile before applying.')
     setBusy(`apply-${job.id}`)
     const { error } = await supabase.from('job_applications').insert({ job_id: job.id, user_id: p.id, match, status: 'applied' })
     setBusy(null)

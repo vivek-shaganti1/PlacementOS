@@ -2,7 +2,7 @@
 // POST { action: 'analyze', text, file_name }  -> parses the extracted resume text, scores it, saves to profile
 // POST { action: 'match', jd }                 -> matches the saved resume against a job description
 import { SKILLS } from '../src/lib/eligibility'
-import { bearer, consumeAi, deleteRows, env, groq, handle, HttpError, insertRows, json, loadProfile, parseJson, rest, saveProfile, STYLE_RULES, SUPABASE_URL, tidyDeep, timeout } from './_lib'
+import { bearer, consumeAi, deleteRows, env, groq, handle, HttpError, insertVerified, json, loadProfile, parseJson, rest, saveProfile, STYLE_RULES, SUPABASE_URL, tidyDeep, timeout } from './_lib'
 
 export const config = { runtime: 'edge' }
 
@@ -212,7 +212,7 @@ export default handle(async (req) => {
     const analysis = await analyze(text, body.file_name ? String(body.file_name).slice(0, 200) : null, profile.target_roles || 'Software Engineer')
     const { analyzed_at, ...row } = analysis
     void analyzed_at
-    await insertRows(token, 'resume_analyses', { ...row, user_id: profile.id })
+    await insertVerified(token, profile.id, 'resume_analyses', row)
     await deleteRows(token, 'jd_matches', `user_id=eq.${profile.id}`)
     await saveProfile(token, profile.id, { resume_text: text })
     return json({ analysis })
@@ -234,7 +234,7 @@ export default handle(async (req) => {
     const result = await match(profile.resume_text, jd)
     const { analyzed_at, ...row } = result
     void analyzed_at
-    await insertRows(token, 'jd_matches', { ...row, jd_text: jd.slice(0, 20000), user_id: profile.id, job_id: jobId })
+    await insertVerified(token, profile.id, 'jd_matches', { ...row, jd_text: jd.slice(0, 20000), job_id: jobId })
     // ai_fit is shown to recruiters and placement cells, so students cannot write it themselves (no update policy);
     // the server writes it with the service key, scoped to this student's own application for this job.
     const key = env('SUPABASE_SECRET_KEY')

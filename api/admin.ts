@@ -6,11 +6,16 @@ import { bearer, env, handle, HttpError, json, rest, SUPABASE_URL, timeout, toke
 
 export const config = { runtime: 'edge' }
 
-type Person = { email: string; full_name?: string; roll_number?: string; branch?: string; batch?: string; section?: string; program?: string; company?: string }
+type Person = { email: string; full_name?: string; roll_number?: string; branch?: string; batch?: string; section?: string; program?: string; company?: string; cgpa?: unknown; backlogs?: unknown; class_x?: unknown; class_xii?: unknown }
 type Result = { email: string; status: 'invited' | 'created' | 'existing' | 'failed' | 'saved'; detail?: string }
 
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 const clip = (v: unknown, n: number) => String(v ?? '').trim().slice(0, n)
+const academic = (v: unknown, lo: number, hi: number, whole = false) => {
+  if (v === null || v === undefined || v === '') return undefined
+  const n = Number(v)
+  return Number.isFinite(n) && n >= lo && n <= hi && (!whole || Number.isInteger(n)) ? n : undefined
+}
 
 async function callerRoles(token: string) {
   // Only the caller's own roles: a platform admin can read every user's roles, and those must not count as the caller's.
@@ -100,6 +105,11 @@ export default handle(async (req) => {
     batch: clip(p.batch, 10),
     section: clip(p.section, 20).toUpperCase(),
     program: clip(p.program, 40) || 'B.Tech',
+    // Official academics from the college (optional). Out-of-range or non-numeric values are dropped, not guessed.
+    cgpa: academic(p.cgpa, 0, 10),
+    backlogs: academic(p.backlogs, 0, 100, true),
+    class_x: academic(p.class_x, 0, 100),
+    class_xii: academic(p.class_xii, 0, 100),
   }))
   if (!people.length) throw new HttpError(400, 'Add at least one person.')
   const bad = people.filter((p) => !EMAIL.test(p.email)).map((p) => p.email || '(blank)')
@@ -126,12 +136,17 @@ export default handle(async (req) => {
   const results: Result[] = []
 
   if (role === 'student') {
+    const withAcademics = people.some((p) => p.cgpa != null || p.backlogs != null || p.class_x != null || p.class_xii != null)
     // Upsert roster rows as the caller; RLS confirms they administer this organization.
     await rest(token, 'org_students?on_conflict=org_id,email', {
       method: 'POST',
       // Only roster columns: `company` belongs to recruiters and does not exist on org_students.
       body: JSON.stringify(
-        people.map((p) => ({ org_id: orgId, email: p.email, full_name: p.full_name, roll_number: p.roll_number, branch: p.branch, batch: p.batch, section: p.section, program: p.program })),
+        people.map((p) => ({
+          org_id: orgId, email: p.email, full_name: p.full_name, roll_number: p.roll_number, branch: p.branch, batch: p.batch, section: p.section, program: p.program,
+          // Academic columns are sent only when the paste has them (a bulk upsert needs the same keys on every row).
+          ...(withAcademics ? { cgpa: p.cgpa ?? null, backlogs: p.backlogs ?? null, class_x: p.class_x ?? null, class_xii: p.class_xii ?? null } : {}),
+        })),
       ),
       headers: { prefer: 'return=minimal,resolution=merge-duplicates' },
     })

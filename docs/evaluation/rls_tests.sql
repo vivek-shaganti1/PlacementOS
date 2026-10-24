@@ -1,4 +1,5 @@
 -- Access-control test suite for PlacementIQ (run inside one transaction that is rolled back; nothing persists).
+-- T40–T45 need migration 20261024000100_verified_academics_and_stats.sql.
 -- psql "<connection>" -f docs/evaluation/rls_tests.sql
 begin;
 
@@ -206,6 +207,50 @@ do $$ begin
   insert into public.notifications (user_id, title, body) values ('a1000000-0000-4000-8000-0000000000a1', 'Offer!', 'fake');
   insert into t_results values ('T39 students cannot create their own notifications', false);
 exception when others then insert into t_results values ('T39 students cannot create their own notifications', true);
+end $$;
+reset role;
+
+-- verified academics and stats (migration 20261024000100)
+-- Student A entered academics at onboarding: self-reported and locked. A drive with low minimums in their college.
+update public.profiles set cgpa = 7.2, backlogs = 0, class_x = 80, class_xii = 78, academics_source = 'student' where id = 'a1000000-0000-4000-8000-0000000000a1';
+insert into public.job_postings (id, org_id, company, role, location, job_type, description, min_cgpa, max_backlogs, min_class_x, min_class_xii, min_internships, min_projects, branches, batches, skill_requirements, status)
+values ('d4000000-0000-4000-8000-0000000000d4', (select id from public.organizations where name = 'Anurag University'), 'EasyCo', 'SDE', 'x', 'Full Time', 'x', 6, 1, 50, 50, 0, 0, '{}', '{}', '{}', 'open');
+select set_config('request.jwt.claims', '{"sub":"a1000000-0000-4000-8000-0000000000a1","role":"authenticated"}', true);
+set local role authenticated;
+do $$ begin
+  update public.profiles set cgpa = 10 where id = 'a1000000-0000-4000-8000-0000000000a1';
+  insert into t_results values ('T40 student cannot raise locked academics', (select cgpa = 7.2 from public.profiles where id = 'a1000000-0000-4000-8000-0000000000a1'));
+exception when others then insert into t_results values ('T40 student cannot raise locked academics', true);
+end $$;
+do $$ begin
+  insert into public.coding_profiles (user_id, platform, username, solved, rating) values ('a1000000-0000-4000-8000-0000000000a1', 'codeforces', 'fake', 900, 2400);
+  insert into t_results values ('T41 student cannot write their own coding stats', false);
+exception when others then insert into t_results values ('T41 student cannot write their own coding stats', true);
+end $$;
+do $$ begin
+  insert into public.resume_analyses (user_id, overall) values ('a1000000-0000-4000-8000-0000000000a1', 100);
+  insert into t_results values ('T42 student cannot write their own resume score', false);
+exception when others then insert into t_results values ('T42 student cannot write their own resume score', true);
+end $$;
+do $$ begin
+  insert into public.job_applications (job_id, user_id, status) values ('d4000000-0000-4000-8000-0000000000d4', 'a1000000-0000-4000-8000-0000000000a1', 'applied');
+  insert into t_results values ('T43 student with entered academics can still apply', true);
+exception when others then insert into t_results values ('T43 student with entered academics can still apply', false);
+end $$;
+reset role;
+-- The college uploads official academics on the roster: they replace the student's and are marked verified.
+update public.org_students set cgpa = 8.4, backlogs = 0 where email = 's.a@anurag.example';
+insert into t_results values ('T44 roster academics override and are marked verified', (
+  select cgpa = 8.4 and academics_source = 'college' from public.profiles where id = 'a1000000-0000-4000-8000-0000000000a1'));
+-- A student who never entered academics cannot apply on the placeholder values.
+update public.profiles set academics_source = 'default' where id = 'a1000000-0000-4000-8000-0000000000a1';
+delete from public.job_applications where job_id = 'd4000000-0000-4000-8000-0000000000d4';
+select set_config('request.jwt.claims', '{"sub":"a1000000-0000-4000-8000-0000000000a1","role":"authenticated"}', true);
+set local role authenticated;
+do $$ begin
+  insert into public.job_applications (job_id, user_id, status) values ('d4000000-0000-4000-8000-0000000000d4', 'a1000000-0000-4000-8000-0000000000a1', 'applied');
+  insert into t_results values ('T45 no applying on placeholder academics', false);
+exception when others then insert into t_results values ('T45 no applying on placeholder academics', true);
 end $$;
 reset role;
 

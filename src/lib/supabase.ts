@@ -35,6 +35,8 @@ export type Profile = {
   backlogs: number
   class_x: number
   class_xii: number
+  /** Where the academics came from: never entered, self-reported at onboarding (then locked), or the college roster. */
+  academics_source?: 'default' | 'student' | 'college'
   avatar_url: string | null
   skills: Skill[]
   projects: Project[]
@@ -129,6 +131,7 @@ export type JdMatch = {
 export type ProfilePatch = Partial<Omit<Profile, 'id'>>
 
 const FRIENDLY: [RegExp, string][] = [
+  [/ACADEMICS_LOCKED/, 'Your academics are locked once saved. Ask your placement cell to correct them.'],
   [/email rate limit exceeded/i, 'Too many emails were sent in the last hour, so a confirmation email could not go out. Try again in an hour, or ask your admin to create your login with a temporary password.'],
   [/email address .* is invalid|email_address_invalid/i, 'That email address cannot receive mail (its domain has no mail server). Use an address you can open.'],
   [/invalid login credentials/i, 'Wrong email or password.'],

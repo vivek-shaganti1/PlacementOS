@@ -131,6 +131,17 @@ function FeedbackSummary() {
 }
 
 /* ================================================================ students */
+/** Where a student's academics come from, so the placement cell and recruiters know which numbers to trust. */
+function AcademicsBadge({ source }: { source?: 'default' | 'student' | 'college' }) {
+  if (!source) return null
+  const meta = {
+    college: ['Verified by placement cell', 'border-[#c9f0d9] bg-[#ecfdf3] text-[#067647]'],
+    student: ['Self-reported, locked', 'border-[#fde7c2] bg-[#fffaeb] text-[#b54708]'],
+    default: ['Not entered yet', 'border-line bg-white text-ink-mute'],
+  }[source]
+  return <span className={`rounded-full border px-2 py-0.5 text-[11px] font-medium ${meta[1]}`}>{meta[0]}</span>
+}
+
 function StudentDrawer({ row, applications, jobs, orgName, onClose }: { row: StudentRow; applications: JobApplication[]; jobs: JobPosting[]; orgName?: string; onClose: () => void }) {
   const p = row.profile
   const { showToast } = useApp()
@@ -179,7 +190,11 @@ function StudentDrawer({ row, applications, jobs, orgName, onClose }: { row: Stu
           <Ring value={row.score} size={84} stroke={8} label={`Rank #${row.rank}`} />
         </div>
 
-        <div className="mt-5 grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
+        <div className="mt-5 flex items-center justify-between gap-2">
+          <p className="text-[12px] font-semibold text-ink">Academics</p>
+          <AcademicsBadge source={p.academics_source} />
+        </div>
+        <div className="mt-2 grid grid-cols-2 gap-2 text-center sm:grid-cols-4">
           {[['CGPA', p.cgpa || '—'], ['Backlogs', p.backlogs], ['Class X', `${p.class_x || '—'}%`], ['Class XII', `${p.class_xii || '—'}%`]].map(([k, v]) => (
             <div key={k as string} className="rounded-[12px] border border-white/80 bg-white/70 px-2 py-2.5">
               <p className="text-[10.5px] text-ink-mute">{k}</p>
@@ -495,7 +510,10 @@ export function AdminStudents() {
                     {yearLabel(yearOfStudy(r.profile.batch, r.profile.program))}
                     <span className="block text-[11px] text-ink-faint">{branchCode(r.profile.branch)}{r.profile.section ? ` · Sec ${r.profile.section}` : ''}</span>
                   </td>
-                  <td className="px-2 py-2.5 tabular-nums">{r.profile.cgpa || 'n/a'}</td>
+                  <td className="px-2 py-2.5 tabular-nums">
+                    {r.profile.cgpa || 'n/a'}
+                    {r.profile.academics_source === 'college' && <span title="Verified by placement cell" aria-label="verified" className="ml-1 text-[#067647]">✓</span>}
+                  </td>
                   <td className="px-2 py-2.5 tabular-nums">{r.profile.backlogs}</td>
                   <td className="px-2 py-2.5 tabular-nums">{r.profile.projects.length}</td>
                   <td className="px-2 py-2.5 tabular-nums">{appsOf.get(r.profile.id)?.length ?? 0}</td>

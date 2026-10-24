@@ -39,11 +39,11 @@ export const bearer = (req: Request) => {
 }
 
 /** Calls Supabase REST as the signed-in user, so RLS applies. */
-export async function rest(token: string, path: string, init: RequestInit = {}) {
+export async function rest(token: string, path: string, init: RequestInit = {}, apikey = SUPABASE_KEY) {
   const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
     signal: timeout(10_000),
     ...init,
-    headers: { apikey: SUPABASE_KEY, authorization: `Bearer ${token}`, 'content-type': 'application/json', ...(init.headers ?? {}) },
+    headers: { apikey, authorization: `Bearer ${token}`, 'content-type': 'application/json', ...(init.headers ?? {}) },
   })
   if (res.status === 401) throw new HttpError(401, 'Session expired. Please sign in again.')
   if (!res.ok) {
@@ -122,6 +122,23 @@ export async function insertRows(token: string, table: string, rows: unknown, up
     body: JSON.stringify(rows),
     headers: { prefer: `return=minimal${upsertOn ? ',resolution=merge-duplicates' : ''}` },
   })
+}
+
+/**
+ * Inserts rows into a "verified" table: coding stats this server fetched from the platforms, and resume and JD scores
+ * it computed. Students can read and delete these rows but not write them, so a student cannot type in a 2400 rating or a
+ * resume score of 100. Every row is stamped with `userId`, which the caller takes from the verified profile, never from
+ * the request body. Before the database migration that removes students' write access, the student token still works,
+ * so this falls back to it when the secret key is not configured.
+ */
+export async function insertVerified(token: string, userId: string, table: string, rows: Record<string, unknown> | Record<string, unknown>[], upsertOn?: string) {
+  const stamped = Array.isArray(rows) ? rows.map((r) => ({ ...r, user_id: userId })) : { ...rows, user_id: userId }
+  const key = env('SUPABASE_SECRET_KEY')
+  await rest(key || token, `${table}${upsertOn ? `?on_conflict=${upsertOn}` : ''}`, {
+    method: 'POST',
+    body: JSON.stringify(stamped),
+    headers: { prefer: `return=minimal${upsertOn ? ',resolution=merge-duplicates' : ''}` },
+  }, key || SUPABASE_KEY)
 }
 
 export async function deleteRows(token: string, table: string, filter: string) {

@@ -44,13 +44,23 @@ function useOrgPicker() {
   return { orgs, org, orgId, picker, loading, reload }
 }
 
-/** Parses pasted CSV or tab-separated rows: email, full name, roll number, branch, batch (graduation year), section. */
-function parseRoster(text: string) {
+/**
+ * Parses pasted CSV or tab-separated rows: email, full name, roll number, branch, batch (graduation year), section, and
+ * optionally the college's official CGPA, active backlogs, Class X % and Class XII %. Official academics override what the
+ * student entered and show as verified to recruiters.
+ */
+type RosterInput = { email: string; full_name: string; roll_number: string; branch: string; batch: string; section: string; cgpa?: number; backlogs?: number; class_x?: number; class_xii?: number }
+
+function parseRoster(text: string): RosterInput[] {
+  const num = (v = '') => (v.trim() === '' || !Number.isFinite(Number(v)) ? undefined : Number(v))
   return text
     .split(/\r?\n/)
     .map((line) => line.split(/\t|,/).map((c) => c.trim()))
     .filter((cols) => cols[0] && cols[0].includes('@'))
-    .map(([email, full_name = '', roll_number = '', branch = '', batch = '', section = '']) => ({ email: email.toLowerCase(), full_name, roll_number, branch, batch, section: section.toUpperCase() }))
+    .map(([email, full_name = '', roll_number = '', branch = '', batch = '', section = '', cgpa, backlogs, class_x, class_xii]) => ({
+      email: email.toLowerCase(), full_name, roll_number, branch, batch, section: section.toUpperCase(),
+      cgpa: num(cgpa), backlogs: num(backlogs), class_x: num(class_x), class_xii: num(class_xii),
+    }))
     // The same email pasted twice is one student (and one seat): keep the last line for it.
     .filter((row, i, all) => !all.slice(i + 1).some((r) => r.email === row.email))
 }
@@ -129,7 +139,7 @@ export function AdminRoster() {
   const rosterBranches = [...new Set(rows.map((r) => branchCode(r.branch)))].sort()
   const rosterSections = [...new Set(rows.map((r) => r.section || ''))].sort()
 
-  const submit = async (people: ReturnType<typeof parseRoster>, send: boolean) => {
+  const submit = async (people: RosterInput[], send: boolean) => {
     if (!people.length || !orgId) return
     const domains = org?.email_domains ?? []
     const outside = domains.length ? people.filter((p) => !domains.includes(p.email.split('@')[1])) : []
@@ -201,7 +211,7 @@ export function AdminRoster() {
 
       <Card title="Import many students">
         <p className="text-[12.5px] text-ink-mute">
-          Paste rows from a spreadsheet, one student per line: <span className="tabular-nums text-ink">email, full name, roll number, branch, graduation year, section</span>.
+          Paste rows from a spreadsheet, one student per line: <span className="tabular-nums text-ink">email, full name, roll number, branch, graduation year, section</span>, and optionally the official <span className="tabular-nums text-ink">CGPA, backlogs, Class X %, Class XII %</span> (these lock the student's academics as verified).
           Commas or tabs both work. Year of study (1st to 4th) is worked out from the graduation year. Re-importing a student updates their record.
         </p>
         <textarea value={paste} onChange={(e) => setPaste(e.target.value)} rows={6} className="field mt-2 h-auto py-2 font-mono text-[12px]" placeholder={'23eg105a01@anurag.edu.in, Asha Reddy, 23EG105A01, CSE, 2027, A'} />
