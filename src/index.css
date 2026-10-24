@@ -30,6 +30,14 @@ body {
 }
 h1, h2, h3 { text-wrap: balance; letter-spacing: -0.02em; }
 
+/* ---------- big displays (1440p, 4K, ultrawide) ----------
+   The layout is designed in CSS pixels for laptops; on a 2560px or 3440px screen it became a small island. Scale the
+   whole interface instead. --z lets full-height shells divide viewport units back out (vh is not zoomed). */
+:root { --z: 1; }
+@media (min-width: 2200px) { :root { --z: 1.2; } }
+@media (min-width: 2900px) { :root { --z: 1.4; } }
+@media (min-width: 2200px) { html { zoom: var(--z); } }
+
 /* ---------- feel native on phones ---------- */
 html { -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; }
 /* Taps fire immediately (no double-tap-zoom wait) and long-pressing a control never selects its label. */

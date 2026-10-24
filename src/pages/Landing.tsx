@@ -269,8 +269,10 @@ function Nav() {
             <a key={h} href={h} className="rounded-full px-3.5 py-1.5 text-[12.5px] font-medium text-ink-soft transition hover:bg-white/80 hover:text-ink">{l}</a>
           ))}
         </div>
-        <Link to="/" aria-label="PlacementIQ home" className={`${pill} px-4 lg:col-start-2 lg:justify-self-center`}>
-          <Logo size={28} tagline={false} />
+        <Link to="/" aria-label="PlacementIQ home" className={`${pill} px-2 min-[400px]:px-4 lg:col-start-2 lg:justify-self-center`}>
+          {/* Below 400px (most Android phones, small iPhones, folded phones) the wordmark would push the sign-in buttons off screen. */}
+          <span className="min-[400px]:hidden"><LogoMark size={30} /></span>
+          <span className="hidden min-[400px]:block"><Logo size={28} tagline={false} /></span>
         </Link>
         <div className={`${pill} gap-1 lg:col-start-3 lg:justify-self-end`}>
           <Link to="/login" className="inline-flex items-center gap-2 whitespace-nowrap rounded-full px-2.5 py-1.5 text-[12.5px] font-semibold text-ink-soft hover:bg-white/80 hover:text-ink sm:px-3.5">
@@ -580,7 +582,7 @@ export default function Landing() {
 
   return (
     <SmoothScroll>
-    <div className="relative min-h-svh overflow-x-hidden">
+    <div className="relative min-h-[calc(100svh/var(--z))] overflow-x-hidden">
       <Aurora />
       <CursorFollower />
       <AnimatePresence>{intro && <LaunchIntro onDone={finishIntro} />}</AnimatePresence>

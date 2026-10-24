@@ -61,7 +61,7 @@ export default function Legal({ doc }: { doc: keyof typeof DOCS }) {
   }, [doc, hash])
 
   return (
-    <div className="relative min-h-svh overflow-x-clip">
+    <div className="relative min-h-[calc(100svh/var(--z))] overflow-x-clip">
       <Aurora />
       <div className="relative z-10 mx-auto max-w-[860px] px-4 pb-24 pt-6 sm:px-6">
         <header className="flex flex-wrap items-center justify-between gap-3">

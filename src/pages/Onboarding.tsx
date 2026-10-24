@@ -132,7 +132,7 @@ export default function Onboarding() {
   const imports = resumeImports(p)
 
   return (
-    <div className="relative min-h-svh overflow-y-auto">
+    <div className="relative min-h-[calc(100svh/var(--z))] overflow-y-auto">
       <Aurora />
       <div className="relative z-10 mx-auto max-w-[820px] px-3 py-6 sm:px-6 sm:py-10">
         <div className="flex flex-wrap items-center gap-3">

@@ -40,8 +40,8 @@ export function Trust() {
         <div className="rounded-[18px] border border-white/10 bg-black/30 p-5 font-mono text-[12px] leading-[1.75] shadow-[inset_0_1px_0_oklch(1_0_0/.06)]">
           <div className="mb-3 flex items-center gap-1.5">
             {['#ff5f57', '#febc2e', '#28c840'].map((c) => <span key={c} className="h-2.5 w-2.5 rounded-full" style={{ background: c }} />)}
-            <span className="ml-2 text-[10.5px] text-white/40">supabase/migrations · security</span>
-            <span className="ml-auto flex items-center gap-1.5 rounded-full bg-[#12b76a]/15 px-2 py-0.5 text-[10px] text-[#6ee7b7]"><span className="pulse-dot h-1.5 w-1.5 rounded-full bg-[#34d399]" /> 39/39</span>
+            <span className="ml-2 min-w-0 truncate text-[10.5px] text-white/40">supabase/migrations · security</span>
+            <span className="ml-auto flex shrink-0 items-center gap-1.5 rounded-full bg-[#12b76a]/15 px-2 py-0.5 text-[10px] text-[#6ee7b7]"><span className="pulse-dot h-1.5 w-1.5 rounded-full bg-[#34d399]" /> 39/39</span>
           </div>
           <code className="block whitespace-pre-wrap">
             {policy.map(([k, text], i) => (k === 'n' ? <br key={i} /> : <span key={i} className={tone[k]}>{text}</span>))}

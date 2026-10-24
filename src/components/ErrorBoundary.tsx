@@ -22,7 +22,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode; resetKey?: s
   render() {
     if (!this.state.error) return this.props.children
     return (
-      <div role="alert" className={this.props.compact ? 'p-4' : 'grid min-h-[60vh] flex-1 place-items-center p-6'}>
+      <div role="alert" className={this.props.compact ? 'p-4' : 'grid min-h-[calc(60vh/var(--z))] flex-1 place-items-center p-6'}>
         <div className="card max-w-[440px] p-6 text-left">
           <p className="text-[15px] font-semibold text-ink">Something went wrong on this screen</p>
           <p className="mt-1 text-[13px] text-ink-mute">The rest of PlacementIQ still works. Try again, or reload if it keeps happening.</p>

@@ -43,7 +43,8 @@ export default function EligibilityStacks() {
   ).sort((a, b) => b[1] - a[1]).slice(0, 2)
 
   return (
-    <div className="flex min-h-0 flex-1 overflow-hidden">
+    // On very wide screens the stacks and the company panel stay together instead of drifting to opposite edges.
+    <div className="mx-auto flex min-h-0 w-full max-w-[1480px] flex-1 overflow-hidden">
       <div className="scroll-thin min-w-0 flex-1 overflow-y-auto overflow-x-hidden px-3 py-5 sm:px-6 sm:py-6">
         <div className="mx-auto max-w-[676px]">
           <p className="label-mono mb-2"><b>01</b> Overview</p>

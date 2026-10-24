@@ -86,9 +86,9 @@ export default function Login({ initialMode = 'signin' }: { initialMode?: Mode }
   const [title, sub, cta] = titles[mode]
 
   return (
-    <div className="relative min-h-svh overflow-hidden">
+    <div className="relative min-h-[calc(100svh/var(--z))] overflow-hidden">
       <Aurora />
-      <div className="relative z-10 mx-auto grid min-h-svh max-w-[1120px] grid-cols-1 items-center gap-10 px-6 py-10 lg:grid-cols-[1.05fr_1fr]">
+      <div className="relative z-10 mx-auto grid min-h-[calc(100svh/var(--z))] max-w-[1120px] grid-cols-1 items-center gap-10 px-6 py-10 lg:grid-cols-[1.05fr_1fr]">
         <motion.div
           initial={{ opacity: 0, x: -24 }}
           animate={{ opacity: 1, x: 0 }}

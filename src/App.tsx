@@ -143,7 +143,7 @@ function Shell() {
   useEffect(() => setSidebarOpen(!isMobile), [isMobile])
 
   return (
-    <div className="relative flex h-dvh flex-col overflow-hidden">
+    <div className="relative flex h-[calc(100dvh/var(--z))] flex-col overflow-hidden">
       <Aurora />
       <div className="relative z-10 flex min-h-0 flex-1 flex-col">
         <Topbar sidebarOpen={sidebarOpen} onToggleSidebar={() => setSidebarOpen((v) => !v)} />
@@ -186,7 +186,7 @@ function Shell() {
 
 function Centered({ children }: { children: ReactNode }) {
   return (
-    <div className="relative grid min-h-svh place-items-center px-4 text-center text-[13px] text-ink-mute">
+    <div className="relative grid min-h-[calc(100svh/var(--z))] place-items-center px-4 text-center text-[13px] text-ink-mute">
       <Aurora />
       <div className="relative z-10">{children}</div>
     </div>
