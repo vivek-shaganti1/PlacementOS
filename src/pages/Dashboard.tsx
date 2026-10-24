@@ -1,4 +1,5 @@
 import { motion } from 'motion/react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { BRAND, Donut, EmptyChart, STATUS, TrendChart } from '../components/charts'
 import CompanyLogo from '../components/CompanyLogo'
@@ -37,6 +38,18 @@ export default function Dashboard() {
     .map((j) => ({ job: j, ev: evaluateJob(j, student), app: applications.find((a) => a.job_id === j.id && a.user_id === student.id) }))
     .sort((a, b) => Number(b.ev.eligibleToApply) - Number(a.ev.eligibleToApply) || b.ev.match - a.ev.match)
     .slice(0, 4)
+
+  // This week, Monday first, with the open drives whose deadline falls on each day.
+  const today = new Date()
+  const monday = new Date(today.getFullYear(), today.getMonth(), today.getDate() - ((today.getDay() + 6) % 7))
+  const week = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + i)
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    return { d, key, due: jobs.filter((j) => isOpen(j) && j.deadline === key) }
+  })
+  const todayKey = week.find((w) => w.d.toDateString() === today.toDateString())?.key
+  const [range, setRange] = useState<'week' | 'month'>('month')
+  const trend = snapshots.slice(range === 'week' ? -7 : -30)
 
   return (
     <Page title="Welcome back," accent={first} subtitle="Your placement readiness, computed live from your profile, resume and coding activity." wide>
@@ -91,18 +104,42 @@ export default function Dashboard() {
         </motion.section>
 
         <div className="grid grid-cols-2 gap-3">
-          <Stat label="Eligible companies" value={`${counts[0].n}`} sub={`of ${companies.length} tracked`} tone="text-[#0d9a5b]" trend={snapshots.map((x) => x.eligible)} trendColor="#12b76a" delta={snapshots.length > 1 ? counts[0].n - snapshots[snapshots.length - 2].eligible : null} />
-          <Stat label="Applications" value={`${applications.filter((a) => a.user_id === student.id).length + applied.length}`} sub={`Campus drives + tracked · ${saved.length} shortlisted`} />
-          <Stat label="Expected CTC" value={salary.expected ? `₹${salary.expected.toFixed(1)} LPA` : 'n/a'} sub={salary.expected ? `Likely ₹${salary.low}–${salary.high} LPA · best ₹${salary.bestRealistic} LPA` : 'Complete your profile'} tone="text-[#0d9a5b]" />
-          <Stat label="Interview readiness" value={`${interview.score}`} sub={`Work on ${interview.weakest.join(' and ').toLowerCase()}`} tone="text-brand-dark" />
-          <Stat label="Profile strength" value={`${strength}%`} sub="Completeness & verification" tone="text-brand-dark" trend={snapshots.map((x) => x.avg_skill)} />
-          <Stat label="Roadmap tasks" value={`${roadmapDone.length}`} sub="completed so far" />
+          <Stat label="Eligible companies" value={`${counts[0].n}`} sub={`of ${companies.length} tracked`} tone="text-[#0d9a5b]" trend={snapshots.map((x) => x.eligible)} trendColor="#12b76a" delta={snapshots.length > 1 ? counts[0].n - snapshots[snapshots.length - 2].eligible : null} onOpen={() => navigate('/eligibility')} />
+          <Stat label="Applications" value={`${applications.filter((a) => a.user_id === student.id).length + applied.length}`} sub={`Campus drives + tracked · ${saved.length} shortlisted`} onOpen={() => navigate('/applications')} />
+          <Stat label="Expected CTC" value={salary.expected ? `₹${salary.expected.toFixed(1)} LPA` : 'n/a'} sub={salary.expected ? `Likely ₹${salary.low}–${salary.high} LPA · best ₹${salary.bestRealistic} LPA` : 'Complete your profile'} tone="text-[#0d9a5b]" onOpen={() => navigate('/what-if')} openLabel="Try a what-if on your expected CTC" />
+          <Stat label="Interview readiness" value={`${interview.score}`} sub={`Work on ${interview.weakest.join(' and ').toLowerCase()}`} tone="text-brand-dark" onOpen={() => navigate('/mock-interviews')} />
+          <Stat label="Profile strength" value={`${strength}%`} sub="Completeness & verification" tone="text-brand-dark" trend={snapshots.map((x) => x.avg_skill)} onOpen={() => navigate('/profile')} />
+          <Stat label="Roadmap tasks" value={`${roadmapDone.length}`} sub="completed so far" onOpen={() => navigate('/roadmap')} />
         </div>
       </div>
       <FeedbackPrompt target="next_step" label="Was the next best step useful?" />
 
       {drives.length > 0 && (
         <Card title="Campus drives for you" action={<button onClick={() => navigate('/jobs')} className="text-[11.5px] font-semibold text-brand-dark hover:underline">All campus jobs →</button>}>
+          {/* This week at a glance: today is the dark pill; a dot marks each open drive closing that day. */}
+          <div className="mb-4 flex flex-wrap items-center gap-x-4 gap-y-2">
+            <p className="text-[13px] font-semibold tracking-[-0.01em] text-ink">
+              {today.toLocaleDateString('en-US', { month: 'long' })}, <span className="text-ink-mute">{today.getFullYear()}</span>
+            </p>
+            <div className="flex min-w-0 flex-1 justify-between gap-0.5 sm:justify-start sm:gap-2" role="list" aria-label="This week's drive deadlines">
+              {week.map(({ d, key, due }) => {
+                const isToday = key === todayKey
+                return (
+                  <div
+                    key={key}
+                    role="listitem"
+                    title={due.length ? `Closing: ${due.map((j) => j.company).join(', ')}` : undefined}
+                    aria-label={`${d.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric' })}${due.length ? `, ${due.length} drive${due.length === 1 ? '' : 's'} closing` : ''}`}
+                    className={`flex min-w-0 flex-1 flex-col items-center rounded-[12px] py-1.5 sm:w-[44px] sm:flex-none ${isToday ? 'bg-[oklch(0.2_0.045_285)] text-white shadow-[0_6px_16px_oklch(0.2_0.06_285/.25)]' : 'text-ink-soft'}`}
+                  >
+                    <span className={`font-mono text-[9.5px] uppercase tracking-[0.08em] ${isToday ? 'text-white/60' : 'text-ink-faint'}`}>{d.toLocaleDateString('en-US', { weekday: 'short' })}</span>
+                    <span className="text-[13px] font-semibold tabular-nums">{d.getDate()}</span>
+                    <span className={`mt-0.5 h-1 w-1 rounded-full ${due.length ? (isToday ? 'bg-[#8ef5d9]' : 'bg-brand') : 'bg-transparent'}`} />
+                  </div>
+                )
+              })}
+            </div>
+          </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
             {drives.map(({ job, ev, app }) => (
               <button key={job.id} onClick={() => navigate(`/jobs?job=${job.id}`)} className="rounded-[16px] border border-white/80 bg-white/70 p-3.5 text-left transition hover:-translate-y-0.5 hover:bg-white hover:shadow-[var(--shadow-2)]">
@@ -140,10 +177,30 @@ export default function Dashboard() {
           </div>
         </Card>
 
-        <Card title="Readiness trend" action={<button onClick={() => navigate('/analytics')} className="text-[11.5px] font-semibold text-brand-dark hover:underline">All analytics →</button>}>
-          {snapshots.length > 1 ? (
+        <Card
+          title="Readiness trend"
+          action={
+            <span className="flex items-center gap-3">
+              <span className="flex rounded-full bg-[oklch(0.95_0.01_285)] p-0.5 text-[11px] font-semibold" role="group" aria-label="Trend range">
+                {(['week', 'month'] as const).map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    aria-pressed={range === r}
+                    onClick={() => setRange(r)}
+                    className={`rounded-full px-2.5 py-1 transition-colors ${range === r ? 'bg-[oklch(0.2_0.045_285)] text-white' : 'text-ink-mute hover:text-ink'}`}
+                  >
+                    {r === 'week' ? 'Weekly' : 'Monthly'}
+                  </button>
+                ))}
+              </span>
+              <button onClick={() => navigate('/analytics')} className="text-[11.5px] font-semibold text-brand-dark hover:underline">All analytics →</button>
+            </span>
+          }
+        >
+          {trend.length > 1 ? (
             <TrendChart
-              data={snapshots.map((s) => ({ ...s, label: shortDate(s.day) }))}
+              data={trend.map((s) => ({ ...s, label: shortDate(s.day) }))}
               x="label"
               series={[{ key: 'readiness', name: 'Readiness', color: BRAND }]}
               height={250}

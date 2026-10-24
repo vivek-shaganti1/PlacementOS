@@ -41,6 +41,7 @@ const AdminRoster = lazy(() => import('./pages/AdminOrg').then((m) => ({ default
 const SuperOrgs = lazy(() => import('./pages/AdminOrg').then((m) => ({ default: m.SuperOrgs })))
 const AdminClasses = lazy(() => import('./pages/AdminOrg').then((m) => ({ default: m.AdminClasses })))
 const SuperAdmins = lazy(() => import('./pages/AdminOrg').then((m) => ({ default: m.SuperAdmins })))
+const SuperCertifications = lazy(() => import('./pages/SuperCertifications'))
 const ResumeAnalyzer = lazy(() => import('./pages/ResumeAnalyzer'))
 const Landing = lazy(() => import('./pages/Landing'))
 const Legal = lazy(() => import('./pages/Legal'))
@@ -71,6 +72,7 @@ function RoleRoutes() {
       <Routes location={location}>
         <Route path="/super/orgs" element={<SuperOrgs />} />
         <Route path="/super/admins" element={<SuperAdmins />} />
+        <Route path="/super/certifications" element={<SuperCertifications />} />
         <Route path="/admin" element={<AdminOverview />} />
         <Route path="/admin/students" element={<AdminStudents />} />
         <Route path="/admin/classes" element={<AdminClasses />} />

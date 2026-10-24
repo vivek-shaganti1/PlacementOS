@@ -5,19 +5,9 @@ import { useCompanies } from '../lib/companies'
 import { useApp } from '../lib/store'
 import { errMsg } from '../lib/supabase'
 import { safeUrl } from '../lib/links'
+import { useCertCatalog } from '../lib/certs'
+import { skillsFor } from '../lib/branches'
 
-const catalog = [
-  { name: 'AWS Certified Solutions Architect – Associate', skill: 'Cloud & DevOps', weeks: 6, url: 'https://aws.amazon.com/certification/certified-solutions-architect-associate/' },
-  { name: 'Certified Kubernetes Application Developer (CKAD)', skill: 'Cloud & DevOps', weeks: 5, url: 'https://training.linuxfoundation.org/certification/certified-kubernetes-application-developer-ckad/' },
-  { name: 'Google Cloud Associate Cloud Engineer', skill: 'Cloud & DevOps', weeks: 6, url: 'https://cloud.google.com/learn/certification/cloud-engineer' },
-  { name: 'MongoDB Associate Developer', skill: 'Databases (SQL + NoSQL)', weeks: 3, url: 'https://learn.mongodb.com/pages/mongodb-associate-developer-exam' },
-  { name: 'Oracle Database SQL Certified Associate', skill: 'Databases (SQL + NoSQL)', weeks: 4, url: 'https://education.oracle.com/' },
-  { name: 'Meta Back-End Developer Professional Certificate', skill: 'Node.js / Backend', weeks: 8, url: 'https://www.coursera.org/professional-certificates/meta-back-end-developer' },
-  { name: 'Meta Front-End Developer Professional Certificate', skill: 'React / Frontend', weeks: 8, url: 'https://www.coursera.org/professional-certificates/meta-front-end-developer' },
-  { name: 'Machine Learning Specialization (DeepLearning.AI)', skill: 'Machine Learning', weeks: 8, url: 'https://www.coursera.org/specializations/machine-learning-introduction' },
-  { name: 'NPTEL Programming, Data Structures and Algorithms', skill: 'Data Structures & Algorithms', weeks: 8, url: 'https://nptel.ac.in/' },
-  { name: 'Grokking the System Design Interview', skill: 'System Design', weeks: 4, url: 'https://www.designgurus.io/course/grokking-the-system-design-interview' },
-]
 
 const input = 'h-[34px] w-full rounded-[9px] border border-line bg-white px-3 text-[12.5px] outline-none focus:border-[#d5cbff]'
 
@@ -32,12 +22,20 @@ export default function Certifications() {
   const blocked = (skill: string) => companies.filter((c) => c.bucket !== 'eligible' && c.gaps.some((g) => g.skill === skill)).length
   const level = (skill: string) => p.skills.find((s) => s.name === skill)?.level ?? 0
   const owned = new Set(p.certifications.map((c) => c.name.toLowerCase()))
-  const recommended = catalog
-    .filter((c) => !owned.has(c.name.toLowerCase()))
-    .map((c) => ({ ...c, impact: blocked(c.skill) }))
+  // Courses from the providers the platform admin has enabled, ranked by how many companies their skills unlock.
+  const { providers, courses } = useCertCatalog()
+  const providerOf = new Map(providers.map((x) => [x.id, x]))
+  const mine = new Set(skillsFor(p))
+  const recommended = courses
+    .filter((c) => c.enabled && providerOf.get(c.provider_id)?.enabled && !owned.has(c.title.toLowerCase()))
+    .map((c) => {
+      // The course's most blocking skill among the student's own skills.
+      const ranked = c.skills.filter((sk) => mine.has(sk)).map((sk) => ({ sk, n: blocked(sk) })).sort((a, b) => b.n - a.n || level(a.sk) - level(b.sk))
+      return { ...c, name: c.title, skill: ranked[0]?.sk ?? c.skills[0], impact: ranked[0]?.n ?? 0, provider: providerOf.get(c.provider_id)! }
+    })
     .filter((c) => c.impact > 0)
-    .sort((a, b) => b.impact - a.impact || level(a.skill) - level(b.skill))
-    .slice(0, 6)
+    .sort((a, b) => b.impact - a.impact || Number(b.provider.partnered) - Number(a.provider.partnered) || level(a.skill) - level(b.skill))
+    .slice(0, 8)
 
   const save = async (certifications: typeof p.certifications, msg: string) => {
     try {
@@ -97,7 +95,11 @@ export default function Certifications() {
           {recommended.map((c) => (
             <div key={c.name} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-3">
               <div className="min-w-[200px] flex-1">
-                <a href={c.url} target="_blank" rel="noreferrer" className="text-[12.5px] font-semibold text-ink hover:underline">{c.name}</a>
+                <span className="flex flex-wrap items-center gap-2">
+                  <a href={safeUrl(c.url)} target="_blank" rel="noreferrer" className="text-[12.5px] font-semibold text-ink hover:underline">{c.name}</a>
+                  <span className="rounded-full border border-line bg-white/80 px-2 py-0.5 text-[10.5px] font-medium text-ink-mute">{c.provider.name}</span>
+                  {c.provider.partnered && <span className="rounded-full bg-brand-tint px-2 py-0.5 text-[10.5px] font-semibold text-brand-dark">Partner</span>}
+                </span>
                 <p className="text-[11.5px] text-ink-mute">
                   {c.skill} is a gap at {c.impact} compan{c.impact === 1 ? 'y' : 'ies'} you are not yet eligible for (you: {level(c.skill)}%).
                 </p>

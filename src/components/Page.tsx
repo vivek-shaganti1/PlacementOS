@@ -133,7 +133,7 @@ export function Sparkline({ data, color = '#6d4aff', className }: { data: number
 }
 
 export function Stat({
-  label, value, sub, tone, icon, trend, delta, trendColor,
+  label, value, sub, tone, icon, trend, delta, trendColor, onOpen, openLabel,
 }: {
   label: string
   value: string
@@ -145,12 +145,27 @@ export function Stat({
   /** Change since the previous period; shown as a chip. */
   delta?: number | null
   trendColor?: string
+  /** Opens the page behind the number: a small round arrow button in the corner. */
+  onOpen?: () => void
+  openLabel?: string
 }) {
   return (
     <motion.div {...revealProps} onPointerMove={trackSpotlight} className="card card-hover spotlight flex flex-col overflow-hidden px-4 pb-3 pt-4">
       <div className="flex items-center justify-between gap-2">
-        <p className="font-mono text-[10.5px] font-medium uppercase tracking-[0.1em] text-ink-mute">{label}</p>
+        <p className="min-w-0 truncate font-mono text-[10.5px] font-medium uppercase tracking-[0.1em] text-ink-mute">{label}</p>
         {icon && <span className="grid h-7 w-7 place-items-center rounded-[9px] bg-white/80 text-ink-faint ring-1 ring-line">{icon}</span>}
+        {onOpen && (
+          <button
+            type="button"
+            onClick={onOpen}
+            aria-label={openLabel ?? `Open ${label.toLowerCase()}`}
+            className="-mt-1 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-white/85 text-ink-mute ring-1 ring-line transition-colors hover:bg-[oklch(0.2_0.045_285)] hover:text-white"
+          >
+            <svg viewBox="0 0 16 16" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M5 11 11 5M6 5h5v5" />
+            </svg>
+          </button>
+        )}
       </div>
       <div className="mt-2 flex items-baseline gap-2">
         {/* App numbers render final immediately: counting up from 0 on load briefly shows wrong values. */}
