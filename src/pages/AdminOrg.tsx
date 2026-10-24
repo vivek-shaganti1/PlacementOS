@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useCallback, useEffect, useMemo, useState, type FormEvent, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Card, Page, RowsSkeleton, Stat } from '../components/Page'
 import { sectionLabel, yearLabel, yearOfStudy } from '../lib/academics'
@@ -10,6 +10,8 @@ import { useJobs } from '../lib/jobs'
 import { useApp } from '../lib/store'
 import { collegeEconomics, COSTS, usd, PLANS, type PlanKey } from '../lib/pricing'
 import { errMsg, supabase, type Organization } from '../lib/supabase'
+import { plural } from '../lib/format'
+import { HoldButton } from '../components/HoldButton'
 
 type RosterRow = { id: number; email: string; full_name: string; roll_number: string; branch: string; batch: string; section: string; program: string; user_id: string | null; invited_at: string | null; created_at: string }
 type InviteResult = { email: string; status: 'invited' | 'created' | 'existing' | 'failed' | 'saved'; detail?: string }
@@ -49,6 +51,8 @@ function parseRoster(text: string) {
     .map((line) => line.split(/\t|,/).map((c) => c.trim()))
     .filter((cols) => cols[0] && cols[0].includes('@'))
     .map(([email, full_name = '', roll_number = '', branch = '', batch = '', section = '']) => ({ email: email.toLowerCase(), full_name, roll_number, branch, batch, section: section.toUpperCase() }))
+    // The same email pasted twice is one student (and one seat): keep the last line for it.
+    .filter((row, i, all) => !all.slice(i + 1).some((r) => r.email === row.email))
 }
 
 function ResultList({ results }: { results: InviteResult[] }) {
@@ -56,8 +60,8 @@ function ResultList({ results }: { results: InviteResult[] }) {
   const label: Record<InviteResult['status'], string> = { invited: 'Invite sent', created: 'Login created', existing: 'Already registered', failed: 'Failed', saved: 'Saved, no email sent' }
   return (
     <div className="mt-3 max-h-[220px] overflow-y-auto border border-line">
-      {results.map((r) => (
-        <p key={r.email} className="flex flex-wrap gap-x-3 border-b border-line px-3 py-1.5 text-[12px] last:border-0">
+      {results.map((r, i) => (
+        <p key={`${i}-${r.email}`} className="flex flex-wrap gap-x-3 border-b border-line px-3 py-1.5 text-[12px] last:border-0">
           <span className="font-medium text-ink">{r.email}</span>
           <span className={r.status === 'failed' ? 'text-[#d92d20]' : r.status === 'invited' || r.status === 'created' ? 'text-[#067647]' : 'text-ink-mute'}>{label[r.status]}</span>
           {r.detail && <span className="text-ink-faint">{r.detail}</span>}
@@ -136,7 +140,7 @@ export function AdminRoster() {
     try {
       if (send && password && password.length < 8) throw new Error('Temporary password must be at least 8 characters.')
       const { results } = await callApi<{ results: InviteResult[] }>('admin', { action: 'invite', org_id: orgId, role: 'student', people, send, password: send ? password || undefined : undefined })
-      setResults(results)
+      setResults(results ?? [])
       showToast(`${results.length} student record${results.length === 1 ? '' : 's'} processed.`)
       setPaste('')
       setSingle({ email: '', full_name: '', roll_number: '', branch: '', batch: '', section: '' })
@@ -158,7 +162,6 @@ export function AdminRoster() {
   }
 
   const remove = async (r: RosterRow) => {
-    if (!window.confirm(`Remove ${r.email} from the roster? They lose access to PlacementIQ; their account is not deleted.`)) return
     const { error } = await supabase.from('org_students').delete().eq('id', r.id)
     if (error) return showToast(errMsg(error))
     load()
@@ -267,7 +270,7 @@ export function AdminRoster() {
                           {r.invited_at ? 'Resend' : 'Invite'}
                         </button>
                       )}
-                      <button onClick={() => remove(r)} className="text-[12px] text-[#d92d20] underline">Remove</button>
+                      <HoldButton onConfirm={() => remove(r)} warning={`${r.email} loses access to PlacementIQ; their account is not deleted.`} className="rounded px-1 text-[12px] text-[#d92d20] underline">Remove</HoldButton>
                     </td>
                   </tr>
                 ))}
@@ -312,7 +315,7 @@ function RecruitersCard({ orgId }: { orgId: string }) {
         action: 'invite', org_id: orgId, role: 'recruiter', password: password || undefined,
         people: [{ email: f.email.trim().toLowerCase(), company: f.company.trim(), full_name: f.full_name.trim() }],
       })
-      setResults(results)
+      setResults(results ?? [])
       setF({ email: '', company: '', full_name: '' })
       load()
     } catch (err) {
@@ -323,7 +326,6 @@ function RecruitersCard({ orgId }: { orgId: string }) {
   }
 
   const remove = async (r: RecruiterRow) => {
-    if (!window.confirm(`Remove ${r.email} (${r.company})? They lose access to this college; their drives stay with the placement cell.`)) return
     const { error } = await supabase.from('org_recruiters').delete().eq('id', r.id)
     if (error) return showToast(errMsg(error))
     showToast('Recruiter removed.')
@@ -351,7 +353,7 @@ function RecruitersCard({ orgId }: { orgId: string }) {
               <span className="block truncate text-[12px] text-ink-mute">{[r.full_name, r.email].filter(Boolean).join(' · ')}</span>
             </span>
             <span className={`text-[12px] ${r.user_id ? 'text-[#067647]' : 'text-ink-mute'}`}>{r.user_id ? 'Active' : 'Invited, not signed up'}</span>
-            <button onClick={() => remove(r)} className="text-[12px] text-[#d92d20] underline">Remove</button>
+            <HoldButton onConfirm={() => remove(r)} warning={`${r.email} (${r.company}) loses access to this college; their drives stay with the placement cell.`} className="rounded px-1 text-[12px] text-[#d92d20] underline">Remove</HoldButton>
           </div>
         ))}
         {!rows.length && <p className="py-4 text-center text-[12.5px] text-ink-faint">No recruiters yet.</p>}
@@ -386,11 +388,11 @@ export function AdminTeam() {
 
   const add = async (e: FormEvent) => {
     e.preventDefault()
-    if (!email.trim()) return
+    if (!email.trim()) return showToast('Enter an email address first.')
     setBusy(true)
     try {
       const { results } = await callApi<{ results: InviteResult[] }>('admin', { action: 'invite', org_id: orgId, role: 'org_admin', people: [{ email: email.trim() }], password: password || undefined })
-      setResults(results)
+      setResults(results ?? [])
       setEmail('')
       load()
     } catch (err) {
@@ -401,7 +403,6 @@ export function AdminTeam() {
   }
 
   const remove = async (a: AdminRow) => {
-    if (!window.confirm(`Remove admin access for ${a.email}?`)) return
     const { error } = await supabase.rpc('remove_org_admin', { target_org: orgId, target_email: a.email })
     if (error) return showToast(errMsg(error))
     showToast('Admin access removed.')
@@ -437,7 +438,7 @@ export function AdminTeam() {
                   {a.full_name && <span className="block truncate text-[12px] text-ink-mute">{a.email}</span>}
                 </span>
                 <span className={`text-[12px] ${a.joined ? 'text-[#067647]' : 'text-ink-mute'}`}>{a.joined ? 'Active' : a.user_id ? 'Account exists' : 'Invited, not signed up'}</span>
-                {a.email !== me && <button onClick={() => remove(a)} className="text-[12px] text-[#d92d20] underline">Remove</button>}
+                {a.email !== me && <HoldButton onConfirm={() => remove(a)} warning={`Removes admin access for ${a.email}.`} className="rounded px-1 text-[12px] text-[#d92d20] underline">Remove</HoldButton>}
               </div>
             ))}
           </div>
@@ -592,6 +593,7 @@ export function SuperOrgs() {
     }
   }, [usage, orgs])
 
+  const formRef = useRef<HTMLFormElement>(null)
   const startEdit = (o: Organization | null) => {
     setEditing(o)
     setResults([])
@@ -604,7 +606,12 @@ export function SuperOrgs() {
           }
         : blankOrg,
     )
-    if (o) window.scrollTo({ top: 0, behavior: 'smooth' })
+    // The app scrolls inside its pane, not the document: bring the form itself into view and put focus in it.
+    if (o)
+      requestAnimationFrame(() => {
+        formRef.current?.scrollIntoView({ block: 'start', behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' })
+        formRef.current?.querySelector<HTMLInputElement>('input')?.focus({ preventScroll: true })
+      })
   }
 
   const save = async (e: FormEvent) => {
@@ -636,7 +643,7 @@ export function SuperOrgs() {
     if (fresh.length) {
       try {
         const { results } = await callApi<{ results: InviteResult[] }>('admin', { action: 'invite', org_id: res.data.id, role: 'org_admin', people: fresh.map((email) => ({ email })), password: password || undefined })
-        setResults(results)
+        setResults(results ?? [])
       } catch (err) {
         showToast(`College saved, but invites failed: ${errMsg(err)}`)
       }
@@ -649,7 +656,6 @@ export function SuperOrgs() {
   }
 
   const remove = async (o: Organization) => {
-    if (!window.confirm(`Delete ${o.name}? Its roster, drives and admin roles are removed, and its students lose access.`)) return
     const { error } = await supabase.from('organizations').delete().eq('id', o.id)
     if (error) return showToast(errMsg(error))
     reload()
@@ -675,7 +681,7 @@ export function SuperOrgs() {
       </div>
 
       <Card title={editing ? `Edit ${editing.name}` : 'Add a college'}>
-        <form onSubmit={save} className="space-y-4">
+        <form ref={formRef} onSubmit={save} className="scroll-mt-24 space-y-4">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             {input('name', 'College name', 'Anurag University')}
             {input('short_name', 'Short name', 'Anurag')}
@@ -773,7 +779,7 @@ export function SuperOrgs() {
                             <span className="block">{u.active_7d} active this week · {u.active_30d} this month</span>
                             <span className="block">{u.resume_analyses} resume scans · {u.jd_matches} JD matches</span>
                             <span className="block">{u.ai_messages} AI messages · {u.coding_profiles} coding profiles</span>
-                            <span className="block">{u.drives} drives · {u.applications} applications</span>
+                            <span className="block">{plural(u.drives, 'drive')} · {plural(u.applications, 'application')}</span>
                           </>
                         ) : '…'}
                       </td>
@@ -792,7 +798,7 @@ export function SuperOrgs() {
                       <td className="whitespace-nowrap px-2 py-2.5 text-right text-[12px]">
                         <button onClick={() => navigate(`/admin/students?org=${o.id}`)} className="mr-3 font-semibold text-brand underline">Students</button>
                         <button onClick={() => startEdit(o)} className="mr-3 text-ink-soft underline">Edit</button>
-                        <button onClick={() => remove(o)} className="text-[#d92d20] underline">Delete</button>
+                        <HoldButton onConfirm={() => remove(o)} holdMs={2000} warning={`Deletes ${o.name}: its roster, drives and admin roles are removed and its students lose access.`} className="rounded px-1 text-[#d92d20] underline">Delete</HoldButton>
                       </td>
                     </tr>
                   )
@@ -831,11 +837,11 @@ export function SuperAdmins() {
 
   const add = async (e: FormEvent) => {
     e.preventDefault()
-    if (!email.trim()) return
+    if (!email.trim()) return showToast('Enter an email address first.')
     setBusy(true)
     try {
       const { results } = await callApi<{ results: InviteResult[] }>('admin', { action: 'invite', role: 'platform_admin', people: [{ email: email.trim() }], password: password || undefined })
-      setResults(results)
+      setResults(results ?? [])
       setEmail('')
       load()
     } catch (err) {
@@ -846,7 +852,6 @@ export function SuperAdmins() {
   }
 
   const remove = async (a: PlatformAdmin) => {
-    if (!window.confirm(`Remove platform admin access for ${a.email}? That account goes back to being a normal account.`)) return
     const { error } = await supabase.rpc('remove_platform_admin', { target_email: a.email })
     if (error) return showToast(errMsg(error))
     showToast('Platform admin access removed.')
@@ -883,7 +888,7 @@ export function SuperAdmins() {
                   {a.full_name && <span className="block truncate text-[12px] text-ink-mute">{a.email}</span>}
                 </span>
                 <span className={`text-[12px] ${a.active ? 'text-[#067647]' : 'text-ink-mute'}`}>{a.active ? 'Active' : 'Invited, not signed up'}</span>
-                <button onClick={() => remove(a)} className="text-[12px] text-[#d92d20] underline">{a.email === me ? 'Remove me' : 'Remove'}</button>
+                <HoldButton onConfirm={() => remove(a)} warning={`${a.email} goes back to being a normal account.`} className="rounded px-1 text-[12px] text-[#d92d20] underline">{a.email === me ? 'Remove me' : 'Remove'}</HoldButton>
               </div>
             ))}
           </div>
@@ -1009,7 +1014,7 @@ export function AdminClasses() {
               <p className="text-[12px] font-medium text-ink-mute">{yearLabel(y)}</p>
               <p className="mt-1 text-[24px] font-semibold tracking-[-0.03em] text-ink">{r}</p>
               <p className="text-[11.5px] text-ink-faint">
-                {total(gs, 'joined')} joined · {[...new Set(gs.map((g) => g.branch))].length} branches · {gs.length} sections
+                {total(gs, 'joined')} joined · {plural([...new Set(gs.map((g) => g.branch))].length, 'branch', 'branches')} · {plural(gs.length, 'section')}
               </p>
               <p className="mt-1 text-[11.5px] text-ink-mute">{total(gs, 'offers')} offers · {total(gs, 'attention')} need attention</p>
             </button>

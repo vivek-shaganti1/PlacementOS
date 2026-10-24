@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react'
+import { useRef } from 'react'
 import { useAuth, type AccountRole } from '../lib/auth'
 import { NavLink } from 'react-router-dom'
 import {
@@ -6,6 +7,7 @@ import {
   IconHelp, IconPractice, IconRoadmap, IconSettings, IconSpark, IconStacks,
   IconTarget, IconUser, IconUsers,
 } from './Icons'
+import { useDialog } from '../lib/useDialog'
 
 const groups = [
   {
@@ -93,6 +95,10 @@ export default function Sidebar({ open, onChat, mobile, onClose }: { open: boole
   const { role } = useAuth()
   const visible = NAV[role]
 
+  // The phone drawer is a dialog: focus moves in, Tab stays inside, Escape closes it and focus returns to the toggle.
+  const drawer = useRef<HTMLElement>(null)
+  useDialog(!!mobile && open, () => onClose?.(), drawer)
+
   const panel = (
       <div className={`glass flex flex-col rounded-[22px] ${mobile ? 'h-full w-[min(300px,86vw)]' : 'm-3 mr-0 h-[calc(100%-24px)] w-[228px]'}`}>
         <nav className="scroll-thin flex-1 overflow-y-auto px-2.5 pb-2 pt-3" aria-label="Main">
@@ -106,12 +112,10 @@ export default function Sidebar({ open, onChat, mobile, onClose }: { open: boole
                 <NavLink key={to} to={to} end={to === '/admin'} onClick={mobile ? onClose : undefined} className="relative mb-[2px] block rounded-[12px]">
                   {({ isActive }) => (
                     <>
+                      {/* No sliding pill: nav is clicked tens of times a day and a shared-layout animation drops frames
+                          while the next page's chunk loads. The active state just appears. */}
                       {isActive && (
-                        <motion.span
-                          layoutId="nav-pill"
-                          className="absolute inset-0 rounded-[12px] bg-[linear-gradient(180deg,oklch(0.27_0.05_285),oklch(0.18_0.04_285))] shadow-[inset_0_1px_0_oklch(1_0_0/.12),0_6px_16px_oklch(0.2_0.06_285/.22)]"
-                          transition={{ type: 'spring', stiffness: 420, damping: 34 }}
-                        />
+                        <span className="absolute inset-0 rounded-[12px] bg-[linear-gradient(180deg,oklch(0.27_0.05_285),oklch(0.18_0.04_285))] shadow-[inset_0_1px_0_oklch(1_0_0/.12),0_6px_16px_oklch(0.2_0.06_285/.22)]" />
                       )}
                       <span
                         className={`relative flex items-center gap-[11px] px-3 py-[8px] text-[13px] transition-colors ${
@@ -144,7 +148,7 @@ export default function Sidebar({ open, onChat, mobile, onClose }: { open: boole
                   onChat()
                   onClose?.()
                 }}
-                className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-[11px] bg-white py-2 text-[12.5px] font-semibold text-[#2c2075] transition hover:bg-white/90 active:scale-[.98]"
+                className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-[11px] bg-white py-2 text-[12.5px] font-semibold text-[#2c2075] transition-colors hover:bg-white/90 active:bg-white/80"
               >
                 <IconSpark className="h-3.5 w-3.5" />
                 Ask anything
@@ -159,12 +163,22 @@ export default function Sidebar({ open, onChat, mobile, onClose }: { open: boole
     return (
       <AnimatePresence>
         {open && (
-          <motion.div className="fixed inset-0 z-40 flex bg-[oklch(0.2_0.05_285/0.25)] p-3" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onMouseDown={onClose}>
+          <motion.div
+            className="fixed inset-0 z-40 flex bg-[oklch(0.2_0.05_285/0.25)] p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))]"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1, transition: { duration: 0.2 } }}
+            exit={{ opacity: 0, transition: { duration: 0.16 } }}
+            onMouseDown={onClose}
+          >
+            {/* Slides in by its own width on the iOS sheet curve; leaves faster than it came. */}
             <motion.aside
-              initial={{ x: -40, opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: -40, opacity: 0 }}
-              transition={{ type: 'spring', stiffness: 380, damping: 34 }}
+              ref={drawer}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Menu"
+              initial={{ transform: 'translateX(-105%)' }}
+              animate={{ transform: 'translateX(0%)', transition: { duration: 0.32, ease: [0.32, 0.72, 0, 1] } }}
+              exit={{ transform: 'translateX(-105%)', transition: { duration: 0.2, ease: [0.23, 1, 0.32, 1] } }}
               onMouseDown={(e) => e.stopPropagation()}
               className="h-full"
             >
@@ -179,8 +193,11 @@ export default function Sidebar({ open, onChat, mobile, onClose }: { open: boole
     <motion.aside
       initial={false}
       animate={{ width: open ? 240 : 0, opacity: open ? 1 : 0 }}
-      transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
+      // Moves between two on-screen states: strong ease-in-out, under 300ms.
+      transition={{ duration: 0.24, ease: [0.77, 0, 0.175, 1] }}
       className="relative z-10 shrink-0 overflow-hidden"
+      // Collapsed to 0px: its links must not take keyboard focus. (React 18 has no typed `inert`; an empty string sets it.)
+      {...({ inert: open ? undefined : '' } as Record<string, string | undefined>)}
     >
       {panel}
     </motion.aside>

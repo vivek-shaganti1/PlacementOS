@@ -9,6 +9,7 @@ import { evaluateJob, type JobPosting } from '../lib/eligibility'
 import { ctcText, isOpen, STATUS_META, useJobs } from '../lib/jobs'
 import { useApp } from '../lib/store'
 import { errMsg, supabase } from '../lib/supabase'
+import { HoldButton } from '../components/HoldButton'
 
 export default function Jobs() {
   const p = useProfile()
@@ -47,7 +48,6 @@ export default function Jobs() {
   }
 
   const withdraw = async (job: JobPosting) => {
-    if (!window.confirm(`Withdraw your application to ${job.company}?`)) return
     const { error } = await supabase.from('job_applications').delete().eq('job_id', job.id).eq('user_id', p.id)
     if (error) return showToast(`Could not withdraw: ${errMsg(error)}`)
     reload()
@@ -143,9 +143,10 @@ export default function Jobs() {
             </div>
           </Card>
 
-          <AnimatePresence mode="wait">
+          {/* Switching jobs is frequent: the new detail shows at once (no waiting for an exit) with a quick fade. */}
+          <AnimatePresence initial={false}>
             {selected && (
-              <motion.div key={selected.job.id} initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }} className="space-y-4">
+              <motion.div key={selected.job.id} initial={{ opacity: 0, transform: 'translateX(8px)' }} animate={{ opacity: 1, transform: 'translateX(0px)' }} transition={{ duration: 0.18, ease: [0.23, 1, 0.32, 1] }} className="space-y-4">
                 <div id="job-detail" className="card scroll-mt-4 p-4 sm:p-6">
                   <div className="flex flex-wrap items-start gap-4 sm:gap-5">
                     <Ring value={selected.ev.match} size={104} stroke={9} label="Profile match" color={selected.ev.eligibleToApply ? '#6d4aff' : '#f04438'} />
@@ -160,7 +161,7 @@ export default function Jobs() {
                             return (
                               <>
                                 <span className={`rounded-[10px] border px-3 py-1.5 text-[12px] font-semibold ${STATUS_META[app.status].cls}`}>{STATUS_META[app.status].label}</span>
-                                {app.status === 'applied' && <button onClick={() => withdraw(selected.job)} className="btn-glass py-1.5 text-[12px] text-[#d92d20]">Withdraw</button>}
+                                {app.status === 'applied' && <HoldButton onConfirm={() => withdraw(selected.job)} warning={`Withdraws your application to ${selected.job.company}.`} className="btn-glass py-1.5 text-[12px] text-[#d92d20]">Withdraw</HoldButton>}
                               </>
                             )
                           if (!isOpen(selected.job)) return <span className="text-[12px] text-ink-faint">Applications are closed.</span>

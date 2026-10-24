@@ -13,10 +13,12 @@ export const motionConfig = {
     dramatic: [0.16, 1, 0.3, 1] as const,
     /** Moves between two on-screen states. */
     inOut: [0.65, 0, 0.35, 1] as const,
-    /** Exits get out of the way. */
-    exit: [0.7, 0, 0.84, 0] as const,
+    /** Exits get out of the way: still ease-out (never ease-in, which delays the moment the user is watching), just shorter. */
+    exit: [0.23, 1, 0.32, 1] as const,
+    /** Drawers and sheets (the iOS sheet curve). */
+    drawer: [0.32, 0.72, 0, 1] as const,
   },
-  gsapEase: { smooth: 'expo.out', dramatic: 'expo.out', inOut: 'power3.inOut', exit: 'power3.in' },
+  gsapEase: { smooth: 'expo.out', dramatic: 'expo.out', inOut: 'power3.inOut', exit: 'power2.out' },
   spring: {
     gentle: { type: 'spring', stiffness: 120, damping: 20 } as const,
     snappy: { type: 'spring', stiffness: 300, damping: 25 } as const,

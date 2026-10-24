@@ -19,10 +19,11 @@ const track = (e: PointerEvent<HTMLElement>) => {
 
 function FooterLink({ to, children }: { to: string; children: string }) {
   // py-1.5 gives every link a finger-sized (about 32 px) tap target on phones.
-  const cls = 'group inline-flex items-center gap-1.5 py-1.5 text-[13.5px] text-white/60 transition-colors hover:text-white'
+  const cls = 'group relative inline-flex items-center gap-1.5 py-1.5 text-[13.5px] text-white/60 transition-colors hover:text-white'
   const inner = (
     <>
-      <span className="h-px w-0 bg-[#8ef5d9] transition-all duration-300 group-hover:w-3" />
+      {/* Hover tick drawn with scaleX (GPU) and positioned outside the text, so nothing reflows. */}
+      <span aria-hidden className="absolute -left-4 top-1/2 h-px w-3 origin-left scale-x-0 bg-[#8ef5d9] transition-transform duration-200 ease-out group-hover:scale-x-100" />
       {children}
     </>
   )

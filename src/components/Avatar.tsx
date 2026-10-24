@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { initials } from '../lib/format'
 
 export default function Avatar({
   src,
@@ -13,22 +14,18 @@ export default function Avatar({
 }) {
   const [failed, setFailed] = useState(false)
   useEffect(() => setFailed(false), [src])
-  const initials = name
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((w) => w[0])
-    .join('')
-    .toUpperCase()
+  const letters = initials(name)
 
   const hue = [...name].reduce((a, c) => a + c.charCodeAt(0), 0) % 360
 
   if (!src || failed)
     return (
       <span
+        aria-hidden
         className={`inline-flex shrink-0 items-center justify-center rounded-full font-semibold text-white ${className ?? ''}`}
         style={{ width: size, height: size, background: `hsl(${hue} 52% 52%)`, fontSize: size * 0.38 }}
       >
-        {initials}
+        {letters}
       </span>
     )
 

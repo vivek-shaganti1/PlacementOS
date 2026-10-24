@@ -88,8 +88,8 @@ export function LogoMark({ size = 36, animate = false, className }: { size?: num
         d="M46 38.5c.7 3.6 2.4 5.3 6 6-3.6.7-5.3 2.4-6 6-.7-3.6-2.4-5.3-6-6 3.6-.7 5.3-2.4 6-6Z"
         fill={`url(#spark${id})`}
         style={{ transformOrigin: '46px 44.5px' }}
-        initial={play ? { scale: 0, rotate: -90 } : false}
-        animate={{ scale: 1, rotate: 0 }}
+        initial={play ? { scale: 0.6, rotate: -90, opacity: 0 } : false}
+        animate={{ scale: 1, rotate: 0, opacity: 1 }}
         transition={{ type: 'spring', stiffness: 260, damping: 14, delay: 1.0 }}
       />
     </motion.svg>

@@ -9,7 +9,7 @@ import { IconBell, IconChevronDown, IconMenu, IconSearch } from './Icons'
 import { HOME, useAuth, useProfile } from '../lib/auth'
 import { useApp } from '../lib/store'
 
-export default function Topbar({ onToggleSidebar }: { onToggleSidebar: () => void }) {
+export default function Topbar({ onToggleSidebar, sidebarOpen }: { onToggleSidebar: () => void; sidebarOpen?: boolean }) {
   const [q, setQ] = useState('')
   const [openMenu, setOpenMenu] = useState(false)
   const [openBell, setOpenBell] = useState(false)
@@ -53,6 +53,13 @@ export default function Topbar({ onToggleSidebar }: { onToggleSidebar: () => voi
   const results = q.trim()
     ? companies.filter((c) => (c.name + ' ' + c.role).toLowerCase().includes(q.trim().toLowerCase())).slice(0, 6)
     : []
+  const [active, setActive] = useState(0)
+  useEffect(() => setActive(0), [q])
+  const pick = (id: string) => {
+    setQ('')
+    search.current?.blur()
+    navigate(`/eligibility?company=${id}`)
+  }
 
   return (
     <header ref={wrap} className="glass relative z-30 mx-2 mt-2 flex h-[58px] shrink-0 items-center gap-2 rounded-[18px] px-2.5 sm:mx-3 sm:mt-3 sm:h-[62px] sm:gap-4 sm:rounded-[20px] sm:px-4">
@@ -64,7 +71,8 @@ export default function Topbar({ onToggleSidebar }: { onToggleSidebar: () => voi
       <button
         onClick={onToggleSidebar}
         aria-label="Toggle sidebar"
-        className="grid h-9 w-9 place-items-center rounded-[11px] text-ink-soft transition hover:bg-white/80 active:scale-95"
+        aria-expanded={sidebarOpen}
+        className="grid h-9 w-9 place-items-center rounded-[11px] text-ink-soft transition-colors hover:bg-white/80"
       >
         <IconMenu className="h-[19px] w-[19px]" />
       </button>
@@ -77,27 +85,44 @@ export default function Topbar({ onToggleSidebar }: { onToggleSidebar: () => voi
           ref={search}
           value={q}
           onChange={(e) => setQ(e.target.value)}
+          onKeyDown={(e) => {
+            if (!results.length) return
+            if (e.key === 'ArrowDown') {
+              e.preventDefault()
+              setActive((i) => (i + 1) % results.length)
+            } else if (e.key === 'ArrowUp') {
+              e.preventDefault()
+              setActive((i) => (i - 1 + results.length) % results.length)
+            } else if (e.key === 'Enter') {
+              e.preventDefault()
+              pick(results[Math.min(active, results.length - 1)].id)
+            }
+          }}
           placeholder="Search companies, roles…"
           aria-label="Search companies"
+          role="combobox"
+          aria-expanded={results.length > 0}
+          aria-controls="search-results"
+          aria-autocomplete="list"
+          aria-activedescendant={results.length ? `search-opt-${results[Math.min(active, results.length - 1)].id}` : undefined}
           className="h-[40px] w-full rounded-full border border-white/80 bg-white/60 pl-10 pr-14 text-[13px] text-ink outline-none transition placeholder:text-ink-faint focus:bg-white focus:ring-4 focus:ring-brand/10"
         />
         <kbd className="kbd kbd-light pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 px-1.5">⌘K</kbd>
-        <AnimatePresence>
+        {/* Typing drives this list, so it appears and updates instantly: keyboard-initiated UI never animates. */}
         {results.length > 0 && (
-          <motion.div
-            initial={{ opacity: 0, y: -6, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -4, scale: 0.98 }}
-            transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
-            className="glass-strong absolute left-0 right-0 top-[48px] overflow-hidden rounded-[16px] py-1.5">
-            {results.map((c) => (
+          <div id="search-results" role="listbox" aria-label="Companies" className="glass-strong absolute left-0 right-0 top-[48px] overflow-hidden rounded-[16px] py-1.5">
+            {results.map((c, i) => (
               <button
                 key={c.id}
-                onMouseDown={() => {
-                  setQ('')
-                  navigate(`/eligibility?company=${c.id}`)
-                }}
-                className="flex w-full items-center gap-3 px-3.5 py-2 text-left hover:bg-brand-tint"
+                id={`search-opt-${c.id}`}
+                role="option"
+                aria-selected={i === active}
+                tabIndex={-1}
+                // mousedown would blur the input first; prevent that, then act on click (which keyboards fire too).
+                onMouseDown={(e) => e.preventDefault()}
+                onMouseEnter={() => setActive(i)}
+                onClick={() => pick(c.id)}
+                className={`flex w-full items-center gap-3 px-3.5 py-2 text-left ${i === active ? 'bg-brand-tint' : ''}`}
               >
                 <CompanyLogo company={c} size={20} />
                 <span className="text-[13px] font-medium text-ink">{c.name}</span>
@@ -105,31 +130,32 @@ export default function Topbar({ onToggleSidebar }: { onToggleSidebar: () => voi
                 <span className="ml-auto text-[12px] font-semibold text-ink-mute">{c.match}%</span>
               </button>
             ))}
-          </motion.div>
+          </div>
         )}
-        </AnimatePresence>
       </div>
 
       <div className={`relative ${isStudent ? '' : 'hidden'}`}>
         <button
           onClick={() => { setOpenBell((v) => !v); setOpenMenu(false) }}
-          aria-label="Notifications"
-          className="relative grid h-10 w-10 place-items-center rounded-[12px] text-ink-soft transition hover:bg-white/80 active:scale-95"
+          aria-label={unread ? `Notifications, ${unread} unread` : 'Notifications'}
+          aria-haspopup="true"
+          aria-expanded={openBell}
+          className="relative grid h-10 w-10 place-items-center rounded-[12px] text-ink-soft transition-colors hover:bg-white/80"
         >
           <IconBell className="h-[19px] w-[19px]" />
           {unread > 0 && (
-            <span className="absolute -right-0.5 -top-0.5 grid h-[17px] min-w-[17px] place-items-center rounded-full bg-[#f04438] px-1 text-[10px] font-bold text-white ring-2 ring-white">
-              {unread}
+            <span aria-hidden className="absolute -right-0.5 -top-0.5 grid h-[17px] min-w-[17px] place-items-center rounded-full bg-[#f04438] px-1 text-[10px] font-bold tabular-nums text-white ring-2 ring-white">
+              {unread > 9 ? '9+' : unread}
             </span>
           )}
         </button>
         <AnimatePresence>
         {openBell && (
           <motion.div
-            initial={{ opacity: 0, y: -8, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -6, scale: 0.97 }}
-            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            // Scales from its trigger (top right). Opens in 180ms, closes faster; transform strings stay on the GPU.
+            initial={{ opacity: 0, transform: 'translateY(-4px) scale(0.97)' }}
+            animate={{ opacity: 1, transform: 'translateY(0px) scale(1)', transition: { duration: 0.18, ease: [0.23, 1, 0.32, 1] } }}
+            exit={{ opacity: 0, transform: 'translateY(-2px) scale(0.98)', transition: { duration: 0.12, ease: [0.23, 1, 0.32, 1] } }}
             style={{ transformOrigin: 'top right' }}
             className="glass-strong absolute right-0 top-12 w-[340px] overflow-hidden rounded-[18px] max-sm:fixed max-sm:inset-x-3 max-sm:top-[68px] max-sm:w-auto">
             <div className="flex items-center justify-between border-b border-line px-4 py-2.5">
@@ -165,7 +191,10 @@ export default function Topbar({ onToggleSidebar }: { onToggleSidebar: () => voi
       <div className="relative">
         <button
           onClick={() => { setOpenMenu((v) => !v); setOpenBell(false) }}
-          className="flex items-center gap-2.5 rounded-[14px] py-1 pl-1 pr-2 transition hover:bg-white/80"
+          aria-label="Account menu"
+          aria-haspopup="true"
+          aria-expanded={openMenu}
+          className="flex min-w-0 items-center gap-2.5 rounded-[14px] py-1 pl-1 pr-2 transition-colors hover:bg-white/80"
         >
           <Avatar src={profile.avatar_url ?? undefined} name={profile.full_name || profile.email} size={34} />
           <div className="hidden max-w-[150px] text-left leading-tight sm:block xl:max-w-[220px]">
@@ -177,10 +206,10 @@ export default function Topbar({ onToggleSidebar }: { onToggleSidebar: () => voi
         <AnimatePresence>
         {openMenu && (
           <motion.div
-            initial={{ opacity: 0, y: -8, scale: 0.97 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -6, scale: 0.97 }}
-            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            // Scales from its trigger (top right). Opens in 180ms, closes faster; transform strings stay on the GPU.
+            initial={{ opacity: 0, transform: 'translateY(-4px) scale(0.97)' }}
+            animate={{ opacity: 1, transform: 'translateY(0px) scale(1)', transition: { duration: 0.18, ease: [0.23, 1, 0.32, 1] } }}
+            exit={{ opacity: 0, transform: 'translateY(-2px) scale(0.98)', transition: { duration: 0.12, ease: [0.23, 1, 0.32, 1] } }}
             style={{ transformOrigin: 'top right' }}
             className="glass-strong absolute right-0 top-[54px] w-52 overflow-hidden rounded-[18px] py-1.5">
             {(isStudent ? [

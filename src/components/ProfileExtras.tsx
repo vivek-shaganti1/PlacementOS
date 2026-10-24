@@ -8,6 +8,7 @@ import { errMsg, type Profile } from '../lib/supabase'
 import { allEvidence } from '../lib/verify'
 import { Card } from './Page'
 import { safeUrl } from '../lib/links'
+import { plural } from '../lib/format'
 
 const input =
   'h-[34px] w-full rounded-[9px] border border-line bg-white px-3 text-[12.5px] outline-none focus:border-[#d5cbff] focus:ring-4 focus:ring-brand/10'
@@ -42,7 +43,7 @@ export function Completeness({ p }: { p: Profile }) {
   return (
     <Card title="Profile strength" action={<span className="text-[13px] font-bold text-brand-dark">{pct}%</span>}>
       <span className="block h-[8px] overflow-hidden rounded-full bg-[#eef0f3]">
-        <span className="block h-full rounded-full bg-brand transition-[width] duration-500" style={{ width: `${pct}%` }} />
+        <span className="block h-full w-full origin-left rounded-full bg-brand transition-transform duration-300 ease-out" style={{ transform: `scaleX(${Math.max(0, Math.min(100, pct)) / 100})` }} />
       </span>
       {missing.length > 0 ? (
         <div className="mt-3 flex flex-wrap gap-1.5">
@@ -69,7 +70,7 @@ const platforms = [
 function statsLine(p: Profile, key: (typeof platforms)[number]['key']) {
   const i = p.integrations ?? {}
   if (key === 'github' && i.github)
-    return `${i.github.original_repos} repos · ${i.github.stars}★ · ${i.github.languages.slice(0, 4).map((l) => l.name).join(', ') || 'no languages'}`
+    return `${plural(i.github.original_repos, 'repo')} · ${i.github.stars}★ · ${i.github.languages.slice(0, 4).map((l) => l.name).join(', ') || 'no languages'}`
   if (key === 'leetcode' && i.leetcode)
     return `${i.leetcode.solved} solved (E ${i.leetcode.easy} · M ${i.leetcode.medium} · H ${i.leetcode.hard})${i.leetcode.contest_rating ? ` · contest ${i.leetcode.contest_rating}` : ''}`
   if (key === 'codeforces' && i.codeforces)
@@ -283,7 +284,7 @@ export function Achievements({ p }: { p: Profile }) {
               <p className="text-[12.5px] font-semibold text-ink">{a.title} {a.date && <span className="font-normal text-ink-faint">· {a.date}</span>}</p>
               {a.detail && <p className="text-[11.5px] text-ink-mute">{a.detail}</p>}
             </div>
-            <button onClick={() => save(p.achievements.filter((_, j) => j !== i), 'Removed.')} className="text-[11px] text-ink-faint opacity-0 hover:text-[#d92d20] group-hover:opacity-100">Remove</button>
+            <button onClick={() => save(p.achievements.filter((_, j) => j !== i), 'Removed.')} className="text-[11px] text-ink-faint opacity-0 focus-visible:opacity-100 [@media(hover:none)]:opacity-100 hover:text-[#d92d20] group-hover:opacity-100">Remove</button>
           </div>
         ))}
         {p.achievements.length === 0 && <p className="py-2 text-[12px] text-ink-faint">Add hackathon wins, contest ranks, club roles, publications…</p>}

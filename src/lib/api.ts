@@ -10,7 +10,9 @@ export async function callApi<T>(name: string, body: unknown): Promise<T> {
     headers: { 'content-type': 'application/json', authorization: `Bearer ${token}` },
     body: JSON.stringify(body),
   })
-  const json = (await res.json().catch(() => ({}))) as T & { error?: string }
-  if (!res.ok) throw new Error(json.error || `Request failed (${res.status})`)
+  const json = (await res.json().catch(() => null)) as (T & { error?: string }) | null
+  if (!res.ok) throw new Error(json?.error || `Request failed (${res.status})`)
+  // A 200 that is not JSON (a proxy or error page) must not reach callers as an empty object.
+  if (json === null) throw new Error('Unexpected response from the server. Try again.')
   return json
 }

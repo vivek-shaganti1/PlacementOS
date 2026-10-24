@@ -251,7 +251,9 @@ function Nav() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement
-      if (e.metaKey || e.ctrlKey || e.altKey || t.closest('input, textarea, select, [contenteditable="true"]')) return
+      // WCAG 2.1.4: single-letter shortcuts fire only when nothing interactive has focus (so screen-reader and speech
+      // users who type letters while on a control never trigger them).
+      if (e.metaKey || e.ctrlKey || e.altKey || e.repeat || t.closest('input, textarea, select, button, a, [role="tab"], [contenteditable="true"]')) return
       if (e.key === 'g') navigate('/signup')
       if (e.key === 's') navigate('/login')
     }
@@ -271,8 +273,8 @@ function Nav() {
           <Logo size={28} tagline={false} />
         </Link>
         <div className={`${pill} gap-1 lg:col-start-3 lg:justify-self-end`}>
-          <Link to="/login" className="hidden items-center gap-2 whitespace-nowrap rounded-full px-3.5 py-1.5 text-[12.5px] font-semibold text-ink-soft hover:bg-white/80 hover:text-ink sm:inline-flex">
-            Sign in <span className="kbd kbd-light">S</span>
+          <Link to="/login" className="inline-flex items-center gap-2 whitespace-nowrap rounded-full px-2.5 py-1.5 text-[12.5px] font-semibold text-ink-soft hover:bg-white/80 hover:text-ink sm:px-3.5">
+            Sign in <span className="kbd kbd-light hidden sm:inline-grid">S</span>
           </Link>
           <Link to="/signup" className="btn-ink h-[34px] whitespace-nowrap px-4 text-[12.5px]">
             Get started <span className="kbd hidden sm:inline-grid">G</span>
@@ -578,7 +580,7 @@ export default function Landing() {
 
   return (
     <SmoothScroll>
-    <div className="relative min-h-screen overflow-x-hidden">
+    <div className="relative min-h-svh overflow-x-hidden">
       <Aurora />
       <CursorFollower />
       <AnimatePresence>{intro && <LaunchIntro onDone={finishIntro} />}</AnimatePresence>

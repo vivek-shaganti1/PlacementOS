@@ -20,11 +20,16 @@ export default function Help() {
         <div className="divide-y divide-line">
           {faqs.map(([q, a]) => (
             <div key={q} className="py-1">
-              <button onClick={() => setOpen(open === q ? null : q)} className="flex w-full items-center justify-between py-2.5 text-left">
+              <button
+                onClick={() => setOpen(open === q ? null : q)}
+                aria-expanded={open === q}
+                aria-controls={`faq-${faqs.findIndex(([x]) => x === q)}`}
+                className="flex w-full items-center justify-between py-2.5 text-left"
+              >
                 <span className="text-[12.5px] font-medium text-ink">{q}</span>
-                <span className="text-[16px] text-ink-faint">{open === q ? '−' : '+'}</span>
+                <span aria-hidden className="text-[16px] text-ink-faint">{open === q ? '−' : '+'}</span>
               </button>
-              {open === q && <p className="pb-3 pr-8 text-[12px] leading-[1.65] text-ink-mute">{a}</p>}
+              {open === q && <p id={`faq-${faqs.findIndex(([x]) => x === q)}`} className="pb-3 pr-8 text-[12px] leading-[1.65] text-ink-mute">{a}</p>}
             </div>
           ))}
         </div>

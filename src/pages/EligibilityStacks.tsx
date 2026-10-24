@@ -158,7 +158,11 @@ export default function EligibilityStacks() {
         </div>
       </div>
 
-      {selected && <CompanyPanel company={selected} overlay={!isWide} onClose={() => setSelectedId(null)} />}
+      {selected && <CompanyPanel company={selected} overlay={!isWide} onClose={() => {
+            setSelectedId(null)
+            // Drop ?company= too, or a reload reopens the panel that was just closed.
+            if (params.has('company')) setParams({}, { replace: true })
+          }} />}
     </div>
   )
 }

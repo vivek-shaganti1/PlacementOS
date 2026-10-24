@@ -22,7 +22,7 @@ export default function Roadmap() {
           <div className="flex-1">
             <p className="text-[12.5px] font-medium text-ink-soft">Overall progress</p>
             <span className="mt-2 block h-[8px] overflow-hidden rounded-full bg-[#eef0f3]">
-              <span className="block h-full rounded-full bg-brand transition-[width] duration-500" style={{ width: `${pct}%` }} />
+              <span className="block h-full w-full origin-left rounded-full bg-brand transition-transform duration-300 ease-out" style={{ transform: `scaleX(${Math.max(0, Math.min(100, pct)) / 100})` }} />
             </span>
           </div>
           <p className="text-[22px] font-bold text-brand-dark">{pct}%</p>

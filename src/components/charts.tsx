@@ -48,7 +48,7 @@ export function TrendChart({
 }) {
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <AreaChart data={data} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
+      <AreaChart accessibilityLayer={false} data={data} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
         <defs>
           {series.map((s) => (
             <linearGradient key={s.key} id={`g-${s.key}`} x1="0" y1="0" x2="0" y2="1">
@@ -87,7 +87,7 @@ export function Donut({ data, height = 200, centerLabel }: { data: { name: strin
   return (
     <div className="relative" style={{ height }}>
       <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
+        <PieChart accessibilityLayer={false}>
           <Pie data={data} dataKey="value" nameKey="name" innerRadius="64%" outerRadius="92%" paddingAngle={2} cornerRadius={5} stroke="none" animationDuration={900}>
             {data.map((d) => <Cell key={d.name} fill={d.color} />)}
           </Pie>
@@ -108,7 +108,7 @@ export function Donut({ data, height = 200, centerLabel }: { data: { name: strin
 export function SkillRadar({ data, height = 300, aName, bName }: { data: { skill: string; a: number; b: number }[]; height?: number; aName: string; bName: string }) {
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <RadarChart data={data} outerRadius="72%" margin={{ top: 8, right: 24, bottom: 8, left: 24 }}>
+      <RadarChart accessibilityLayer={false} data={data} outerRadius="72%" margin={{ top: 8, right: 24, bottom: 8, left: 24 }}>
         <PolarGrid stroke={INK.grid} />
         <PolarAngleAxis dataKey="skill" tick={{ fill: INK.secondary, fontSize: 10.5 }} />
         <PolarRadiusAxis domain={[0, 100]} tick={false} axisLine={false} />
@@ -125,7 +125,7 @@ export function SkillRadar({ data, height = 300, aName, bName }: { data: { skill
 export function BarList({ data, height, unit = '', color = BRAND, max }: { data: { name: string; value: number; color?: string }[]; height?: number; unit?: string; color?: string; max?: number }) {
   return (
     <ResponsiveContainer width="100%" height={height ?? Math.max(120, data.length * 34)}>
-      <BarChart data={data} layout="vertical" margin={{ top: 0, right: 40, left: 4, bottom: 0 }} barCategoryGap={8}>
+      <BarChart accessibilityLayer={false} data={data} layout="vertical" margin={{ top: 0, right: 40, left: 4, bottom: 0 }} barCategoryGap={8}>
         <CartesianGrid stroke={INK.grid} horizontal={false} />
         <XAxis type="number" {...axis} domain={[0, max ?? 'auto']} hide />
         <YAxis type="category" dataKey="name" {...axis} tick={{ fill: INK.secondary, fontSize: 11.5 }} width={170} tickFormatter={(v: string) => (v.length > 26 ? `${v.slice(0, 25)}…` : v)} />
@@ -142,7 +142,7 @@ export function BarList({ data, height, unit = '', color = BRAND, max }: { data:
 export function Columns({ data, x, y, name, height = 200, color = BRAND, unit = '', domain }: { data: Record<string, any>[]; x: string; y: string; name: string; height?: number; color?: string; unit?: string; domain?: [number, number] }) {
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <BarChart data={data} margin={{ top: 16, right: 8, left: -18, bottom: 0 }} barCategoryGap="28%">
+      <BarChart accessibilityLayer={false} data={data} margin={{ top: 16, right: 8, left: -18, bottom: 0 }} barCategoryGap="28%">
         <CartesianGrid stroke={INK.grid} vertical={false} />
         <XAxis dataKey={x} {...axis} />
         <YAxis {...axis} width={44} domain={domain ?? [0, 'auto']} allowDecimals={false} />
@@ -158,7 +158,7 @@ export function CompanyScatter({ data, height = 320 }: { data: { name: string; m
   const groups = (Object.keys(STATUS) as (keyof typeof STATUS)[]).map((b) => ({ b, rows: data.filter((d) => d.bucket === b) }))
   return (
     <ResponsiveContainer width="100%" height={height}>
-      <ScatterChart margin={{ top: 8, right: 16, left: -8, bottom: 8 }}>
+      <ScatterChart accessibilityLayer={false} margin={{ top: 8, right: 16, left: -8, bottom: 8 }}>
         <CartesianGrid stroke={INK.grid} />
         <XAxis type="number" dataKey="match" name="Match" unit="%" domain={[0, 100]} {...axis} />
         <YAxis type="number" dataKey="ctc" name="CTC" unit=" L" {...axis} width={52} />

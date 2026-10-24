@@ -60,9 +60,13 @@ export default function Profile() {
 
   const submitDetails = (e: FormEvent) => {
     e.preventDefault()
-    const num = (k: FieldKey) => Number(form[k])
+    // An empty field is "missing", not 0 (Number('') is 0, which would silently save CGPA 0).
+    const num = (k: FieldKey) => (String(form[k] ?? '').trim() === '' ? NaN : Number(form[k]))
+    const empty = (['cgpa', 'backlogs', 'class_x', 'class_xii'] as FieldKey[]).find((k) => String(form[k] ?? '').trim() === '')
+    const names: Partial<Record<FieldKey, string>> = { cgpa: 'CGPA', backlogs: 'Active backlogs', class_x: 'Class X %', class_xii: 'Class XII %' }
     const bad =
-      Number.isNaN(num('cgpa')) || num('cgpa') < 0 || num('cgpa') > 10 ? 'CGPA must be between 0 and 10.'
+      empty ? `${names[empty]} is required.`
+      : Number.isNaN(num('cgpa')) || num('cgpa') < 0 || num('cgpa') > 10 ? 'CGPA must be between 0 and 10.'
       : !Number.isInteger(num('backlogs')) || num('backlogs') < 0 ? 'Backlogs must be a whole number.'
       : [num('class_x'), num('class_xii')].some((v) => Number.isNaN(v) || v < 0 || v > 100) ? 'Percentages must be between 0 and 100.'
       : !form.full_name.trim() ? 'Name is required.'
@@ -118,7 +122,7 @@ export default function Profile() {
             <Avatar src={p.avatar_url ?? undefined} name={p.full_name || p.email} size={64} />
             <label className="cursor-pointer text-[11px] font-medium text-brand-dark hover:underline">
               {uploading ? 'Uploading…' : 'Change photo'}
-              <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" className="hidden" disabled={uploading} onChange={(e) => uploadAvatar(e.target.files?.[0])} />
+              <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" disabled={uploading} onChange={(e) => uploadAvatar(e.target.files?.[0])} />
             </label>
           </div>
           <div className="min-w-[180px] flex-1">
@@ -149,6 +153,7 @@ export default function Profile() {
                   type={type}
                   step={type === 'number' ? 'any' : undefined}
                   value={form[k]}
+                  maxLength={type === 'number' ? undefined : 160}
                   onChange={(e) => setForm({ ...form, [k]: e.target.value })}
                   className={input}
                 />
@@ -215,7 +220,7 @@ export default function Profile() {
                 </span>
                 <button
                   onClick={() => save({ projects: p.projects.filter((_, j) => j !== i) }, 'Project removed.')}
-                  className="text-[11px] text-ink-faint opacity-0 hover:text-[#d92d20] group-hover:opacity-100"
+                  className="text-[11px] text-ink-faint opacity-0 focus-visible:opacity-100 [@media(hover:none)]:opacity-100 hover:text-[#d92d20] group-hover:opacity-100"
                 >
                   Remove
                 </button>
@@ -248,7 +253,7 @@ export default function Profile() {
                 </div>
                 <button
                   onClick={() => save({ internships: p.internships.filter((_, j) => j !== i) }, 'Internship removed.')}
-                  className="text-[11px] text-ink-faint opacity-0 hover:text-[#d92d20] group-hover:opacity-100"
+                  className="text-[11px] text-ink-faint opacity-0 focus-visible:opacity-100 [@media(hover:none)]:opacity-100 hover:text-[#d92d20] group-hover:opacity-100"
                 >
                   Remove
                 </button>

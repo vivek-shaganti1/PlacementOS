@@ -1,15 +1,16 @@
 import { animate, motion, useInView, useReducedMotion, type Variants } from 'motion/react'
-import { useEffect, useRef, useState, type PointerEvent, type ReactNode } from 'react'
+import { useEffect, useRef, type PointerEvent, type ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { navMeta } from './Sidebar'
 
 const ease = [0.16, 1, 0.3, 1] as const
 
-export const listVariants: Variants = { show: { transition: { staggerChildren: 0.06 } } }
+export const listVariants: Variants = { show: { transition: { staggerChildren: 0.05 } } }
+/** Card reveal: seen on every page, so it is short (under 300ms), small (6px) and a transform string (GPU, not main thread). */
 export const itemVariants: Variants = {
-  hidden: { opacity: 0, y: 14 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.5, ease } },
+  hidden: { opacity: 0, transform: 'translateY(6px)' },
+  show: { opacity: 1, transform: 'translateY(0px)', transition: { duration: 0.28, ease } },
 }
 /** Props that make an element reveal itself when it scrolls into view (no parent orchestration needed). */
 export const revealProps = {
@@ -33,7 +34,8 @@ export function Page({ title, accent, subtitle, children, wide, actions }: { tit
   return (
     <div className="scroll-thin relative flex-1 overflow-y-auto overflow-x-hidden px-3 py-5 sm:px-6 sm:py-7">
       <div className={wide ? 'mx-auto max-w-[1180px]' : 'mx-auto max-w-[1000px]'}>
-        <motion.div initial="hidden" animate="show" variants={itemVariants} className="flex flex-wrap items-end gap-3 sm:gap-4">
+        {/* The route fade already brings the page in; the title itself never animates on load. */}
+        <div className="flex flex-wrap items-end gap-3 sm:gap-4">
           <div className="flex-1">
             {meta && (
               <p className="label-mono mb-2">
@@ -47,7 +49,7 @@ export function Page({ title, accent, subtitle, children, wide, actions }: { tit
             {subtitle && <p className="mt-1 max-w-[680px] text-[13px] text-ink-mute">{subtitle}</p>}
           </div>
           {actions}
-        </motion.div>
+        </div>
         <div className="mt-6 space-y-4">{children}</div>
       </div>
     </div>
@@ -73,22 +75,27 @@ export function Card({ title, action, children, className, icon }: { title?: str
   )
 }
 
-/** Counts up to a number when it scrolls into view. Non-numeric values render as-is. */
+/**
+ * Counts up to a number when it scrolls into view (marketing pages only). Non-numeric values render as-is.
+ * Each frame writes the text straight to the DOM node instead of setting React state, so nothing re-renders per frame.
+ */
 export function AnimatedValue({ value }: { value: string }) {
   const ref = useRef<HTMLSpanElement>(null)
+  const num = useRef<HTMLSpanElement>(null)
   const inView = useInView(ref, { once: true })
   const reduce = useReducedMotion()
   const m = value.match(/^([^\d-]*)(-?\d+(?:\.\d+)?)(.*)$/)
   const target = m ? parseFloat(m[2]) : NaN
   const decimals = m?.[2].includes('.') ? m[2].split('.')[1].length : 0
-  const [shown, setShown] = useState(reduce || !m ? target : 0)
 
   useEffect(() => {
-    if (!m || !inView || reduce) {
-      setShown(target)
+    const el = num.current
+    if (!el || !m) return
+    if (!inView || reduce) {
+      el.textContent = (reduce || inView ? target : 0).toFixed(decimals)
       return
     }
-    const controls = animate(0, target, { duration: 1.1, ease, onUpdate: setShown })
+    const controls = animate(0, target, { duration: 0.9, ease, onUpdate: (v) => (el.textContent = v.toFixed(decimals)) })
     return () => controls.stop()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [target, inView, reduce])
@@ -97,7 +104,7 @@ export function AnimatedValue({ value }: { value: string }) {
   return (
     <span ref={ref} className="tabular-nums">
       {m[1]}
-      {shown.toFixed(decimals)}
+      <span ref={num}>{(reduce ? target : 0).toFixed(decimals)}</span>
       {m[3]}
     </span>
   )
@@ -187,9 +194,9 @@ export function Meter({ label, value, tone = '#6d4aff' }: { label: string; value
         <motion.span
           className="block h-full w-full origin-left rounded-full"
           style={{ background: `linear-gradient(90deg, ${tone}cc, ${tone})` }}
-          initial={{ scaleX: 0 }}
-          animate={{ scaleX: inView ? v / 100 : 0 }}
-          transition={{ duration: 0.9, ease }}
+          initial={{ transform: 'scaleX(0)' }}
+          animate={{ transform: `scaleX(${inView ? v / 100 : 0})` }}
+          transition={{ duration: 0.5, ease }}
         />
       </span>
     </div>

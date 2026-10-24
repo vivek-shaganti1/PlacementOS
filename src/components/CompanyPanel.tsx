@@ -1,11 +1,13 @@
 import { motion } from 'motion/react'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import type { Company } from '../data/types'
 import Avatar from './Avatar'
 import CompanyLogo from './CompanyLogo'
 import { IconArrowRight, IconBookmark, IconBot, IconChevronDown, IconClose, IconLinkedIn, IconMessage, IconSpark } from './Icons'
 import { useApp } from '../lib/store'
 import { linkedInSearch } from '../lib/links'
+import { SwapText } from './motion/SwapText'
+import { useDialog } from '../lib/useDialog'
 
 const TABS = ['Overview', 'Eligibility Criteria', 'Recruitment Process', 'Alumni', 'Statistics'] as const
 type Tab = (typeof TABS)[number]
@@ -28,7 +30,7 @@ function Bar({ label, value }: { label: string; value: number }) {
     <div className="flex items-center gap-3">
       <span className="w-[74px] shrink-0 text-[11.5px] text-ink-mute">{label}</span>
       <span className="h-[6px] flex-1 overflow-hidden rounded-full bg-[#eef0f3]">
-        <span className="block h-full rounded-full bg-[#12b76a] transition-[width] duration-500" style={{ width: `${value}%` }} />
+        <span className="block h-full w-full origin-left rounded-full bg-[#12b76a] transition-transform duration-200 ease-out" style={{ transform: `scaleX(${Math.max(0, Math.min(100, value)) / 100})` }} />
       </span>
       <span className="w-[30px] shrink-0 text-right text-[11.5px] font-semibold text-ink-soft">{value}%</span>
     </div>
@@ -45,6 +47,9 @@ export default function CompanyPanel({ company, onClose, overlay }: { company: C
     setTab('Overview')
     setShowAllAlumni(false)
   }, [company.id])
+  // Escape closes the panel (but not while the assistant is open on top of it); as an overlay it also traps focus.
+  const ref = useRef<HTMLElement>(null)
+  useDialog(true, onClose, ref, { trap: !!overlay })
 
   const p = pill(company)
   const isSaved = saved.includes(company.id)
@@ -55,10 +60,15 @@ export default function CompanyPanel({ company, onClose, overlay }: { company: C
 
   const section = (
     <motion.section
+      ref={ref}
       key={company.id}
-      initial={{ opacity: 0, x: 28 }}
-      animate={{ opacity: 1, x: 0 }}
-      transition={{ type: 'spring', stiffness: 320, damping: 32 }}
+      role={overlay ? 'dialog' : 'region'}
+      aria-modal={overlay ? true : undefined}
+      aria-label={`${company.name}, ${company.role}`}
+      // Opened tens of times per session: a short ease-out, transform string on the GPU.
+      initial={{ opacity: 0, transform: 'translateX(12px)' }}
+      animate={{ opacity: 1, transform: 'translateX(0px)' }}
+      transition={{ duration: 0.18, ease: [0.23, 1, 0.32, 1] }}
       onMouseDown={overlay ? (e) => e.stopPropagation() : undefined}
       className={`glass-strong scroll-thin relative flex flex-col overflow-y-auto rounded-[24px] ${overlay ? 'h-full w-full max-w-[592px] !bg-[oklch(0.975_0.008_285)]' : 'my-3 mr-3 w-[592px] shrink-0'}`}
     >
@@ -92,7 +102,7 @@ export default function CompanyPanel({ company, onClose, overlay }: { company: C
                   : 'border-[#d5cbff] bg-white text-brand-dark hover:bg-[#faf8ff]'
               }`}
             >
-              {isApplied ? 'Applied ✓' : 'Apply Now'}
+              <SwapText text={isApplied ? 'Applied ✓' : 'Apply Now'} />
             </button>
             <button
               onClick={() => toggleSave(company.id)}
@@ -101,7 +111,7 @@ export default function CompanyPanel({ company, onClose, overlay }: { company: C
               }`}
             >
               <IconBookmark className="h-[15px] w-[15px]" />
-              {isSaved ? 'Saved' : 'Save Company'}
+              <SwapText text={isSaved ? 'Saved' : 'Save Company'} />
             </button>
           </div>
         </div>

@@ -110,7 +110,7 @@ export default function Practice() {
                 <span className="min-w-0 flex-1 text-[12.5px] font-semibold text-ink sm:w-[180px] sm:flex-none">{t}<span className="block text-[11px] font-normal text-ink-mute sm:hidden">{bank[t].level}</span></span>
                 <span className="hidden w-[110px] text-[11.5px] text-ink-mute sm:inline">{bank[t].level}</span>
                 <span className="order-last h-[7px] w-full overflow-hidden rounded-full bg-[#eef0f3] sm:order-none sm:w-auto sm:flex-1">
-                  <span className="block h-full rounded-full bg-brand transition-[width] duration-500" style={{ width: `${pct}%` }} />
+                  <span className="block h-full w-full origin-left rounded-full bg-brand transition-transform duration-300 ease-out" style={{ transform: `scaleX(${Math.max(0, Math.min(100, pct)) / 100})` }} />
                 </span>
                 <span className="w-[70px] text-right text-[11.5px] font-semibold text-ink-soft">{solved}/{qs.length}</span>
                 <button onClick={() => start(t)} className="rounded-md border border-line px-3 py-1.5 text-[11.5px] font-medium text-ink-soft hover:bg-[#f7f8fa]">Practice</button>

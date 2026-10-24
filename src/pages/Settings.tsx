@@ -71,9 +71,9 @@ export default function Settings() {
                 aria-checked={!!on[label]}
                 aria-label={label}
                 onClick={() => setOn((o) => ({ ...o, [label]: !o[label] }))}
-                className={`relative h-[22px] w-[40px] rounded-full transition ${on[label] ? 'bg-brand' : 'bg-[#dfe2e7]'}`}
+                className={`relative h-[22px] w-[40px] rounded-full transition-colors duration-200 ${on[label] ? 'bg-brand' : 'bg-[#dfe2e7]'}`}
               >
-                <span className={`absolute top-[3px] h-4 w-4 rounded-full bg-white transition-all ${on[label] ? 'left-[21px]' : 'left-[3px]'}`} />
+                <span className={`absolute left-[3px] top-[3px] h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-200 ease-[cubic-bezier(0.23,1,0.32,1)] ${on[label] ? 'translate-x-[18px]' : 'translate-x-0'}`} />
               </button>
             </div>
           ))}

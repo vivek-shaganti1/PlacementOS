@@ -6,6 +6,7 @@ import { extractResumeText } from '../lib/resumeText'
 import { resumeImports, uploadAndAnalyzeResume } from '../lib/resumeFlow'
 import { useApp } from '../lib/store'
 import { errMsg, supabase, type JdMatch, type ResumeAnalysis } from '../lib/supabase'
+import { HoldButton } from '../components/HoldButton'
 
 const ago = (iso: string) => {
   const d = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000)
@@ -74,7 +75,7 @@ export default function ResumeAnalyzer() {
   }
 
   const remove = async () => {
-    if (!p.resume_path || !window.confirm('Delete your uploaded resume and its analysis?')) return
+    if (!p.resume_path) return
     setStep('Deleting…')
     try {
       const { error } = await supabase.storage.from('resumes').remove([p.resume_path])
@@ -132,7 +133,7 @@ export default function ResumeAnalyzer() {
               {p.resume_name} {p.resume_uploaded_at && `(uploaded ${ago(p.resume_uploaded_at)})`}
               <button onClick={view} className="font-medium text-brand-dark hover:underline">View</button>
               <button onClick={reanalyze} disabled={busy} className="font-medium text-brand-dark hover:underline">Re-analyze</button>
-              <button onClick={remove} disabled={busy} className="font-medium text-[#d92d20] hover:underline">Delete</button>
+              <HoldButton onConfirm={remove} disabled={busy} warning="Deletes your uploaded resume and its analysis." className="rounded px-1 font-medium text-[#d92d20] hover:underline">Delete</HoldButton>
             </span>
           ) : (
             <span className="text-[12.5px] text-ink-faint">No resume uploaded yet. PDF or DOCX, up to 5 MB.</span>

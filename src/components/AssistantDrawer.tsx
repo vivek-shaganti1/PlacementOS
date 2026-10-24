@@ -4,6 +4,7 @@ import { useApp } from '../lib/store'
 import { supabase } from '../lib/supabase'
 import { IconClose, IconSpark } from './Icons'
 import { LogoMark } from './Logo'
+import { useDialog } from '../lib/useDialog'
 
 const suggestions = [
   'Which companies am I closest to unlocking?',
@@ -37,11 +38,9 @@ export default function AssistantDrawer() {
   useEffect(() => {
     if (assistantOpen) window.setTimeout(() => input.current?.focus(), 250)
   }, [assistantOpen])
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && closeAssistant()
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [closeAssistant])
+  // Focus moves into the drawer, Tab stays inside, Escape closes it, and focus goes back to what opened it.
+  const panel = useRef<HTMLElement>(null)
+  useDialog(assistantOpen, closeAssistant, panel)
 
   const submit = (text: string) => {
     if (!text.trim() || thinking) return
@@ -53,20 +52,22 @@ export default function AssistantDrawer() {
     <AnimatePresence>
       {assistantOpen && (
         <motion.div
-          className="fixed inset-0 z-50 flex justify-end bg-[oklch(0.2_0.05_285/0.18)] p-2 sm:p-3"
+          className="fixed inset-0 z-50 flex justify-end bg-[oklch(0.2_0.05_285/0.18)] p-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-[max(0.5rem,env(safe-area-inset-top))] sm:p-3"
           initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
+          animate={{ opacity: 1, transition: { duration: 0.2 } }}
+          exit={{ opacity: 0, transition: { duration: 0.16 } }}
           onMouseDown={closeAssistant}
         >
           <motion.aside
+            ref={panel}
             role="dialog"
+            aria-modal="true"
             aria-label="AI Career Assistant"
             className="glass-strong flex h-full w-full max-w-[420px] flex-col overflow-hidden rounded-[24px]"
-            initial={{ x: 60, opacity: 0, scale: 0.98 }}
-            animate={{ x: 0, opacity: 1, scale: 1 }}
-            exit={{ x: 40, opacity: 0, transition: { duration: 0.18 } }}
-            transition={{ type: 'spring', stiffness: 380, damping: 34 }}
+            // Drawer: slides in from the edge it lives on (iOS sheet curve), leaves faster. Transform strings stay on the GPU.
+            initial={{ opacity: 0, transform: 'translateX(48px)' }}
+            animate={{ opacity: 1, transform: 'translateX(0px)', transition: { duration: 0.32, ease: [0.32, 0.72, 0, 1] } }}
+            exit={{ opacity: 0, transform: 'translateX(32px)', transition: { duration: 0.18, ease: [0.23, 1, 0.32, 1] } }}
             onMouseDown={(e) => e.stopPropagation()}
           >
             <div className="glass-dark relative flex items-center gap-3 overflow-hidden px-5 py-4 text-white">
@@ -93,9 +94,9 @@ export default function AssistantDrawer() {
               {chat.map((m, i) => (
                 <motion.div
                   key={i}
-                  initial={{ opacity: 0, y: 8, scale: 0.98 }}
-                  animate={{ opacity: 1, y: 0, scale: 1 }}
-                  transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+                  initial={{ opacity: 0, transform: 'translateY(6px)' }}
+                  animate={{ opacity: 1, transform: 'translateY(0px)' }}
+                  transition={{ duration: 0.22, ease: [0.23, 1, 0.32, 1] }}
                   className={m.role === 'user' ? 'flex justify-end' : 'flex justify-start'}
                 >
                   <p

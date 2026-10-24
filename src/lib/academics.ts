@@ -13,7 +13,8 @@ export function yearOfStudy(batch: string | null | undefined, program = 'B.Tech'
   if (!Number.isFinite(grad) || grad < 1990 || grad > 2100) return null
   const total = PROGRAM_YEARS[program] ?? 4
   const y = total - (grad - academicEndYear(now))
-  return y < 1 ? 0 : y > total ? total + 1 : y
+  // y above the program length means the batch already graduated; below 1 means it has not started yet.
+  return y > total ? 0 : y < 1 ? total + 1 : y
 }
 
 const ORD = ['', '1st', '2nd', '3rd', '4th', '5th']

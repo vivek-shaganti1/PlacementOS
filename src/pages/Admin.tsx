@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, type FormEvent, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import Avatar from '../components/Avatar'
 import { BarList, Columns, EmptyChart, SERIES } from '../components/charts'
@@ -12,6 +12,9 @@ import { ctcText, isOpen, STATUS_META, useJobs, type JobApplication, type JobSta
 import { useApp } from '../lib/store'
 import { errMsg, supabase } from '../lib/supabase'
 import { safeUrl } from '../lib/links'
+import { plural } from '../lib/format'
+import { HoldButton } from '../components/HoldButton'
+import { useDialog } from '../lib/useDialog'
 
 const tone = (v: number) => (v >= 75 ? '#12b76a' : v >= 55 ? '#f79009' : '#f04438')
 
@@ -52,7 +55,7 @@ export function AdminOverview() {
         <Stat label="Avg. readiness" value={`${avg((r) => r.readiness)}`} sub="Product-track companies" tone="text-brand-dark" />
         <Stat label="Avg. resume score" value={`${avg((r) => r.resume ?? 0)}`} sub="Across analyzed resumes" />
         <Stat label="Open drives" value={`${jobs.filter(isOpen).length}`} sub={`${jobs.length} posted in total`} />
-        <Stat label="Offers" value={`${applications.filter((a) => a.status === 'offer').length}`} sub={`${applications.length} applications`} tone="text-[#0d9a5b]" />
+        <Stat label="Offers" value={`${applications.filter((a) => a.status === 'offer').length}`} sub={plural(applications.length, 'application')} tone="text-[#0d9a5b]" />
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -132,6 +135,8 @@ function StudentDrawer({ row, applications, jobs, orgName, onClose }: { row: Stu
   const p = row.profile
   const { showToast } = useApp()
   const i = p.integrations ?? {}
+  const drawer = useRef<HTMLElement>(null)
+  useDialog(true, onClose, drawer)
   const openResume = async () => {
     if (!p.resume_path) return
     const win = window.open('', '_blank')
@@ -139,19 +144,22 @@ function StudentDrawer({ row, applications, jobs, orgName, onClose }: { row: Stu
     const { data, error } = await supabase.storage.from('resumes').createSignedUrl(p.resume_path, 300)
     if (error || !data) {
       win?.close()
-      return showToast(`Could not open resume: ${error?.message ?? 'unknown'}`)
+      return showToast(`Could not open resume: ${error ? errMsg(error) : 'not found'}`)
     }
     if (win) win.location.href = data.signedUrl
   }
   const apps = applications.filter((a) => a.user_id === p.id)
   return (
-    <motion.div className="fixed inset-0 z-50 flex justify-end bg-[oklch(0.2_0.05_285/0.18)] p-2 sm:p-3" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onMouseDown={onClose}>
+    <motion.div className="fixed inset-0 z-50 flex justify-end bg-[oklch(0.2_0.05_285/0.18)] p-2 sm:p-3" initial={{ opacity: 0 }} animate={{ opacity: 1, transition: { duration: 0.2 } }} exit={{ opacity: 0, transition: { duration: 0.16 } }} onMouseDown={onClose}>
       <motion.aside
-        className="glass-strong scroll-thin h-full w-full max-w-[560px] overflow-y-auto rounded-[24px] p-4 sm:p-6"
-        initial={{ x: 60, opacity: 0 }}
-        animate={{ x: 0, opacity: 1 }}
-        exit={{ x: 40, opacity: 0 }}
-        transition={{ type: 'spring', stiffness: 380, damping: 34 }}
+        ref={drawer}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Student: ${p.full_name || p.email}`}
+        className="glass-strong scroll-thin h-full w-full max-w-[560px] overflow-y-auto overscroll-contain rounded-[24px] p-4 sm:p-6"
+        initial={{ opacity: 0, transform: 'translateX(48px)' }}
+        animate={{ opacity: 1, transform: 'translateX(0px)', transition: { duration: 0.32, ease: [0.32, 0.72, 0, 1] } }}
+        exit={{ opacity: 0, transform: 'translateX(32px)', transition: { duration: 0.18, ease: [0.23, 1, 0.32, 1] } }}
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="flex flex-wrap items-start gap-4">
@@ -233,7 +241,7 @@ function StudentDrawer({ row, applications, jobs, orgName, onClose }: { row: Stu
         ) : (
           <p className="mt-1.5 text-[12px] text-ink-faint">{p.resume_path ? 'Uploaded, not analyzed yet.' : 'No resume uploaded.'}</p>
         )}
-        <p className="mt-2 text-[12px] text-ink-mute">Profile strength {row.strength}% · readiness {row.readiness} · {row.eligible} companies eligible</p>
+        <p className="mt-2 text-[12px] text-ink-mute">Profile strength {row.strength}% · readiness {row.readiness} · {plural(row.eligible, 'company', 'companies')} eligible</p>
 
         <p className="mt-5 text-[12px] font-semibold text-ink">Projects ({p.projects.length})</p>
         <ul className="mt-1.5 space-y-1 text-[12px] text-ink-soft">
@@ -343,7 +351,8 @@ export function AdminStudents() {
     // A cell starting with = + - @ is a formula in Excel and Sheets; prefix it so student-entered text stays text.
     const cell = (v: unknown) => {
       let s = String(v ?? '')
-      if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`
+      // Phone numbers ("+91 98…") are not formulas: leave values made only of digits, +, spaces and dashes alone.
+      if (/^[=+\-@\t\r]/.test(s) && !/^[+\d][\d\s\-()]*$/.test(s)) s = `'${s}`
       return `"${s.replace(/"/g, '""')}"`
     }
     const csv = [head, ...lines].map((l) => l.map(cell).join(',')).join('\n')
@@ -432,7 +441,7 @@ export function AdminStudents() {
           </label>
         </div>
         <div className="mt-2 flex items-center justify-between text-[12px] text-ink-mute">
-          <span>{shown.length} of {rows.length} students</span>
+          <span>{shown.length.toLocaleString('en-US')} of {plural(rows.length, 'student')}</span>
           {filtersOn && <button onClick={clearFilters} className="font-semibold text-brand-dark hover:underline">Clear filters</button>}
         </div>
         {error && <p className="mt-3 text-[12px] text-[#d92d20]">{error}</p>}
@@ -465,7 +474,17 @@ export function AdminStudents() {
                     <span className="flex items-center gap-2">
                       <Avatar src={r.profile.avatar_url ?? undefined} name={r.profile.full_name || r.profile.email} size={26} />
                       <span>
-                        <span className="block font-semibold text-ink">{r.profile.full_name || '—'}</span>
+                        {/* The name is the row's real control, so keyboard and screen-reader users can open the student too. */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setOpen(r)
+                          }}
+                          className="block rounded text-left font-semibold text-ink hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand"
+                        >
+                          {r.profile.full_name || r.profile.email}
+                        </button>
                         <span className="block text-[11px] text-ink-faint">{r.profile.onboarded_at ? r.profile.email : 'Onboarding incomplete'}</span>
                       </span>
                     </span>
@@ -542,6 +561,14 @@ function JobForm({ initial, onDone }: { initial?: JobPosting; onDone: () => void
     if (!orgId) return showToast('Choose the college this drive is for.')
     if (!f.company.trim() || !f.role.trim()) return showToast('Company and role are required.')
     if (f.description.trim().length < 80) return showToast('Paste the full job description (at least a few lines) — students are matched against it.')
+    // Numbers must be numbers, in range, and the CTC band the right way round ("20–5 LPA" was accepted before).
+    const n = (v: string) => (v.trim() === '' ? null : Number(v))
+    const bad = (v: string, lo: number, hi: number) => { const x = n(v); return x !== null && (!Number.isFinite(x) || x < lo || x > hi) }
+    if (bad(f.ctc_min, 0, 500) || bad(f.ctc_max, 0, 500)) return showToast('CTC must be a number of LPA between 0 and 500.')
+    if (n(f.ctc_min) !== null && n(f.ctc_max) !== null && n(f.ctc_min)! > n(f.ctc_max)!) return showToast('Minimum CTC cannot be more than maximum CTC.')
+    if (bad(f.min_cgpa, 0, 10)) return showToast('Minimum CGPA must be between 0 and 10.')
+    if ([f.min_class_x, f.min_class_xii].some((v) => bad(v, 0, 100))) return showToast('Class X and XII minimums must be percentages between 0 and 100.')
+    if ([f.max_backlogs, f.min_internships, f.min_projects].some((v) => bad(v, 0, 50) || (n(v) !== null && !Number.isInteger(n(v))))) return showToast('Backlogs, internships and projects must be whole numbers.')
     setBusy(true)
     const row = {
       company: f.company.trim(), role: f.role.trim(), location: f.location.trim(), job_type: f.job_type,
@@ -672,7 +699,6 @@ export function AdminJobs() {
     reload()
   }
   const remove = async (j: JobPosting) => {
-    if (!window.confirm(`Delete the ${j.company} drive and all its applications? This cannot be undone.`)) return
     const { error } = await supabase.from('job_postings').delete().eq('id', j.id)
     if (error) return showToast(errMsg(error))
     setSelectedId(null)
@@ -728,7 +754,7 @@ export function AdminJobs() {
                   </div>
                   <button onClick={() => setMode('edit')} className="btn-glass py-1.5 text-[12px]">Edit</button>
                   <button onClick={() => toggle(selected)} className="btn-glass py-1.5 text-[12px]">{selected.status === 'open' ? 'Close' : 'Open'}</button>
-                  <button onClick={() => remove(selected)} className="btn-glass py-1.5 text-[12px] text-[#d92d20]">Delete</button>
+                  <HoldButton onConfirm={() => remove(selected)} holdMs={2000} warning={`Deletes the ${selected.company} drive and all its applications. This cannot be undone.`} className="btn-glass py-1.5 text-[12px] text-[#d92d20]">Delete</HoldButton>
                 </div>
                 <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
                   <Stat label="Applicants" value={`${applicants.length}`} />

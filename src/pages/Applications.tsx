@@ -6,6 +6,7 @@ import { Card, EmptyState, Page, Stat } from '../components/Page'
 import { useProfile } from '../lib/auth'
 import { STATUS_META, useJobs, type JobStatus } from '../lib/jobs'
 import { useApp } from '../lib/store'
+import { HoldButton } from '../components/HoldButton'
 
 const stages = ['Applied', 'Online Assessment', 'Technical Round', 'HR Round', 'Offer']
 const driveStages: JobStatus[] = ['applied', 'shortlisted', 'interview', 'offer']
@@ -107,12 +108,13 @@ export default function Applications() {
                   <button onClick={() => navigate(`/eligibility?company=${c.id}`)} className="rounded-md border border-line px-3 py-1.5 text-[11.5px] font-medium text-ink-soft hover:bg-[#f7f8fa]">
                     View
                   </button>
-                  <button
-                    onClick={() => { if (window.confirm(`Withdraw your application to ${c.name}?`)) withdraw(c.id) }}
+                  <HoldButton
+                    onConfirm={() => withdraw(c.id)}
+                    warning={`Withdraws your application to ${c.name}.`}
                     className="rounded-md border border-line px-2.5 py-1.5 text-[11.5px] font-medium text-[#d92d20] hover:bg-[#fef3f2]"
                   >
                     Withdraw
-                  </button>
+                  </HoldButton>
                 </div>
               )
             })}

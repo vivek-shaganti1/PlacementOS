@@ -61,14 +61,14 @@ export default function Legal({ doc }: { doc: keyof typeof DOCS }) {
   }, [doc, hash])
 
   return (
-    <div className="relative min-h-screen">
+    <div className="relative min-h-svh overflow-x-clip">
       <Aurora />
-      <div className="relative z-10 mx-auto max-w-[860px] px-6 pb-24 pt-6">
-        <header className="flex items-center justify-between">
+      <div className="relative z-10 mx-auto max-w-[860px] px-4 pb-24 pt-6 sm:px-6">
+        <header className="flex flex-wrap items-center justify-between gap-3">
           <Link to="/" aria-label="PlacementIQ home"><Logo size={30} tagline={false} /></Link>
           <nav aria-label="Legal" className="glass flex gap-1 rounded-full p-1 text-[12.5px] font-semibold">
             {(['privacy', 'terms', 'security'] as const).map((k) => (
-              <NavLink key={k} to={`/${k}`} className={({ isActive }) => `rounded-full px-3.5 py-1.5 ${isActive ? 'bg-[oklch(0.2_0.045_285)] text-white' : 'text-ink-soft hover:text-ink'}`}>
+              <NavLink key={k} to={`/${k}`} className={({ isActive }) => `rounded-full px-2.5 py-1.5 sm:px-3.5 ${isActive ? 'bg-[oklch(0.2_0.045_285)] text-white' : 'text-ink-soft hover:text-ink'}`}>
                 {k[0].toUpperCase() + k.slice(1)}
               </NavLink>
             ))}

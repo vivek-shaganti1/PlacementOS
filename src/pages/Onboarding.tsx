@@ -8,6 +8,7 @@ import { SKILLS } from '../lib/eligibility'
 import { resumeImports, uploadAndAnalyzeResume } from '../lib/resumeFlow'
 import { errMsg } from '../lib/supabase'
 import { allEvidence } from '../lib/verify'
+import { plural } from '../lib/format'
 
 const BRANCHES = ['Computer Science & Engineering', 'Information Technology', 'CSE (AI & ML)', 'CSE (Data Science)', 'Electronics & Communication', 'Electrical & Electronics', 'Mechanical', 'Civil']
 const STEPS = ['About you', 'Academics', 'Resume', 'Accounts', 'Skills'] as const
@@ -131,7 +132,7 @@ export default function Onboarding() {
   const imports = resumeImports(p)
 
   return (
-    <div className="relative min-h-screen overflow-y-auto">
+    <div className="relative min-h-svh overflow-y-auto">
       <Aurora />
       <div className="relative z-10 mx-auto max-w-[820px] px-3 py-6 sm:px-6 sm:py-10">
         <div className="flex flex-wrap items-center gap-3">
@@ -210,7 +211,7 @@ export default function Onboarding() {
                       <div className="flex-1 text-[12.5px] text-ink-soft">
                         <p>{a.summary}</p>
                         <p className="mt-2 text-[11.5px] text-ink-mute">
-                          Found {a.extracted.projects.length} projects, {a.extracted.internships.length} internships, {a.extracted.skills.length} skills.
+                          Found {plural(a.extracted.projects.length, 'project')}, {plural(a.extracted.internships.length, 'internship')}, {plural(a.extracted.skills.length, 'skill')}.
                         </p>
                         {imports && (
                           <button onClick={importResume} className="btn-glass mt-2 py-1.5 text-[12px]">Add them to my profile</button>

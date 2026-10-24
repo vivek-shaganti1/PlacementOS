@@ -143,10 +143,10 @@ function Shell() {
   useEffect(() => setSidebarOpen(!isMobile), [isMobile])
 
   return (
-    <div className="relative flex h-screen flex-col overflow-hidden">
+    <div className="relative flex h-dvh flex-col overflow-hidden">
       <Aurora />
       <div className="relative z-10 flex min-h-0 flex-1 flex-col">
-        <Topbar onToggleSidebar={() => setSidebarOpen((v) => !v)} />
+        <Topbar sidebarOpen={sidebarOpen} onToggleSidebar={() => setSidebarOpen((v) => !v)} />
         <div className="flex min-h-0 flex-1">
           <Sidebar open={sidebarOpen} onChat={() => openAssistant()} mobile={isMobile} onClose={() => setSidebarOpen(false)} />
           <main className="flex min-w-0 flex-1">
@@ -165,27 +165,28 @@ function Shell() {
           <AssistantDrawer />
         </ErrorBoundary>
       )}
-      <AnimatePresence>
-        {toast && (
-          <motion.div
-            role="status"
-            initial={{ opacity: 0, y: 16, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 10, scale: 0.98 }}
-            transition={{ type: 'spring', stiffness: 420, damping: 32 }}
-            className="glass-dark fixed bottom-6 left-1/2 z-[60] w-max max-w-[calc(100vw-32px)] -translate-x-1/2 rounded-[14px] px-4 py-2.5 text-center text-[12.5px] font-medium text-white"
-          >
-            {toast}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Centred by a flex row, not translate-x: Motion writes its own transform and would cancel a transform class. */}
+      <div role="status" aria-live="polite" className="pointer-events-none fixed inset-x-0 bottom-[max(1.5rem,env(safe-area-inset-bottom))] z-[60] flex justify-center px-4">
+        <AnimatePresence>
+          {toast && (
+            <motion.div
+              initial={{ opacity: 0, transform: 'translateY(12px) scale(0.97)' }}
+              animate={{ opacity: 1, transform: 'translateY(0px) scale(1)', transition: { duration: 0.24, ease: [0.23, 1, 0.32, 1] } }}
+              exit={{ opacity: 0, transform: 'translateY(6px) scale(0.98)', transition: { duration: 0.16, ease: [0.23, 1, 0.32, 1] } }}
+              className="glass-dark pointer-events-auto w-max max-w-full rounded-[14px] px-4 py-2.5 text-center text-[12.5px] font-medium text-white"
+            >
+              {toast}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   )
 }
 
 function Centered({ children }: { children: ReactNode }) {
   return (
-    <div className="relative grid min-h-screen place-items-center px-4 text-center text-[13px] text-ink-mute">
+    <div className="relative grid min-h-svh place-items-center px-4 text-center text-[13px] text-ink-mute">
       <Aurora />
       <div className="relative z-10">{children}</div>
     </div>
