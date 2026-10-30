@@ -1,6 +1,6 @@
 import { AnimatePresence, motion } from 'motion/react'
-import { useState, type FormEvent } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useEffect, useState, type FormEvent } from 'react'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Logo } from '../components/Logo'
 import { Aurora } from '../components/Page'
 import { useAuth } from '../lib/auth'
@@ -13,14 +13,22 @@ const input = 'field mt-1 h-[42px] text-[13px]'
 export default function Login({ initialMode = 'signin' }: { initialMode?: Mode }) {
   const { clearRecovery, linkError, mustChangePassword, refreshProfile } = useAuth()
   const navigate = useNavigate()
-  const [mode, setMode] = useState<Mode>(initialMode)
+  const notice = (useLocation().state as { notice?: string } | null)?.notice
+  const [mode, setMode] = useState<Mode>(linkError ? 'forgot' : initialMode)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [roll, setRoll] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(linkError ?? '')
-  const [info, setInfo] = useState('')
+  const [info, setInfo] = useState(notice ?? '')
+
+  // A reset link checked after this page opened (token_hash) or an expired link: offer a new one.
+  useEffect(() => {
+    if (!linkError) return
+    setMode('forgot')
+    setError(linkError)
+  }, [linkError])
 
   const switchTo = (m: Mode) => {
     setMode(m)
@@ -65,6 +73,14 @@ export default function Login({ initialMode = 'signin' }: { initialMode?: Mode }
         if (password.length < 8) throw new Error('Use at least 8 characters for your password.')
         // Clearing must_change_password here ends the forced change for accounts made with a temporary password.
         const { error } = await supabase.auth.updateUser({ password, data: { must_change_password: false } })
+        // Changing a password ends the account's other sessions. If this page's session was one of them (the password
+        // was already set in another tab or on another device), it can never succeed: sign out here and say why.
+        if (error && (error.name === 'AuthSessionMissingError' || error.code === 'session_not_found')) {
+          await supabase.auth.signOut({ scope: 'local' })
+          clearRecovery()
+          navigate('/login', { replace: true, state: { notice: 'This password page had expired, because the password was already changed in another tab or on another device. Sign in with the new password, or use "Forgot password?" to get a fresh link.' } })
+          return
+        }
         if (error) throw error
         clearRecovery()
         await refreshProfile()

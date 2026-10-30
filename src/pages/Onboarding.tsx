@@ -96,8 +96,9 @@ export default function Onboarding() {
         try {
           await updateProfile({ ...fields, tracks })
         } catch (e) {
-          // Before the tracks column exists the branch default is used; never block onboarding on it.
-          if (!/tracks/i.test(String((e as Error).message))) throw e
+          // If tracks cannot be saved (column missing, or not yet writable by students) the branch default is used;
+          // never block onboarding on it.
+          if (!/tracks/i.test(String((e as Error).message)) && (e as { code?: string }).code !== '42501') throw e
           await updateProfile(fields)
         }
       })

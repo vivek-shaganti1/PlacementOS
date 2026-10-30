@@ -44,6 +44,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Recovery links in the form /reset-password?token_hash=…&type=recovery are verified through the app's own domain,
     // so the reset works on networks that block *.supabase.co (the default email link points there).
     const q = new URLSearchParams(window.location.search)
+    // Expired or already-used email links come back as #error=…&error_code=otp_expired and sign nobody in.
+    const hashError = new URLSearchParams(window.location.hash.slice(1)).get('error_code')
+    if (hashError) setLinkError(/expired/.test(hashError) ? 'This link has expired or was already used. Request a new one below.' : 'This link could not be used. Request a new one below.')
     const tokenHash = q.get('token_hash')
     if (tokenHash && q.get('type') === 'recovery') {
       window.history.replaceState(null, '', window.location.pathname)
@@ -133,7 +136,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (Object.keys(scalar).length) jobs.push(supabase.from('profiles').update(scalar).eq('id', userId))
       const results = await Promise.all(jobs)
       const failed = results.find((r) => r.error)
-      if (failed?.error) throw new Error(failed.error.message)
+      // Keep the database error code so errMsg can map it (42501, 23514, ...) instead of showing a generic failure.
+      if (failed?.error) throw Object.assign(new Error(failed.error.message), { code: (failed.error as { code?: string }).code })
       await refreshProfile()
     },
     [userId, refreshProfile],
