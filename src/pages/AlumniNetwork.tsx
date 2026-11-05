@@ -23,6 +23,7 @@ export default function AlumniNetwork() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search by name, company or city"
+          aria-label="Search alumni by name, company or city"
           className="h-[36px] w-full max-w-[320px] rounded-[9px] border border-line bg-white px-3 text-[12.5px] outline-none focus:border-[#d5cbff]"
         />
         <div className="mt-3 grid grid-cols-1 gap-x-6 divide-y divide-line lg:grid-cols-2">
@@ -34,10 +35,10 @@ export default function AlumniNetwork() {
                 <p className="truncate text-[11px] text-ink-mute">{a.title}</p>
               </div>
               <span className="hidden w-[80px] text-[11.5px] text-ink-mute sm:inline">{a.location}</span>
-              <a href={linkedInSearch(a.name, a.company)} target="_blank" rel="noreferrer" className="grid h-7 w-7 place-items-center rounded-md border border-line text-[#0A66C2] hover:bg-[#f7f8fa]">
+              <a href={linkedInSearch(a.name, a.company)} target="_blank" rel="noreferrer" aria-label={`Find ${a.name} on LinkedIn (opens in a new tab)`} className="grid h-7 w-7 place-items-center rounded-md border border-line text-[#0A66C2] hover:bg-[#f7f8fa]">
                 <IconLinkedIn className="h-[15px] w-[15px]" />
               </a>
-              <button onClick={() => openAssistant(`Draft a short intro message to ${a.name}, ${a.title}.`)} className="flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[11.5px] font-medium text-ink-soft hover:bg-[#f7f8fa]">
+              <button onClick={() => openAssistant(`Draft a short intro message to ${a.name}, ${a.title}.`)} aria-label={`Draft a message to ${a.name}`} className="flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[11.5px] font-medium text-ink-soft hover:bg-[#f7f8fa]">
                 <IconMessage className="h-[14px] w-[14px]" />
                 <span className="hidden sm:inline">Message</span>
               </button>

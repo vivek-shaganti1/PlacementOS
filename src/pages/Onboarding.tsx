@@ -313,7 +313,7 @@ export default function Onboarding() {
             </motion.div>
           </AnimatePresence>
 
-          {error && <p className="mt-5 rounded-[12px] border border-[#fbd5d1] bg-[#fef3f2]/90 px-3 py-2 text-[12px] text-[#d92d20]">{error}</p>}
+          {error && <p role="alert" className="mt-5 rounded-[12px] border border-[#fbd5d1] bg-[#fef3f2]/90 px-3 py-2 text-[12px] text-[#d92d20]">{error}</p>}
 
           <div className="mt-6 flex flex-wrap items-center gap-3">
             {step > 0 && (
@@ -321,7 +321,8 @@ export default function Onboarding() {
                 Back
               </button>
             )}
-            {busy && <span className="animate-pulse text-[12px] font-medium text-brand-dark">{busy}</span>}
+            {/* Always mounted: a live region only announces changes to an element that already exists. */}
+            <span role="status" className="animate-pulse text-[12px] font-medium text-brand-dark">{busy}</span>
             <button onClick={next} disabled={!!busy} className="btn-primary ml-auto h-[42px] px-6">
               {step === STEPS.length - 1 ? 'Finish & see my matches' : 'Continue'}
             </button>

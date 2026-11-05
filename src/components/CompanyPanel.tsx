@@ -221,6 +221,7 @@ export default function CompanyPanel({ company, onClose, overlay }: { company: C
                       href={linkedInSearch(a.name, company.name)}
                       target="_blank"
                       rel="noreferrer"
+                      aria-label={`Find ${a.name} on LinkedIn (opens in a new tab)`}
                       className="grid h-7 w-7 place-items-center rounded-md border border-line text-[#0A66C2] hover:bg-[#f7f8fa]"
                     >
                       <IconLinkedIn className="h-[15px] w-[15px]" />

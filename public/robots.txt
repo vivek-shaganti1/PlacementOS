@@ -1,0 +1,6 @@
+# App routes stay crawlable here on purpose: they answer with X-Robots-Tag: noindex, which a crawler can only see if allowed in.
+User-agent: *
+Disallow: /api/
+Disallow: /supabase/
+
+Sitemap: https://placementiq-os.vercel.app/sitemap.xml

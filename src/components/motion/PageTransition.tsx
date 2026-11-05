@@ -19,7 +19,8 @@ const KINDS: Record<TransitionKind, Variants> = {
 /**
  * Route transition wrapper. Keyed by pathname so browser back/forward animate too. The new page renders immediately
  * and fades in over 150ms (hardware-accelerated transform strings, not Motion's x/y shorthands).
- * After each navigation, focus moves to the new page's container so keyboard and screen-reader users land on the content.
+ * After each navigation, focus moves to the new page's container so keyboard and screen-reader users land on the content;
+ * RouteMeta announces the new page's title.
  * Reduced motion swaps pages instantly.
  */
 export function PageTransition({ children, kind = 'rise', className }: { children: ReactNode; kind?: TransitionKind; className?: string }) {

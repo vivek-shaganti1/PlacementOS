@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "typecheck": "tsc -b && tsc -p tsconfig.api.json --noEmit",
-    "build": "tsc -b && tsc -p tsconfig.api.json --noEmit && vite build",
+    "build": "tsc -b && tsc -p tsconfig.api.json --noEmit && vite build && node scripts/prerender.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

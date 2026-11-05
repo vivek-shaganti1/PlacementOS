@@ -9,7 +9,7 @@ import {
 export const SERIES = ['#2a78d6', '#eb6834', '#1baf7a'] // validated categorical order (slots 1-3)
 export const BRAND = '#6d4aff'
 export const STATUS = { eligible: '#12b76a', nearly: '#f79009', canBecome: '#2e90fa', notEligible: '#f04438' } as const
-const INK = { primary: '#14112a', secondary: '#6b6784', faint: '#9a97ad', grid: 'rgba(120,110,170,0.14)' }
+const INK = { primary: '#14112a', secondary: '#6b6784', faint: '#6f6b86', grid: 'rgba(120,110,170,0.14)' }
 const axis = { tick: { fill: INK.faint, fontSize: 11 }, axisLine: false, tickLine: false } as const
 
 function TooltipBox({ active, payload, label, format }: { active?: boolean; payload?: any[]; label?: ReactNode; format?: (v: number, name: string) => string }) {
@@ -36,6 +36,20 @@ export function EmptyChart({ children, height = 220 }: { children: ReactNode; he
   )
 }
 
+/** The chart's text alternative: charts are drawn as SVG that a screen reader cannot read. */
+function Described({ summary, children }: { summary: string; children: ReactNode }) {
+  return (
+    <div role="img" aria-label={summary}>
+      {children}
+    </div>
+  )
+}
+
+const listing = (rows: { name: string; value: number }[], unit = '', limit = 8) => {
+  const shown = rows.slice(0, limit).map((r) => `${r.name} ${r.value}${unit}`).join(', ')
+  return rows.length > limit ? `${shown}, and ${rows.length - limit} more` : shown
+}
+
 /** Change over time. One axis; multiple series share it (all are 0-100 scores or counts). */
 export function TrendChart({
   data, x, series, height = 220, domain,
@@ -46,7 +60,13 @@ export function TrendChart({
   height?: number
   domain?: [number | 'auto', number | 'auto']
 }) {
+  const first = data[0]
+  const last = data[data.length - 1]
+  const summary = !first
+    ? 'Line chart with no data yet.'
+    : `Line chart from ${first[x]} to ${last[x]}. ${series.map((s) => `${s.name}: ${first[s.key]} to ${last[s.key]}`).join('; ')}.`
   return (
+    <Described summary={summary}>
     <ResponsiveContainer width="100%" height={height}>
       <AreaChart accessibilityLayer={false} data={data} margin={{ top: 8, right: 8, left: -18, bottom: 0 }}>
         <defs>
@@ -78,6 +98,7 @@ export function TrendChart({
         ))}
       </AreaChart>
     </ResponsiveContainer>
+    </Described>
   )
 }
 
@@ -85,7 +106,7 @@ export function TrendChart({
 export function Donut({ data, height = 200, centerLabel }: { data: { name: string; value: number; color: string }[]; height?: number; centerLabel?: string }) {
   const total = data.reduce((a, d) => a + d.value, 0)
   return (
-    <div className="relative" style={{ height }}>
+    <div role="img" aria-label={`Donut chart of ${total}${centerLabel ? ` ${centerLabel}` : ''}: ${listing(data)}.`} className="relative" style={{ height }}>
       <ResponsiveContainer width="100%" height="100%">
         <PieChart accessibilityLayer={false}>
           <Pie data={data} dataKey="value" nameKey="name" innerRadius="64%" outerRadius="92%" paddingAngle={2} cornerRadius={5} stroke="none" animationDuration={900}>
@@ -106,7 +127,9 @@ export function Donut({ data, height = 200, centerLabel }: { data: { name: strin
 
 /** Compare two profiles across the same skill axes. */
 export function SkillRadar({ data, height = 300, aName, bName }: { data: { skill: string; a: number; b: number }[]; height?: number; aName: string; bName: string }) {
+  const summary = `Radar chart comparing ${aName} and ${bName}: ${data.slice(0, 8).map((d) => `${d.skill} ${d.a} and ${d.b}`).join(', ')}${data.length > 8 ? `, and ${data.length - 8} more skills` : ''}.`
   return (
+    <Described summary={summary}>
     <ResponsiveContainer width="100%" height={height}>
       <RadarChart accessibilityLayer={false} data={data} outerRadius="72%" margin={{ top: 8, right: 24, bottom: 8, left: 24 }}>
         <PolarGrid stroke={INK.grid} />
@@ -118,12 +141,14 @@ export function SkillRadar({ data, height = 300, aName, bName }: { data: { skill
         <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: 11.5, color: INK.secondary }} />
       </RadarChart>
     </ResponsiveContainer>
+    </Described>
   )
 }
 
 /** Horizontal ranked bars for a single measure. */
 export function BarList({ data, height, unit = '', color = BRAND, max }: { data: { name: string; value: number; color?: string }[]; height?: number; unit?: string; color?: string; max?: number }) {
   return (
+    <Described summary={data.length ? `Bar chart: ${listing(data, unit)}.` : 'Bar chart with no data yet.'}>
     <ResponsiveContainer width="100%" height={height ?? Math.max(120, data.length * 34)}>
       <BarChart accessibilityLayer={false} data={data} layout="vertical" margin={{ top: 0, right: 40, left: 4, bottom: 0 }} barCategoryGap={8}>
         <CartesianGrid stroke={INK.grid} horizontal={false} />
@@ -135,12 +160,15 @@ export function BarList({ data, height, unit = '', color = BRAND, max }: { data:
         </Bar>
       </BarChart>
     </ResponsiveContainer>
+    </Described>
   )
 }
 
 /** Vertical bars over time or category, single series. */
 export function Columns({ data, x, y, name, height = 200, color = BRAND, unit = '', domain }: { data: Record<string, any>[]; x: string; y: string; name: string; height?: number; color?: string; unit?: string; domain?: [number, number] }) {
+  const rows = data.map((d) => ({ name: String(d[x]), value: Number(d[y]) }))
   return (
+    <Described summary={rows.length ? `${name} by column: ${listing(rows, unit)}.` : `${name}: no data yet.`}>
     <ResponsiveContainer width="100%" height={height}>
       <BarChart accessibilityLayer={false} data={data} margin={{ top: 16, right: 8, left: -18, bottom: 0 }} barCategoryGap="28%">
         <CartesianGrid stroke={INK.grid} vertical={false} />
@@ -150,13 +178,16 @@ export function Columns({ data, x, y, name, height = 200, color = BRAND, unit = 
         <Bar dataKey={y} name={name} fill={color} radius={[6, 6, 0, 0]} maxBarSize={44} animationDuration={900} />
       </BarChart>
     </ResponsiveContainer>
+    </Described>
   )
 }
 
 /** Every company: how well you match (x) against what it pays (y), colored by stack. */
 export function CompanyScatter({ data, height = 320 }: { data: { name: string; match: number; ctc: number; bucket: keyof typeof STATUS; label: string }[]; height?: number }) {
   const groups = (Object.keys(STATUS) as (keyof typeof STATUS)[]).map((b) => ({ b, rows: data.filter((d) => d.bucket === b) }))
+  const summary = `Scatter chart of ${data.length} companies by match and pay. ${groups.filter((g) => g.rows.length).map((g) => `${g.rows[0].label}: ${g.rows.length}`).join(', ')}.`
   return (
+    <Described summary={summary}>
     <ResponsiveContainer width="100%" height={height}>
       <ScatterChart accessibilityLayer={false} margin={{ top: 8, right: 16, left: -8, bottom: 8 }}>
         <CartesianGrid stroke={INK.grid} />
@@ -180,5 +211,6 @@ export function CompanyScatter({ data, height = 320 }: { data: { name: string; m
         ))}
       </ScatterChart>
     </ResponsiveContainer>
+    </Described>
   )
 }

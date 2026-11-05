@@ -4,6 +4,13 @@
       "source": "/supabase/:path*",
       "destination": "https://oewjimwozaksyigfyrkz.supabase.co/:path*"
     },
+    { "source": "/privacy", "destination": "/privacy/index.html" },
+    { "source": "/terms", "destination": "/terms/index.html" },
+    { "source": "/security", "destination": "/security/index.html" },
+    {
+      "source": "/(login|signup|reset-password|dashboard|profile|eligibility|drives|skill-gap|what-if|roadmap|practice|mock-interviews|alumni|applications|analytics|resume|certifications|settings|help|jobs|admin|super|recruiter)(/.*)?",
+      "destination": "/app.html"
+    },
     {
       "source": "/((?!api/|supabase/).*)",
       "destination": "/index.html"
@@ -24,6 +31,10 @@
         { "key": "Cross-Origin-Opener-Policy", "value": "same-origin" },
         { "key": "Cross-Origin-Resource-Policy", "value": "same-origin" }
       ]
+    },
+    {
+      "source": "/(app\\.html|reset-password|dashboard|profile|eligibility|drives|skill-gap|what-if|roadmap|practice|mock-interviews|alumni|applications|analytics|resume|certifications|settings|help|jobs|admin|super|recruiter)(/.*)?",
+      "headers": [{ "key": "X-Robots-Tag", "value": "noindex" }]
     },
     {
       "source": "/api/(.*)",

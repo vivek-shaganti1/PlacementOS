@@ -8,7 +8,8 @@ import { errMsg, supabase, type Internship, type Skill } from '../lib/supabase'
 import { safeUrl } from '../lib/links'
 
 const input =
-  'mt-1 h-[36px] w-full rounded-[9px] border border-line bg-white px-3 text-[12.5px] outline-none focus:border-[#d5cbff] focus:ring-4 focus:ring-brand/10'
+  'mt-1 h-[36px] w-full rounded-[9px] border border-line bg-white px-3 text-[12.5px] font-normal text-ink outline-none focus:border-[#d5cbff] focus:ring-4 focus:ring-brand/10'
+const fieldLabel = 'block text-[11.5px] font-medium text-ink-mute'
 const btnGhost = 'rounded-md border border-line px-3 py-1.5 text-[11.5px] font-medium text-ink-soft hover:bg-[#f7f8fa]'
 const btnPrimary = 'rounded-[9px] bg-brand px-4 py-2 text-[12.5px] font-semibold text-white hover:bg-brand-dark disabled:opacity-60'
 const tone = (v: number) => (v >= 75 ? '#12b76a' : v >= 60 ? '#f79009' : '#f04438')
@@ -213,6 +214,7 @@ export default function Profile() {
                       max={100}
                       value={s.level}
                       onChange={(e) => setSkills(skills.map((x, j) => (j === i ? { ...x, level: Number(e.target.value) } : x)))}
+                      aria-label={`${s.name} level`}
                       className="w-full accent-[#6d4aff]"
                     />
                   </div>
@@ -235,6 +237,7 @@ export default function Profile() {
                 </span>
                 <button
                   onClick={() => save({ projects: p.projects.filter((_, j) => j !== i) }, 'Project removed.')}
+                  aria-label={`Remove ${proj.title}`}
                   className="text-[11px] text-ink-faint opacity-0 focus-visible:opacity-100 [@media(hover:none)]:opacity-100 hover:text-[#d92d20] group-hover:opacity-100"
                 >
                   Remove
@@ -244,7 +247,7 @@ export default function Profile() {
             {p.projects.length === 0 && <li className="text-[12px] text-ink-faint">No projects yet.</li>}
           </ul>
           <form
-            className="mt-3 flex gap-2"
+            className="mt-3 flex items-end gap-2"
             onSubmit={async (e) => {
               e.preventDefault()
               if (!newProject.trim()) return
@@ -253,8 +256,8 @@ export default function Profile() {
               if (await save({ projects: [...p.projects, project] }, 'Project added.')) setNewProject('')
             }}
           >
-            <input value={newProject} onChange={(e) => setNewProject(e.target.value)} placeholder="Project name (tech stack)" className={`${input} mt-0 flex-1`} />
-            <button disabled={busy} className={btnGhost}>Add</button>
+            <label className={`${fieldLabel} flex-1`}>Project name (tech stack)<input value={newProject} onChange={(e) => setNewProject(e.target.value)} placeholder="Placement tracker (React, Postgres)" className={input} /></label>
+            <button disabled={busy} className={`${btnGhost} h-[36px]`}>Add</button>
           </form>
         </Card>
 
@@ -268,6 +271,7 @@ export default function Profile() {
                 </div>
                 <button
                   onClick={() => save({ internships: p.internships.filter((_, j) => j !== i) }, 'Internship removed.')}
+                  aria-label={`Remove ${it.role} at ${it.org}`}
                   className="text-[11px] text-ink-faint opacity-0 focus-visible:opacity-100 [@media(hover:none)]:opacity-100 hover:text-[#d92d20] group-hover:opacity-100"
                 >
                   Remove
@@ -277,7 +281,7 @@ export default function Profile() {
             {p.internships.length === 0 && <p className="py-2 text-[12px] text-ink-faint">No internships yet.</p>}
           </div>
           <form
-            className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_1fr_auto]"
+            className="mt-3 grid grid-cols-1 items-end gap-2 sm:grid-cols-[1fr_1fr_1fr_auto]"
             onSubmit={async (e) => {
               e.preventDefault()
               if (!intern.org.trim() || !intern.role.trim()) return showToast('Organisation and role are required.')
@@ -285,10 +289,10 @@ export default function Profile() {
               if (await save({ internships: [...p.internships, next] }, 'Internship added.')) setIntern({ org: '', role: '', period: '' })
             }}
           >
-            <input value={intern.org} onChange={(e) => setIntern({ ...intern, org: e.target.value })} placeholder="Organisation" className={`${input} mt-0`} />
-            <input value={intern.role} onChange={(e) => setIntern({ ...intern, role: e.target.value })} placeholder="Role" className={`${input} mt-0`} />
-            <input value={intern.period} onChange={(e) => setIntern({ ...intern, period: e.target.value })} placeholder="May - Jul 2025" className={`${input} mt-0`} />
-            <button disabled={busy} className={btnGhost}>Add</button>
+            <label className={fieldLabel}>Organisation<input value={intern.org} onChange={(e) => setIntern({ ...intern, org: e.target.value })} className={input} /></label>
+            <label className={fieldLabel}>Role<input value={intern.role} onChange={(e) => setIntern({ ...intern, role: e.target.value })} className={input} /></label>
+            <label className={fieldLabel}>Period<input value={intern.period} onChange={(e) => setIntern({ ...intern, period: e.target.value })} placeholder="May - Jul 2025" className={input} /></label>
+            <button disabled={busy} className={`${btnGhost} h-[36px]`}>Add</button>
           </form>
         </Card>
       </div>

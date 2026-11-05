@@ -13,7 +13,7 @@ export default {
       },
       colors: {
         canvas: 'transparent',
-        ink: { DEFAULT: '#14112a', soft: '#45405e', mute: '#6b6784', faint: '#9a97ad' },
+        ink: { DEFAULT: '#14112a', soft: '#45405e', mute: '#6b6784', faint: '#6f6b86' },
         line: 'rgba(120, 110, 170, 0.16)',
         brand: { DEFAULT: '#6d4aff', dark: '#5233e8', tint: 'rgba(109, 74, 255, 0.10)' },
       },
