@@ -193,6 +193,10 @@ insert into public.job_applications (job_id, user_id, status, match) values ('d1
 reset role; select set_config('request.jwt.claims', '', true);
 select pg_temp.ok('SEC-19 a forged match is not stored', (select match is null from public.job_applications where job_id = 'd1000000-0000-4000-8000-0000000000d1'));
 
+-- ---------------------------------------------------------------- NV-07
+select pg_temp.ok('NV-07 the deadline policy uses India time', exists (
+  select 1 from pg_policy p where p.polrelid = 'public.job_applications'::regclass and p.polname = 'students apply' and pg_get_expr(p.polwithcheck, p.polrelid) like '%Asia/Kolkata%'));
+
 -- ---------------------------------------------------------------- SEC-12
 insert into public.jd_matches (user_id, score, verdict, jd_title, jd_text) values ('a1000000-0000-4000-8000-0000000000a1', 50, 'x', 'Other drive', 'secret text');
 select pg_temp.as_user('cc000000-0000-4000-8000-0000000000cc');

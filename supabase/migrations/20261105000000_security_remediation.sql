@@ -688,6 +688,19 @@ as $$
   );
 $$;
 
+-- A deadline is a date in India, not in UTC: a drive closing today stayed open until 05:30 the next morning (NV-07).
+drop policy if exists "students apply" on public.job_applications;
+create policy "students apply" on public.job_applications for insert to authenticated
+  with check (
+    user_id = (select auth.uid()) and status = 'applied' and coalesce(admin_note, '') = '' and ai_fit is null
+    and exists (
+      select 1 from public.job_postings j
+      where j.id = job_id and j.status = 'open' and (j.deadline is null or j.deadline >= (now() at time zone 'Asia/Kolkata')::date)
+        and j.org_id = (select p.org_id from public.profiles p where p.id = (select auth.uid()))
+    )
+    and (select private.meets_job_minimums(job_id))
+  );
+
 -- The student's own college and the platform, not the recruiters of a drive.
 create or replace function private.can_admin_user(target uuid)
 returns boolean

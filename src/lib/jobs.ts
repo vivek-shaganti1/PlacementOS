@@ -37,7 +37,9 @@ export const normalizeJob = (j: Record<string, any>): JobPosting => ({
 export const ctcText = (j: Pick<JobPosting, 'ctc_min' | 'ctc_max'>) =>
   j.ctc_min && j.ctc_max ? `₹${j.ctc_min}–${j.ctc_max} LPA` : j.ctc_max || j.ctc_min ? `₹${j.ctc_max ?? j.ctc_min} LPA` : 'CTC not disclosed'
 
-export const isOpen = (j: JobPosting) => j.status === 'open' && (!j.deadline || j.deadline >= new Date().toISOString().slice(0, 10))
+// Deadlines are dates in India; the database applies the same rule.
+const todayIST = () => new Date(Date.now() + 5.5 * 3_600_000).toISOString().slice(0, 10)
+export const isOpen = (j: JobPosting) => j.status === 'open' && (!j.deadline || j.deadline >= todayIST())
 
 /** College job postings visible to the current user, plus their own applications (admins get every application). */
 export function useJobs() {
