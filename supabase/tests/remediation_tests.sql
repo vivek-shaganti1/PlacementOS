@@ -147,6 +147,56 @@ select pg_temp.ok('SEC-03 every RLS table in public carries the restriction', no
 select pg_temp.ok('SEC-03 every public table has RLS on', not exists (
   select 1 from pg_class c join pg_namespace n on n.oid = c.relnamespace where n.nspname = 'public' and c.relkind = 'r' and not c.relrowsecurity));
 
+-- A pending college admin holds no admin power either.
+select pg_temp.as_user('aa000000-0000-4000-8000-0000000000aa', true);
+set local role authenticated;
+select pg_temp.ok('SEC-03 pending admin: other people''s profiles are not readable', (select count(*) = 1 from public.profiles));
+do $$ begin
+  perform public.add_org_admin('0a000000-0000-4000-8000-00000000000a', 'x@alpha.example');
+  perform pg_temp.ok('SEC-03 pending admin: admin functions refuse', false);
+exception when insufficient_privilege then perform pg_temp.ok('SEC-03 pending admin: admin functions refuse', true);
+end $$;
+reset role; select set_config('request.jwt.claims', '', true);
+
+-- NV-01: a roster re-import must not link an account that only signed up.
+update public.org_students set full_name = 'Pub again' where email = 'pub.a@alpha.example';
+insert into public.org_students (org_id, email, roll_number) values ('0a000000-0000-4000-8000-00000000000a', 'pub.a@alpha.example', 'P1')
+  on conflict (org_id, email) do update set email = excluded.email;
+select pg_temp.ok('NV-01 a roster re-import does not link a mere sign-up', (select user_id is null from public.org_students where email = 'pub.a@alpha.example'));
+insert into public.org_students (org_id, email, roll_number) values ('0a000000-0000-4000-8000-00000000000a', 'inv.a@alpha.example', 'I1')
+  on conflict (org_id, email) do update set email = excluded.email;
+select pg_temp.ok('NV-01 a roster re-import keeps a real link', (select user_id = 'e3000000-0000-4000-8000-0000000000e3' from public.org_students where email = 'inv.a@alpha.example'));
+
+-- SEC-13: recruiters cannot be used to reach another college's people.
+select pg_temp.as_user('aa000000-0000-4000-8000-0000000000aa');
+set local role authenticated;
+do $$ begin
+  insert into public.org_recruiters (org_id, email, company) values ('0a000000-0000-4000-8000-00000000000a', 'stu.b@beta.example', 'X');
+  perform pg_temp.ok('SEC-13 a college cannot make another college''s student its recruiter', false);
+exception when check_violation then perform pg_temp.ok('SEC-13 a college cannot make another college''s student its recruiter', true);
+end $$;
+reset role; select set_config('request.jwt.claims', '', true);
+
+-- SEC-07: an email moved before this release still loses the role.
+alter table auth.users disable trigger auth_users_allowlist_email_change;
+update public.organizations set admin_emails = array['tpo@alpha.example', 'tpo2@alpha.example'] where id = '0a000000-0000-4000-8000-00000000000a';
+update auth.users set email = 'moved2@alpha.example' where id = 'a2000000-0000-4000-8000-0000000000a2';
+alter table auth.users enable trigger auth_users_allowlist_email_change;
+select pg_temp.as_user('aa000000-0000-4000-8000-0000000000aa');
+set local role authenticated;
+select public.remove_org_admin('0a000000-0000-4000-8000-00000000000a', 'tpo2@alpha.example');
+reset role; select set_config('request.jwt.claims', '', true);
+select pg_temp.ok('SEC-07 removal works after an email change', not exists (select 1 from public.user_roles where user_id = 'a2000000-0000-4000-8000-0000000000a2' and role = 'org_admin'));
+
+-- SEC-16: the seat limit holds; an edited email is a new person.
+update public.organizations set seat_limit = (select count(*) from public.org_students where org_id = '0a000000-0000-4000-8000-00000000000a') where id = '0a000000-0000-4000-8000-00000000000a';
+do $$ begin
+  insert into public.org_students (org_id, email) values ('0a000000-0000-4000-8000-00000000000a', 'over@alpha.example');
+  perform pg_temp.ok('SEC-16 the seat limit holds', false);
+exception when check_violation then perform pg_temp.ok('SEC-16 the seat limit holds', true);
+end $$;
+update public.organizations set seat_limit = null where id = '0a000000-0000-4000-8000-00000000000a';
+
 -- ---------------------------------------------------------------- SEC-18, NV-04
 select pg_temp.ok('SEC-18 five failures from one IP', (select array_agg(public.signup_attempt('t@x.example', '1.1.1.1')) = array[true, true, true, true, true, false] from generate_series(1, 6)));
 select pg_temp.ok('SEC-18 the same email from elsewhere is not locked out', public.signup_attempt('t@x.example', '2.2.2.2'));

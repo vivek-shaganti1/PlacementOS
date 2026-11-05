@@ -12,7 +12,7 @@ type Mode = 'signin' | 'signup' | 'forgot' | 'reset'
 const input = 'field mt-1 h-[42px] text-[13px]'
 
 export default function Login({ initialMode = 'signin' }: { initialMode?: Mode }) {
-  const { clearRecovery, linkError, mustChangePassword, refreshProfile, signOut } = useAuth()
+  const { clearRecovery, linkError, mustChangePassword, refreshProfile, session, signOut } = useAuth()
   const navigate = useNavigate()
   const notice = (useLocation().state as { notice?: string } | null)?.notice
   const [mode, setMode] = useState<Mode>(linkError ? 'forgot' : initialMode)
@@ -68,7 +68,8 @@ export default function Login({ initialMode = 'signin' }: { initialMode?: Mode }
         // A temporary password is ended by the server, because only it can clear the flag that holds the account back.
         if (mustChangePassword) {
           await callApi('password', { password })
-          const { error } = await supabase.auth.refreshSession()
+          // A fresh session: the old token still carries the flag, and changing a password can end it.
+          const { error } = await supabase.auth.signInWithPassword({ email: session?.user.email ?? '', password })
           if (error) throw error
           clearRecovery()
           await refreshProfile()

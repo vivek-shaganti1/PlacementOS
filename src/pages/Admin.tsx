@@ -7,6 +7,7 @@ import { Card, Meter, Page, Ring, Stat } from '../components/Page'
 import { useAdminOrgs, useRecruiter, useStudents, type StudentRow } from '../lib/admin'
 import { useAuth } from '../lib/auth'
 import { sectionLabel, yearLabel, yearOfStudy } from '../lib/academics'
+import { provenIntegrations } from '../lib/trust'
 import { branchCode, evaluateJob, SKILL_SHORT, SKILLS, type JobPosting } from '../lib/eligibility'
 import { FILE_SIGNALS, TRACK_BY_ID, TRACKS, tracksFor, type FileSignal } from '../lib/branches'
 import { ctcText, isOpen, STATUS_META, useJobs, type JobApplication, type JobStatus } from '../lib/jobs'
@@ -145,12 +146,14 @@ function EvidencePanel({ p }: { p: StudentRow['profile'] }) {
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [p.id])
-  const i = p.integrations ?? {}
+  // Only accounts the student proved are evidence.
+  const i = provenIntegrations(p.integrations)
   const signals = Object.entries(i.github?.signals ?? {}) as [FileSignal, { repos: string[]; files: number }][]
   const parts = [...new Set((i.github?.kicad ?? []).flatMap((k) => k.components))]
   const review = async (id: string, approve: boolean) => {
     // The file must still be the one submitted: its fingerprint was recorded by the server at that moment.
     const c = creds.find((x) => x.id === id)
+    if (approve && c?.file_path && !c.data.sha256 && !window.confirm('This scorecard has no recorded fingerprint. Confirm only if you have opened the PDF and it is genuine.')) return
     if (approve && c?.file_path && c.data.sha256) {
       const { data: file } = await supabase.storage.from('resumes').download(c.file_path)
       const hash = file ? [...new Uint8Array(await crypto.subtle.digest('SHA-256', await file.arrayBuffer()))].map((b) => b.toString(16).padStart(2, '0')).join('') : ''
@@ -226,7 +229,7 @@ function AcademicsBadge({ source }: { source?: 'default' | 'student' | 'college'
 function StudentDrawer({ row, applications, jobs, orgName, onClose }: { row: StudentRow; applications: JobApplication[]; jobs: JobPosting[]; orgName?: string; onClose: () => void }) {
   const p = row.profile
   const { showToast } = useApp()
-  const i = p.integrations ?? {}
+  const i = provenIntegrations(p.integrations)
   const drawer = useRef<HTMLElement>(null)
   useDialog(true, onClose, drawer)
   const openResume = async () => {
@@ -293,7 +296,7 @@ function StudentDrawer({ row, applications, jobs, orgName, onClose }: { row: Stu
         <table className="mt-2 w-full text-left text-[12px]">
           <tbody>
             {[
-              ['GitHub', p.github_username, p.github_username && `https://github.com/${p.github_username}`, i.github ? `${i.github.original_repos} original repos · ${i.github.stars} stars · ${i.github.followers} followers` : 'Not connected'],
+              ['GitHub', p.github_username, p.github_username && `https://github.com/${p.github_username}`, i.github ? `${i.github.original_repos} original repos · ${i.github.stars} stars · ${i.github.followers} followers` : p.github_username ? 'Connected, ownership not proven' : 'Not connected'],
               ['LeetCode', p.leetcode_username, p.leetcode_username && `https://leetcode.com/u/${p.leetcode_username}`, i.leetcode ? `${i.leetcode.solved} solved (Easy ${i.leetcode.easy} · Medium ${i.leetcode.medium} · Hard ${i.leetcode.hard})${i.leetcode.contest_rating ? ` · contest ${i.leetcode.contest_rating} over ${i.leetcode.contests}` : ''}` : 'Not connected'],
               ['Codeforces', p.codeforces_username, p.codeforces_username && `https://codeforces.com/profile/${p.codeforces_username}`, i.codeforces ? `${i.codeforces.rating ?? 'unrated'}${i.codeforces.rank ? ` (${i.codeforces.rank})` : ''} · peak ${i.codeforces.max_rating ?? 'n/a'}${i.codeforces.solved != null ? ` · ${i.codeforces.solved} solved` : ''}` : 'Not connected'],
               ['CodeChef', p.codechef_username, p.codechef_username && `https://www.codechef.com/users/${p.codechef_username}`, i.codechef ? `${i.codechef.rating ?? 'unrated'}${i.codechef.stars ? ` · ${i.codechef.stars} star` : ''}${i.codechef.solved != null ? ` · ${i.codechef.solved} solved` : ''}` : 'Not connected'],
@@ -419,7 +422,7 @@ export function AdminStudents() {
     const val = (r: StudentRow) =>
       sort === 'cgpa' ? r.profile.cgpa
         : sort === 'resume' ? r.resume ?? -1
-          : sort === 'projects' ? r.profile.projects.length
+          : sort === 'projects' ? r.trusted.integrations.github?.original_repos ?? 0
             : sort === 'internships' ? r.profile.internships.length
               : sort === 'applications' ? appsOf.get(r.profile.id)?.length ?? 0
                 : r[sort]
@@ -430,7 +433,7 @@ export function AdminStudents() {
       .filter((r) => year === 'all' || String(yearOfStudy(r.profile.batch, r.profile.program)) === year)
       .filter((r) => section === 'all' || (r.profile.section || '') === section)
       .filter((r) => org === 'all' || (org === 'none' ? !r.profile.org_id : r.profile.org_id === org))
-      .filter((r) => (cg == null || r.profile.cgpa >= cg) && (bl == null || r.profile.backlogs <= bl) && (pr == null || r.profile.projects.length >= pr))
+      .filter((r) => (cg == null || r.profile.cgpa >= cg) && (bl == null || r.profile.backlogs <= bl) && (pr == null || (r.trusted.integrations.github?.original_repos ?? 0) >= pr))
       .filter((r) => (sc == null || r.score >= sc) && (so == null || r.solved >= so))
       .filter((r) => onboarding === 'any' || (onboarding === 'done' ? !!r.profile.onboarded_at : !r.profile.onboarded_at))
       .filter((r) => {

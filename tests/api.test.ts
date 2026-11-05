@@ -219,6 +219,16 @@ test('REL-08 deletion needs the typed email and removes files, roster row and lo
   assert.ok(deletes.some((u) => u.includes('org_students')))
   assert.ok(deletes[deletes.length - 1].includes(`/auth/v1/admin/users/${uid}`))
 })
+test('REL-08 a temporary password cannot delete the account', async () => {
+  reply = (c) => (c.url.endsWith('/auth/v1/user') ? ok({ id: uid, email: 'me@x.test', app_metadata: { must_change_password: true } }) : undefined)
+  assert.equal((await account(post({ action: 'delete', confirm_email: 'me@x.test' }, jwt({ sub: uid })))).status, 403)
+  assert.ok(!calls.some((c) => c.method === 'DELETE'))
+})
+test('REL-08 a failed role check stops the deletion', async () => {
+  reply = (c) => (c.url.endsWith('/auth/v1/user') ? ok({ id: uid, email: 'me@x.test' }) : c.url.includes('user_roles') ? ok({ message: 'error' }, 500) : undefined)
+  assert.equal((await account(post({ action: 'delete', confirm_email: 'me@x.test' }, jwt({ sub: uid })))).status, 502)
+  assert.ok(!calls.some((c) => c.method === 'DELETE'))
+})
 test('REL-08 admin accounts cannot delete themselves', async () => {
   reply = (c) => (c.url.endsWith('/auth/v1/user') ? ok({ id: uid, email: 'me@x.test' }) : c.url.includes('user_roles') ? ok([{ role: 'org_admin' }]) : undefined)
   assert.equal((await account(post({ action: 'delete', confirm_email: 'me@x.test' }, jwt({ sub: uid })))).status, 403)
@@ -235,7 +245,7 @@ test('SEC-05 typed skills, projects and internships do not move a ranking', () =
   const typed = evaluateAll(
     trustedProfile(honest({
       skills: [{ name: 'Data Structures & Algorithms', level: 100 }, { name: 'System Design', level: 100 }],
-      projects: Array.from({ length: 6 }, (_, i) => ({ title: `p${i}`, source: 'manual' })),
+      projects: Array.from({ length: 6 }, (_, i) => ({ title: `p${i}`, source: i % 2 ? 'github' : 'manual' })),
       internships: [{ org: 'Google', role: 'SDE', period: '2026' }],
     })),
   )
@@ -248,8 +258,15 @@ test('SEC-04 stats from an unproven account do not move a ranking', () => {
   assert.deepEqual(trustedProfile(honest({ integrations: { leetcode: lc } })).skills, plain)
   assert.notDeepEqual(trustedProfile(honest({ integrations: { leetcode: { ...lc, ownership: { proven: true } } } })).skills, plain)
 })
-test('SEC-08 an unconfirmed credential does not count', () => {
+test('SEC-05 a project claiming to come from GitHub counts for nothing', () => {
+  assert.equal(trustedProfile(honest({ projects: [{ title: 'x', source: 'github' }] })).projects.length, 0)
+})
+test('SEC-04 unproven accounts are dropped from what recruiters see', () => {
   assert.deepEqual(provenIntegrations({ github: { ownership: { proven: false } } as any }), {})
+})
+test('SEC-08 an unconfirmed credential does not count', () => {
+  const cert = { kind: 'nptel', status: 'pending', skill: 'Data Structures & Algorithms', ref: 'X', score: 90, data: {} } as any
+  assert.deepEqual(trustedProfile(honest(), [cert]).skills, trustedProfile(honest(), []).skills)
 })
 
 let failed = 0

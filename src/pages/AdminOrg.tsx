@@ -71,7 +71,7 @@ function ResultList({ results }: { results: InviteResult[] }) {
   const made = results.filter((r) => r.password)
   // The passwords exist only here, once: the server keeps none of them in readable form.
   const download = () => {
-    const url = URL.createObjectURL(new Blob([['email,temporary password', ...made.map((r) => `${r.email},${r.password}`)].join('\n')], { type: 'text/csv' }))
+    const url = URL.createObjectURL(new Blob([['email,temporary password', ...made.map((r) => `"${r.email.replace(/"/g, '""').replace(/^[=+\-@]/, "'$&")}",${r.password}`)].join('\n')], { type: 'text/csv' }))
     const a = document.createElement('a')
     a.href = url
     a.download = 'temporary-passwords.csv'

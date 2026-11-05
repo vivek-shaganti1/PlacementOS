@@ -3,14 +3,15 @@
 --
 -- Accounts
 --   A1 Roles, roster links and college access attach only to accounts that came through an email invite or were created
---      by a college, never to an account that merely signed up (NV-01). Public sign-ups get nothing, whatever the Auth settings.
+--      by a college, never to an account that merely signed up (NV-01). Turn public sign-ups off in Auth as well.
 --   A2 A role is granted to an existing account only if its mailbox was proven, and college admins cannot reach accounts
 --      that belong to another college (SEC-02, SEC-13).
 --   A3 Roster emails must fit the college's domains, in the database and not only in the browser (SEC-02).
 --   A4 Removing a college admin removes the role, however it is done and whatever the account's email is now (SEC-06, SEC-07).
 --   A5 Accounts tied to a college or a role cannot change their email (NV-02, part of SEC-20). Changing a roster row's email
 --      unlinks the old account (SEC-16).
---   A6 Accounts with a temporary password can do nothing except choose a new one, enforced by RLS (SEC-03).
+--   A6 Accounts with a temporary password can do nothing except choose a new one, enforced by RLS and in the admin checks
+--      (SEC-03). Passwords issued before this release were shared, so those accounts must use a reset email.
 --   A7 Sign-up attempts are limited per email and IP pair, and hold under concurrency (SEC-18, NV-04).
 -- Evidence and tenancy
 --   E1 NPTEL certificates need the placement cell's confirmation and one certificate belongs to one student (SEC-08).
@@ -56,7 +57,12 @@ as $$
 $$;
 revoke all on function private.mailbox_proven(uuid, uuid) from public, anon, authenticated;
 
--- A roster row may link an account unless a different college created that account.
+-- When this release reached this database, so "from before this release" means the same on any re-run.
+create table if not exists private.release_marks (name text primary key, at timestamptz not null default now());
+insert into private.release_marks (name) values ('mailbox_proof') on conflict do nothing;
+
+-- A roster row may link an account that proved its mailbox here. Accounts from before this release could not have, so they
+-- pass unless a different college created them.
 create or replace function private.may_link(uid uuid, target_org uuid)
 returns boolean
 language sql
@@ -64,9 +70,9 @@ stable
 security definer
 set search_path = ''
 as $$
-  select exists (
+  select private.mailbox_proven(uid, target_org) or exists (
     select 1 from auth.users u
-    where u.id = uid and u.email_confirmed_at is not null
+    where u.id = uid and u.email_confirmed_at is not null and u.created_at < (select m.at from private.release_marks m where m.name = 'mailbox_proof')
       and coalesce(u.raw_app_meta_data ->> 'provisioned_org', target_org::text) = target_org::text
   );
 $$;
@@ -103,7 +109,7 @@ declare
   em text := lower(coalesce(user_email, ''));
   r public.org_students%rowtype;
   -- An account a college created can only ever receive access in that college.
-  prov uuid := (select (u.raw_app_meta_data ->> 'provisioned_org')::uuid from auth.users u where u.id = uid);
+  prov uuid := (select case when u.raw_app_meta_data ->> 'provisioned_org' ~ '^[0-9a-f-]{36}$' then (u.raw_app_meta_data ->> 'provisioned_org')::uuid end from auth.users u where u.id = uid);
 begin
   if em = '' then
     return;
@@ -371,6 +377,11 @@ begin
   if tg_op = 'UPDATE' and new.email is distinct from old.email and old.user_id is not null then
     update public.profiles set org_id = null where id = old.user_id and org_id = old.org_id;
   end if;
+  -- A re-import of the same email keeps its link.
+  if tg_op = 'UPDATE' and new.email is not distinct from old.email and old.user_id is not null then
+    new.user_id := old.user_id;
+    return new;
+  end if;
   new.user_id := null;
   select id into uid from auth.users where lower(email) = new.email;
   if uid is not null and private.may_link(uid, new.org_id) then
@@ -397,15 +408,22 @@ set search_path = ''
 as $$
 declare
   uid uuid;
+  d text;
 begin
   if tg_op = 'DELETE' then
-    if old.user_id is not null then
-      delete from public.user_roles where user_id = old.user_id and role = 'recruiter' and org_id = old.org_id;
-    end if;
+    delete from public.user_roles r where r.role = 'recruiter' and r.org_id = old.org_id
+      and (r.user_id = old.user_id or r.user_id = (select u.id from auth.users u where lower(u.email) = old.email));
     return old;
   end if;
-  if tg_op = 'UPDATE' and new.email is distinct from old.email and old.user_id is not null then
-    delete from public.user_roles where user_id = old.user_id and role = 'recruiter' and org_id = old.org_id;
+  if tg_op = 'UPDATE' and new.email is distinct from old.email then
+    delete from public.user_roles r where r.role = 'recruiter' and r.org_id = old.org_id
+      and (r.user_id = old.user_id or r.user_id = (select u.id from auth.users u where lower(u.email) = old.email));
+  end if;
+  -- A recruiter is an outsider. Someone on another college's roster or domain is that college's person.
+  d := split_part(new.email, '@', 2);
+  if exists (select 1 from public.org_students s where s.email = new.email and s.org_id <> new.org_id)
+     or exists (select 1 from public.organizations o where o.id <> new.org_id and (new.email = any (o.admin_emails) or d = any (select ltrim(lower(x), '@') from unnest(o.email_domains) x))) then
+    raise exception 'ROSTER_DOMAIN: That email belongs to another college.' using errcode = '23514';
   end if;
   -- The linked account always comes from the email, never from a value the caller supplied.
   select id into uid from auth.users where lower(email) = new.email;
@@ -413,10 +431,11 @@ begin
     exists (select 1 from public.user_roles r where r.user_id = uid and r.role <> 'recruiter')
     or exists (select 1 from public.profiles p where p.id = uid and p.org_id is not null and p.org_id <> new.org_id)
   ) then
-    raise exception 'That email already belongs to another account on PlacementIQ.' using errcode = '23514';
+    raise exception 'ROSTER_DOMAIN: That email already belongs to another account on PlacementIQ.' using errcode = '23514';
   end if;
   new.user_id := null;
-  if uid is not null and private.mailbox_proven(uid, new.org_id) then
+  if uid is not null and (private.mailbox_proven(uid, new.org_id)
+      or exists (select 1 from public.user_roles r where r.user_id = uid and r.role = 'recruiter' and r.org_id = new.org_id)) then
     new.user_id := uid;
     insert into public.user_roles (user_id, role, org_id) values (uid, 'recruiter', new.org_id) on conflict do nothing;
   end if;
@@ -429,13 +448,23 @@ revoke all on function private.sync_recruiter_role() from public, anon, authenti
 -- A6. Temporary passwords: the flag moves to app_metadata, which only the server can write
 -- ---------------------------------------------------------------------------
 update auth.users set raw_app_meta_data = raw_app_meta_data
-    || jsonb_build_object('must_change_password', true, 'temp_password_expires_at', to_char(now() + interval '14 days', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'))
+    -- Already expired: these passwords were shared across a paste, so only a reset email can end them.
+    || jsonb_build_object('must_change_password', true, 'temp_password_expires_at', to_char(now() at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'))
 where raw_user_meta_data ->> 'must_change_password' = 'true' and not raw_app_meta_data ? 'must_change_password';
 
--- Accounts made with a temporary password never proved their mailbox. Mark which college made them.
-update auth.users u set raw_app_meta_data = u.raw_app_meta_data
-    || jsonb_build_object('provisioned_org', coalesce((select p.org_id::text from public.profiles p where p.id = u.id), (select r.org_id::text from public.user_roles r where r.user_id = u.id and r.org_id is not null limit 1), 'unknown'))
-where u.raw_user_meta_data ? 'must_change_password' and not u.raw_app_meta_data ? 'provisioned_org' and u.invited_at is null;
+-- Accounts made with a temporary password never proved their mailbox. Mark which college made them, where that is known.
+update auth.users u set raw_app_meta_data = u.raw_app_meta_data || jsonb_build_object('provisioned_org', o.org)
+from (
+  select x.id, coalesce((select p.org_id::text from public.profiles p where p.id = x.id),
+                        (select r.org_id::text from public.user_roles r where r.user_id = x.id and r.org_id is not null limit 1)) as org
+  from auth.users x where x.raw_user_meta_data ? 'must_change_password' and not x.raw_app_meta_data ? 'provisioned_org' and x.invited_at is null
+) o
+where o.id = u.id and o.org is not null;
+
+-- Accounts the old trigger attached before their email was confirmed lose that until they confirm (it attaches again then).
+delete from public.user_roles r using auth.users u where r.user_id = u.id and u.email_confirmed_at is null;
+update public.profiles p set org_id = null from auth.users u where u.id = p.id and u.email_confirmed_at is null and p.org_id is not null;
+update public.org_students s set user_id = null from auth.users u where u.id = s.user_id and u.email_confirmed_at is null;
 
 create or replace function private.password_pending()
 returns boolean
@@ -447,6 +476,22 @@ as $$
 $$;
 revoke all on function private.password_pending() from public, anon;
 grant execute on function private.password_pending() to authenticated;
+
+-- Admin functions run with raised rights, so they check this themselves: a pending account holds no admin power.
+create or replace function private.is_super_admin()
+returns boolean language sql stable security definer set search_path = '' as $$
+  select not private.password_pending()
+    and exists (select 1 from public.user_roles where user_id = (select auth.uid()) and role = 'super_admin');
+$$;
+create or replace function private.admin_org_ids()
+returns setof uuid language sql stable security definer set search_path = '' as $$
+  select org_id from public.user_roles where user_id = (select auth.uid()) and role = 'org_admin' and not private.password_pending();
+$$;
+create or replace function private.can_admin_org(target_org uuid)
+returns boolean language sql stable security definer set search_path = '' as $$
+  select (select private.is_super_admin())
+      or (not private.password_pending() and exists (select 1 from public.user_roles where user_id = (select auth.uid()) and role = 'org_admin' and org_id = target_org));
+$$;
 
 -- ---------------------------------------------------------------------------
 -- A7. Sign-up limits
@@ -572,6 +617,12 @@ begin
       new.college := old.college;
       if coalesce(old.branch, '') <> '' then new.branch := old.branch; end if;
       if coalesce(old.batch, '') <> '' then new.batch := old.batch; end if;
+    end if;
+    if (new.full_name is distinct from old.full_name and char_length(new.full_name) > 160)
+       or (new.phone is distinct from old.phone and char_length(new.phone) > 40)
+       or (new.meta is distinct from old.meta and char_length(new.meta) > 200)
+       or (new.target_roles is distinct from old.target_roles and char_length(new.target_roles) > 300) then
+      raise exception 'That is too long.' using errcode = '23514';
     end if;
     if new.resume_path is distinct from old.resume_path and new.resume_path is not null and split_part(new.resume_path, '/', 1) <> old.id::text then
       raise exception 'A resume must be in your own folder.' using errcode = '42501';
@@ -889,7 +940,8 @@ begin
     when 'job_applications' then
       select j.org_id into org from public.job_postings j where j.id = coalesce(new.job_id, old.job_id);
       target := coalesce(new.user_id, old.user_id)::text;
-      detail := jsonb_build_object('job_id', coalesce(new.job_id, old.job_id), 'from', old.status, 'to', new.status);
+      detail := case when tg_op = 'DELETE' then jsonb_build_object('job_id', old.job_id, 'status', old.status)
+                     else jsonb_build_object('job_id', new.job_id, 'from', old.status, 'to', new.status) end;
     when 'org_students' then
       org := coalesce(new.org_id, old.org_id);
       target := coalesce(new.id, old.id)::text;
@@ -928,6 +980,10 @@ revoke all on function private.audit_change() from public, anon, authenticated;
 drop trigger if exists audit_applications on public.job_applications;
 create trigger audit_applications after update of status on public.job_applications
   for each row when (old.status is distinct from new.status) execute function private.audit_change();
+-- A removed account takes its applications with it; the outcome stays on record, keyed by an id that no longer resolves.
+drop trigger if exists audit_applications_removed on public.job_applications;
+create trigger audit_applications_removed after delete on public.job_applications
+  for each row when (old.status <> 'applied') execute function private.audit_change();
 drop trigger if exists audit_roster on public.org_students;
 create trigger audit_roster after delete on public.org_students for each row execute function private.audit_change();
 drop trigger if exists audit_roster_academics on public.org_students;
@@ -947,10 +1003,9 @@ create trigger audit_credentials after update of status on public.credentials
 -- ---------------------------------------------------------------------------
 -- L4. Resource limits
 -- ---------------------------------------------------------------------------
+-- A check on these columns would also fail roster updates of any old oversized row, so private.pin_roster_fields limits
+-- what students write instead.
 alter table public.profiles drop constraint if exists profiles_text_limits;
-alter table public.profiles add constraint profiles_text_limits check (
-  char_length(full_name) <= 160 and char_length(phone) <= 40 and char_length(meta) <= 200 and char_length(target_roles) <= 300
-) not valid;
 
 create or replace function public.consume_ai(action text)
 returns integer
@@ -1123,6 +1178,7 @@ begin
     execute format('drop policy if exists "password change first d" on public.%I', t);
     if t in ('profiles', 'user_roles') then
       -- The app reads these two to show the password screen; nothing else is reachable and nothing can be changed.
+      execute format('create policy "password change first" on public.%I as restrictive for select to authenticated using (%I = (select auth.uid()) or not (select private.password_pending()))', t, case t when 'profiles' then 'id' else 'user_id' end);
       execute format('create policy "password change first w" on public.%I as restrictive for insert to authenticated with check (not (select private.password_pending()))', t);
       execute format('create policy "password change first u" on public.%I as restrictive for update to authenticated using (not (select private.password_pending()))', t);
       execute format('create policy "password change first d" on public.%I as restrictive for delete to authenticated using (not (select private.password_pending()))', t);

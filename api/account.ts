@@ -17,13 +17,16 @@ export default handle(async (req) => {
 
   const me = await fetch(`${SUPABASE_URL}/auth/v1/user`, { signal: timeout(10_000), headers: { apikey: SUPABASE_KEY, authorization: `Bearer ${token}` } })
   if (!me.ok) throw new HttpError(401, 'Session expired. Please sign in again.')
-  const user = (await me.json()) as { id: string; email?: string }
+  const user = (await me.json()) as { id: string; email?: string; app_metadata?: Record<string, unknown> }
+  // A temporary password proves nothing about who is holding it.
+  if (user.app_metadata?.must_change_password === true) throw new HttpError(403, 'Choose your own password first.')
   if (String(body.confirm_email ?? '').trim().toLowerCase() !== String(user.email ?? '').toLowerCase()) throw new HttpError(422, 'Type your sign-in email to confirm.')
 
   const admin = { apikey: key, authorization: `Bearer ${key}`, 'content-type': 'application/json' }
   const rest = (path: string, init: RequestInit = {}) => fetch(`${SUPABASE_URL}/rest/v1/${path}`, { signal: timeout(10_000), ...init, headers: admin })
-  const roles = (await (await rest(`user_roles?user_id=eq.${user.id}&select=role`)).json().catch(() => null)) as { role: string }[] | null
-  if (!roles) throw new HttpError(502, 'Could not check your account. Try again.')
+  const check = await rest(`user_roles?user_id=eq.${user.id}&select=role`)
+  const roles = check.ok ? ((await check.json().catch(() => null)) as { role: string }[] | null) : null
+  if (!Array.isArray(roles)) throw new HttpError(502, 'Could not check your account. Try again.')
   if (roles.length) throw new HttpError(403, 'Admin and recruiter accounts are removed by your college or the platform admin.')
 
   // Files first: once the login is gone nothing points at them. A failure here stops the deletion, so it can be retried.

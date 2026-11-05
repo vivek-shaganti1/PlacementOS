@@ -1,6 +1,6 @@
 // What placement cells and recruiters rank on. A student can type anything into their own profile, and that stays useful for
 // their own planning, but only evidence the server fetched from accounts they proved are theirs, confirmed credentials and
-// college academics reach a ranking (docs/EVIDENCE.md).
+// academics reach a ranking (docs/EVIDENCE.md). Academics are the college's, or the student's own entry locked at onboarding.
 import { skillsFor } from './branches'
 import type { Credential, Integrations, Profile } from './supabase'
 import { allEvidence } from './verify'
@@ -23,7 +23,9 @@ export function trustedProfile<T extends Profile>(p: T, credentials: Credential[
     ...p,
     integrations: provenIntegrations(p.integrations),
     skills: evidenceSkills(p, credentials),
-    projects: p.projects.filter((x) => x.source === 'github'),
+    // Project rows are client-written, including their source, so the only project count that counts is the proven GitHub
+    // account's own (evaluate() reads integrations.github.original_repos). Internships have no source that can be checked.
+    projects: [],
     internships: [],
   }
 }

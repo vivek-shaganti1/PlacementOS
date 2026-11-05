@@ -356,6 +356,7 @@ async function gateCredential(token: string, profile: Record<string, any>, b: Re
   // Fingerprint of the stored PDF: the placement cell's review compares it, so the file cannot be swapped after submission.
   const key = env('SUPABASE_SECRET_KEY')
   const stored = key ? await fetch(`${SUPABASE_URL}/storage/v1/object/resumes/${path.split('/').map(encodeURIComponent).join('/')}`, { signal: timeout(10_000), headers: { apikey: key, authorization: `Bearer ${key}` } }) : null
+  if (key && !stored?.ok) throw new HttpError(502, 'Could not read the scorecard you uploaded. Try again.')
   const digest = stored?.ok ? [...new Uint8Array(await crypto.subtle.digest('SHA-256', await stored.arrayBuffer()))].map((x) => x.toString(16).padStart(2, '0')).join('') : null
   await insertVerified(token, profile.id, 'credentials', {
     kind: 'gate', ref, skill: '', title: `GATE ${year} · ${GATE_PAPERS[paper]}`, score, status: 'pending', verified_by: null, file_path: path,

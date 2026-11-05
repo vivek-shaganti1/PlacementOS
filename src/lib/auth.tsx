@@ -48,9 +48,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const hashError = new URLSearchParams(window.location.hash.slice(1)).get('error_code')
     if (hashError) setLinkError(/expired/.test(hashError) ? 'This link has expired or was already used. Request a new one below.' : 'This link could not be used. Request a new one below.')
     const tokenHash = q.get('token_hash')
-    if (tokenHash && q.get('type') === 'recovery') {
+    const linkType = q.get('type')
+    if (tokenHash && (linkType === 'recovery' || linkType === 'invite')) {
       window.history.replaceState(null, '', window.location.pathname)
-      supabase.auth.verifyOtp({ token_hash: tokenHash, type: 'recovery' }).then(({ error }) => {
+      supabase.auth.verifyOtp({ token_hash: tokenHash, type: linkType }).then(({ error }) => {
         if (!error) setRecovering(true)
         else setLinkError('This reset link has expired or was already used. Request a new one below.')
       })

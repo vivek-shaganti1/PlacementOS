@@ -192,7 +192,13 @@ export default handle(async (req) => {
     })
     for (const p of people) {
       const r = await provision(p)
-      results.push(r.status === 'existing' ? { ...r, detail: 'Existing account; recruiter access granted.' } : r)
+      if (r.status !== 'existing') {
+        results.push(r)
+        continue
+      }
+      // An account that never proved its mailbox here is not linked, so say what actually happened.
+      const [row] = (await (await rest(token, `org_recruiters?org_id=eq.${orgId}&email=eq.${encodeURIComponent(p.email)}&select=user_id`)).json()) as { user_id: string | null }[]
+      results.push(row?.user_id ? { ...r, detail: 'Existing account; recruiter access granted.' } : { email: p.email, status: 'failed', detail: 'This account was created elsewhere and has not confirmed its email, so it was not given access.' })
     }
   } else if (role === 'platform_admin') {
     for (const p of people) {

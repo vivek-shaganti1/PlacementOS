@@ -31,6 +31,20 @@ for suite in "${suites[@]}"; do
   echo "$out" | grep -E '\| f$|ERROR' && status=1 || true
   echo "$(basename "$suite"): $(echo "$out" | tail -1)"
 done
+# The migration again, on a database that already holds data like production's: backfills only run for real here.
+if [ -z "${SKIP_FROM:-}" ] && [ -f "$root/supabase/tests/legacy_data.sql" ]; then
+  legacy=placementiq_legacy
+  latest="$(ls "$root"/supabase/migrations/*.sql | tail -1)"
+  psql -q -d postgres -v ON_ERROR_STOP=1 -c "drop database if exists $legacy" -c "create database $legacy"
+  psql -q -d "$legacy" -v ON_ERROR_STOP=1 -f "$root/supabase/tests/supabase_shim.sql" >/dev/null
+  for f in "$root"/supabase/migrations/*.sql; do [ "$f" = "$latest" ] || psql -q -d "$legacy" -v ON_ERROR_STOP=1 -f "$f" >/dev/null; done
+  psql -q -d "$legacy" -v ON_ERROR_STOP=1 -f "$root/supabase/tests/legacy_data.sql" >/dev/null
+  psql -q -d "$legacy" -v ON_ERROR_STOP=1 -f "$latest" >/dev/null || { echo "MIGRATION FAILED ON EXISTING DATA"; status=1; }
+  psql -q -d "$legacy" -v ON_ERROR_STOP=1 -f "$latest" >/dev/null || { echo "MIGRATION NOT RE-RUNNABLE ON EXISTING DATA"; status=1; }
+  out="$(psql -d "$legacy" -At -F ' | ' -f "$root/supabase/tests/legacy_tests.sql" 2>&1 | grep -vE '^(CREATE TABLE|INSERT|$)' || true)"
+  echo "$out" | grep -E '\| f$|ERROR' && status=1 || true
+  echo "legacy_tests.sql: $(echo "$out" | tail -1)"
+fi
 if [ -z "${SKIP_FROM:-}" ]; then
   parity="$(mktemp "${TEST_TMP:-${TMPDIR:-/tmp}}/parity.XXXXXX")"
   node "$root/scripts/branch-parity.mjs" > "$parity"
