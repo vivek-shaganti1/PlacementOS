@@ -1,0 +1,61 @@
+name: CI
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Typecheck and build
+        run: npm run build
+      - name: Entry chunk stays free of three and GSAP
+        run: |
+          if grep -lE 'from "\./(three|gsap)|"\./(three|gsap)[^"]*\.js"' dist/assets/index-*.js; then
+            echo "Entry chunk imports three or GSAP"; exit 1
+          fi
+      - name: API and ranking tests
+        run: npm run test:unit
+      - name: Dependency advisories (production, high and above)
+        run: npm audit --omit=dev --audit-level=high
+
+  database:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_HOST_AUTH_METHOD: trust
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGHOST: localhost
+      PGUSER: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Replay migrations and run access tests
+        run: bash scripts/test-db.sh
+
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

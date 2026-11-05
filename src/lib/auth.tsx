@@ -155,7 +155,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       loading,
       recovering,
       linkError,
-      mustChangePassword: session?.user.user_metadata?.must_change_password === true,
+      // app_metadata is the real flag (server-written); the user_metadata one is from accounts made before it moved.
+      mustChangePassword: session?.user.app_metadata?.must_change_password === true || session?.user.user_metadata?.must_change_password === true,
       profile,
       isAdmin,
       isSuperAdmin,

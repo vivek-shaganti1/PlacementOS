@@ -12,17 +12,23 @@ export async function uploadAndAnalyzeResume(
 ) {
   if (file.size > 5 * 1024 * 1024) throw new Error('Resume must be under 5 MB.')
   if (!/\.(pdf|docx)$/i.test(file.name)) throw new Error('Upload a PDF or DOCX file.')
+  // Read and analyze first: a file that cannot be read must not replace a good resume or its score.
+  onStep('Reading your resume…')
+  const text = await extractResumeText(file, file.name)
   onStep('Uploading…')
   const path = `${userId}/${Date.now()}-${file.name.replace(/[^\w.\-]+/g, '_')}`
   const { error } = await supabase.storage.from('resumes').upload(path, file, { contentType: file.type || 'application/pdf' })
   if (error) throw error
+  try {
+    onStep('Analyzing with AI…')
+    await callApi('resume', { action: 'analyze', text, file_name: file.name })
+  } catch (e) {
+    await supabase.storage.from('resumes').remove([path])
+    throw e
+  }
   const old = profile.resume_path
   await updateProfile({ resume_path: path, resume_name: file.name, resume_uploaded_at: new Date().toISOString() })
-  if (old && old !== path) supabase.storage.from('resumes').remove([old])
-  onStep('Reading your resume…')
-  const text = await extractResumeText(file, file.name)
-  onStep('Analyzing with AI…')
-  await callApi('resume', { action: 'analyze', text, file_name: file.name })
+  if (old && old !== path) await supabase.storage.from('resumes').remove([old])
 }
 
 /** Adds projects, internships and certifications found in the resume that the profile does not have yet. */

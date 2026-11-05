@@ -80,7 +80,8 @@ export default function ResumeAnalyzer() {
     try {
       const { error } = await supabase.storage.from('resumes').remove([p.resume_path])
       if (error) throw error
-      await updateProfile({ resume_path: null, resume_name: null, resume_uploaded_at: null, resume_text: null, resume_analysis: null, jd_match: null })
+      await callApi('resume', { action: 'clear' })
+      await updateProfile({ resume_path: null, resume_name: null, resume_uploaded_at: null, resume_analysis: null, jd_match: null })
       showToast('Resume deleted.')
     } catch (e) {
       showToast(`Could not delete: ${errMsg(e)}`)

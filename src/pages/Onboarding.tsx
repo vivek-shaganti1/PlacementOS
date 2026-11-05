@@ -136,7 +136,11 @@ export default function Onboarding() {
       await refreshProfile()
       if (ok) setStep(4)
     } else {
-      await run('Finishing…', () => updateProfile({ skills: SKILLS.map((name) => ({ name, level: levels[name] ?? 0 })), onboarded_at: new Date().toISOString() }))
+      // Finished is written last, on its own: a failed skills save must not leave a finished student with no skills.
+      await run('Finishing…', async () => {
+        await updateProfile({ skills: SKILLS.map((name) => ({ name, level: levels[name] ?? 0 })) })
+        await updateProfile({ onboarded_at: new Date().toISOString() })
+      })
     }
   }
 

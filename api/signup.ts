@@ -52,4 +52,3 @@ export default handle(async (req) => {
   }
   return json({ ok: true, verify: true })
 })
-})

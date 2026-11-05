@@ -31,4 +31,12 @@ for suite in "${suites[@]}"; do
   echo "$out" | grep -E '\| f$|ERROR' && status=1 || true
   echo "$(basename "$suite"): $(echo "$out" | tail -1)"
 done
+if [ -z "${SKIP_FROM:-}" ]; then
+  parity="$(mktemp "${TEST_TMP:-${TMPDIR:-/tmp}}/parity.XXXXXX")"
+  node "$root/scripts/branch-parity.mjs" > "$parity"
+  out="$(psql -d "$db" -At -F ' | ' -f "$parity" 2>&1 | grep -vE '^(CREATE TABLE|INSERT|$)' || true)"
+  rm -f "$parity"
+  echo "$out" | grep -E '\| f$|ERROR' && status=1 || true
+  echo "branch parity: $(echo "$out" | tail -1)"
+fi
 exit $status

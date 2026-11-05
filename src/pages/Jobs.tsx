@@ -37,11 +37,11 @@ export default function Jobs() {
 
   const rows = scored.filter(({ job, ev }) => (filter === 'eligible' ? ev.eligibleToApply && isOpen(job) : filter === 'applied' ? mine.has(job.id) : true))
 
-  const apply = async (job: JobPosting, match: number) => {
+  const apply = async (job: JobPosting) => {
     // Drives check real academics; until they are entered the profile only holds placeholder values.
     if (p.academics_source === 'default') return showToast('Add your CGPA, backlogs and Class X/XII marks in My Profile before applying.')
     setBusy(`apply-${job.id}`)
-    const { error } = await supabase.from('job_applications').insert({ job_id: job.id, user_id: p.id, match, status: 'applied' })
+    const { error } = await supabase.from('job_applications').insert({ job_id: job.id, user_id: p.id, status: 'applied' })
     setBusy(null)
     // The database re-checks the drive is open, in your college, and that you meet its CGPA, backlog, Class X/XII and batch minimums.
     if (error) return showToast(error.code === '42501' ? 'You do not meet this drive\'s minimum requirements, or it has closed.' : `Could not apply: ${errMsg(error)}`)
@@ -50,8 +50,10 @@ export default function Jobs() {
   }
 
   const withdraw = async (job: JobPosting) => {
-    const { error } = await supabase.from('job_applications').delete().eq('job_id', job.id).eq('user_id', p.id)
+    const { data, error } = await supabase.from('job_applications').delete().eq('job_id', job.id).eq('user_id', p.id).select('job_id')
     if (error) return showToast(`Could not withdraw: ${errMsg(error)}`)
+    // Nothing removed means the application has moved on since this page loaded.
+    if (!data?.length) showToast('This application has moved on and can no longer be withdrawn.')
     reload()
   }
 
@@ -169,7 +171,7 @@ export default function Jobs() {
                           if (!isOpen(selected.job)) return <span className="text-[12px] text-ink-faint">Applications are closed.</span>
                           return (
                             <button
-                              onClick={() => apply(selected.job, selected.ev.match)}
+                              onClick={() => apply(selected.job)}
                               disabled={!selected.ev.eligibleToApply || busy === `apply-${selected.job.id}`}
                               className="btn-primary"
                               title={selected.ev.eligibleToApply ? '' : 'You do not meet the mandatory criteria'}

@@ -6,7 +6,8 @@ import { createClient } from '@supabase/supabase-js'
 const projectUrl = import.meta.env.VITE_SUPABASE_URL || 'https://oewjimwozaksyigfyrkz.supabase.co'
 // In production the browser talks to Supabase through this app's own domain (vercel.json rewrites /supabase/* to the
 // project). Some networks (ISP DNS filters, campus firewalls) block *.supabase.co, which surfaces as "Failed to fetch".
-const proxied = typeof window !== 'undefined' && import.meta.env.PROD && !/^(localhost|127\.0\.0\.1)$/.test(window.location.hostname)
+// VITE_SUPABASE_DIRECT=true turns this off for a preview or staging deployment, whose rewrite must not reach production.
+const proxied = typeof window !== 'undefined' && import.meta.env.PROD && import.meta.env.VITE_SUPABASE_DIRECT !== 'true' && !/^(localhost|127\.0\.0\.1)$/.test(window.location.hostname)
 const url = proxied ? `${window.location.origin}/supabase` : projectUrl
 const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_l4oFZfheVfvTBAfU3t9sRg_AwdkNqse'
 
@@ -73,7 +74,12 @@ export type Profile = {
   program: string
 }
 
+/** Whether the student proved this account is theirs (written by /api/connect). Unproven stats never reach a ranking. */
+export type Ownership = { proven: boolean; at?: string }
+
 export type GithubStats = {
+  ownership?: Ownership
+  unread_repos?: number
   username: string
   name: string | null
   avatar_url: string
@@ -90,9 +96,9 @@ export type GithubStats = {
   kicad?: { repo: string; file: string; parts: number; components: string[] }[]
   synced_at: string
 }
-export type CredlyStats = { username: string; badges: { name: string; issuer: string; issued_at: string | null; url: string }[]; synced_at: string }
-export type HuggingfaceStats = { username: string; models: number; datasets: number; spaces: number; downloads: number; likes: number; top: { id: string; kind: string; downloads: number }[]; synced_at: string }
-export type CtftimeStats = { username: string; team: string; rating_points: number; events: number; country_place: number | null; year: number; synced_at: string }
+export type CredlyStats = { ownership?: Ownership; username: string; badges: { name: string; issuer: string; issued_at: string | null; url: string }[]; synced_at: string }
+export type HuggingfaceStats = { ownership?: Ownership; username: string; models: number; datasets: number; spaces: number; downloads: number; likes: number; top: { id: string; kind: string; downloads: number }[]; synced_at: string }
+export type CtftimeStats = { ownership?: Ownership; username: string; team: string; rating_points: number; events: number; country_place: number | null; year: number; synced_at: string }
 export type Credential = {
   id: string
   kind: 'nptel' | 'gate'
@@ -106,9 +112,9 @@ export type Credential = {
   file_path: string | null
   created_at: string
 }
-export type LeetcodeStats = { username: string; solved: number; easy: number; medium: number; hard: number; ranking: number | null; contest_rating: number | null; contests: number; top_percentage: number | null; synced_at: string }
-export type CodeforcesStats = { username: string; rating: number | null; max_rating: number | null; rank: string | null; solved: number; contests: number; synced_at: string }
-export type CodechefStats = { username: string; rating: number | null; max_rating: number | null; stars: number | null; solved: number; synced_at: string }
+export type LeetcodeStats = { ownership?: Ownership; username: string; solved: number; easy: number; medium: number; hard: number; ranking: number | null; contest_rating: number | null; contests: number; top_percentage: number | null; synced_at: string }
+export type CodeforcesStats = { ownership?: Ownership; username: string; rating: number | null; max_rating: number | null; rank: string | null; solved: number; contests: number; synced_at: string }
+export type CodechefStats = { ownership?: Ownership; username: string; rating: number | null; max_rating: number | null; stars: number | null; solved: number; synced_at: string }
 
 export type Integrations = {
   github?: GithubStats
@@ -179,12 +185,25 @@ const BY_CODE: Record<string, string> = {
 
 export const errMsg = (e: unknown) => {
   const raw = e && typeof e === 'object' && 'message' in e ? String((e as { message: unknown }).message) : 'Something went wrong.'
+  const rule = /^(?:ROSTER_DOMAIN|APPLICATION_STEP|DRIVE_HAS_OUTCOMES): (.+)$/.exec(raw)
+  if (rule) return rule[1]
   const friendly = FRIENDLY.find(([re]) => re.test(raw))?.[1]
   if (friendly) return friendly
   if (!TECHNICAL.test(raw)) return raw
   console.error(e)
   const code = e && typeof e === 'object' && 'code' in e ? String((e as { code: unknown }).code) : ''
   return BY_CODE[code] ?? 'Something went wrong while saving. Try again, and contact your placement cell if it keeps happening.'
+}
+
+/** Reads every page of a list. One API response holds at most 1000 rows, so a long list would otherwise lose rows silently. */
+export async function allRows<T>(page: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>) {
+  const out: T[] = []
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await page(from, from + 999)
+    if (error) return { data: null, error }
+    out.push(...(data ?? []))
+    if (!data || data.length < 1000) return { data: out, error: null }
+  }
 }
 
 export type Organization = {

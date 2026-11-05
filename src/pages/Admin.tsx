@@ -149,9 +149,16 @@ function EvidencePanel({ p }: { p: StudentRow['profile'] }) {
   const signals = Object.entries(i.github?.signals ?? {}) as [FileSignal, { repos: string[]; files: number }][]
   const parts = [...new Set((i.github?.kicad ?? []).flatMap((k) => k.components))]
   const review = async (id: string, approve: boolean) => {
+    // The file must still be the one submitted: its fingerprint was recorded by the server at that moment.
+    const c = creds.find((x) => x.id === id)
+    if (approve && c?.file_path && c.data.sha256) {
+      const { data: file } = await supabase.storage.from('resumes').download(c.file_path)
+      const hash = file ? [...new Uint8Array(await crypto.subtle.digest('SHA-256', await file.arrayBuffer()))].map((b) => b.toString(16).padStart(2, '0')).join('') : ''
+      if (hash !== c.data.sha256) return showToast('This scorecard file has changed since it was submitted. Reject it and ask the student to submit again.')
+    }
     const { error } = await supabase.rpc('review_credential', { target: id, approve })
     if (error) return showToast(errMsg(error))
-    showToast(approve ? 'GATE score confirmed.' : 'Scorecard rejected.')
+    showToast(approve ? 'Confirmed.' : 'Rejected.')
     load()
   }
   const openPdf = async (path: string) => {
@@ -189,9 +196,9 @@ function EvidencePanel({ p }: { p: StudentRow['profile'] }) {
             <div key={c.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-2 text-[12px]">
               <span className="font-semibold text-ink">{c.kind === 'gate' ? c.title : `NPTEL · ${c.title || c.ref}`}</span>
               <span className="text-ink-mute">{c.kind === 'gate' ? `Score ${c.score}${c.data.air ? ` · AIR ${c.data.air}` : ''} · reg. ${c.ref}` : c.skill}</span>
-              <span className="text-[11px] font-medium text-ink-faint">{c.status === 'verified' ? (c.verified_by === 'college' ? 'Confirmed' : 'Verified at source') : c.status}</span>
+              <span className="text-[11px] font-medium text-ink-faint">{c.status === 'verified' ? 'Confirmed' : c.status === 'pending' ? (c.kind === 'nptel' ? 'Found on nptel.ac.in, not yet confirmed' : 'Pending') : c.status}</span>
               {c.kind === 'gate' && c.file_path && <button onClick={() => openPdf(c.file_path!)} className="text-brand-dark underline">Open PDF</button>}
-              {c.kind === 'gate' && c.status === 'pending' && (
+              {c.status === 'pending' && (
                 <span className="ml-auto flex gap-2">
                   <button onClick={() => review(c.id, true)} className="rounded-md bg-[#12b76a] px-2.5 py-1 text-[11px] font-semibold text-white">Confirm</button>
                   <button onClick={() => review(c.id, false)} className="rounded-md border border-line px-2.5 py-1 text-[11px] font-medium text-[#d92d20]">Reject</button>
@@ -277,9 +284,9 @@ function StudentDrawer({ row, applications, jobs, orgName, onClose }: { row: Stu
           ))}
         </div>
 
-        <p className="mt-5 text-[12px] font-semibold text-ink">Skills</p>
+        <p className="mt-5 text-[12px] font-semibold text-ink">Skills from proven evidence</p>
         <div className="mt-2 grid grid-cols-1 gap-x-5 gap-y-2.5 sm:grid-cols-2">
-          {p.skills.slice(0, 8).map((s) => <Meter key={s.name} label={SKILL_SHORT[s.name] ?? s.name} value={s.level} tone={tone(s.level)} />)}
+          {(row.trusted.skills).slice(0, 8).map((s) => <Meter key={s.name} label={SKILL_SHORT[s.name] ?? s.name} value={s.level} tone={tone(s.level)} />)}
         </div>
 
         <p className="mt-5 text-[12px] font-semibold text-ink">Coding profiles</p>
@@ -788,11 +795,11 @@ export function AdminJobs() {
         .filter((a) => a.job_id === selected.id)
         .map((a) => {
           const r = rows.find((x) => x.profile.id === a.user_id)
-          return { a, r, ev: r ? evaluateJob(selected, r.profile) : null }
+          return { a, r, ev: r ? evaluateJob(selected, r.trusted) : null }
         })
-        .sort((x, y) => (y.ev?.match ?? 0) + (y.a.ai_fit ?? 0) * 0.5 - ((x.ev?.match ?? 0) + (x.a.ai_fit ?? 0) * 0.5))
+        .sort((x, y) => (y.ev?.match ?? 0) - (x.ev?.match ?? 0))
     : []
-  const eligibleNotApplied = selected ? rows.filter((r) => r.profile.org_id === selected.org_id).filter((r) => !applications.some((a) => a.job_id === selected.id && a.user_id === r.profile.id) && evaluateJob(selected, r.profile).eligibleToApply).length : 0
+  const eligibleNotApplied = selected ? rows.filter((r) => r.profile.org_id === selected.org_id).filter((r) => !applications.some((a) => a.job_id === selected.id && a.user_id === r.profile.id) && evaluateJob(selected, r.trusted).eligibleToApply).length : 0
 
   const setStatus = async (a: JobApplication, status: JobStatus) => {
     // Offers and rejections notify the student immediately, so they are confirmed first.
@@ -877,7 +884,7 @@ export function AdminJobs() {
                 </div>
               </div>
 
-              <Card title="Applicants — ranked by profile match and AI resume fit">
+              <Card title="Applicants, ranked on proven evidence and college academics">
                 <div className="divide-y divide-line">
                   {applicants.map(({ a, r, ev }, idx) => (
                     <div key={a.user_id} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-2.5">
@@ -887,8 +894,8 @@ export function AdminJobs() {
                         <button type="button" onClick={() => r && setOpenRow(r)} className="block truncate text-left text-[13px] font-semibold text-ink hover:underline">{r?.profile.full_name ?? 'Student'}</button>
                         <span className="block text-[11px] text-ink-mute">{r?.profile.branch} · CGPA {r?.profile.cgpa} · resume {r?.resume ?? '—'}</span>
                       </span>
-                      <span className="text-center text-[11px] text-ink-mute">Match<b className="block text-[14px] text-ink">{ev?.match ?? a.match ?? '—'}%</b></span>
-                      <span className="text-center text-[11px] text-ink-mute">AI fit<b className="block text-[14px] text-ink">{a.ai_fit ?? '—'}</b></span>
+                      <span className="text-center text-[11px] text-ink-mute">Match<b className="block text-[14px] text-ink">{ev?.match ?? '—'}%</b></span>
+                      <span title="Advisory: scored from resume text the student supplied. Not used in the ranking." className="text-center text-[11px] text-ink-mute">AI fit (advisory)<b className="block text-[14px] text-ink">{a.ai_fit ?? '—'}</b></span>
                       <select value={a.status} onChange={(e) => setStatus(a, e.target.value as JobStatus)} className="field h-[32px] w-full py-0 text-[12px] sm:w-[130px]" aria-label={`Status for ${r?.profile.full_name}`}>
                         {(Object.keys(STATUS_META) as JobStatus[]).map((s) => <option key={s} value={s}>{STATUS_META[s].label}</option>)}
                       </select>

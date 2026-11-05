@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { JobPosting } from './eligibility'
-import { supabase } from './supabase'
+import { allRows, supabase } from './supabase'
 
 export type JobStatus = 'applied' | 'shortlisted' | 'interview' | 'offer' | 'rejected'
 export type JobApplication = {
@@ -49,16 +49,26 @@ export function useJobs() {
   const reload = useCallback(async () => {
     const [j, a] = await Promise.all([
       supabase.from('job_postings').select('*').order('created_at', { ascending: false }),
-      supabase.from('job_applications').select('*').order('created_at', { ascending: false }),
+      allRows<JobApplication>((from, to) => supabase.from('job_applications').select('*').order('created_at', { ascending: false }).order('user_id').range(from, to)),
     ])
     setError(j.error?.message ?? a.error?.message ?? null)
     setJobs((j.data ?? []).map(normalizeJob))
-    setApplications((a.data ?? []) as JobApplication[])
+    setApplications(a.data ?? [])
     setLoading(false)
   }, [])
 
   useEffect(() => {
     reload()
+    // A shortlist or an offer shows up without a reload, when someone is actually looking.
+    const tick = () => {
+      if (document.visibilityState === 'visible') reload()
+    }
+    const id = window.setInterval(tick, 60_000)
+    document.addEventListener('visibilitychange', tick)
+    return () => {
+      window.clearInterval(id)
+      document.removeEventListener('visibilitychange', tick)
+    }
   }, [reload])
 
   return { jobs, applications, loading, error, reload }

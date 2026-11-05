@@ -1,6 +1,7 @@
 // Resume analysis and job-description matching.
 // POST { action: 'analyze', text, file_name }  -> parses the extracted resume text, scores it, saves to profile
 // POST { action: 'match', jd }                 -> matches the saved resume against a job description
+// POST { action: 'clear' }                     -> removes the stored resume text
 import { skillsForTracks, TRACK_BY_ID, tracksFor } from '../src/lib/branches'
 import { bearer, consumeAi, deleteRows, env, groq, handle, HttpError, insertVerified, json, loadProfile, parseJson, refundAi, rest, saveServerField, STYLE_RULES, SUPABASE_URL, tidyDeep, timeout } from './_lib'
 
@@ -228,6 +229,12 @@ export default handle(async (req) => {
     await deleteRows(token, 'jd_matches', `user_id=eq.${profile.id}`)
     await saveServerField(token, profile.id, { resume_text: text })
     return json({ analysis })
+  }
+
+  // The resume text is server-owned, so removing a resume clears it here.
+  if (body.action === 'clear') {
+    await saveServerField(token, profile.id, { resume_text: null })
+    return json({ ok: true })
   }
 
   if (body.action === 'match') {

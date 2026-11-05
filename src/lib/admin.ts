@@ -3,10 +3,13 @@ import { completeness } from '../components/ProfileExtras'
 import { useAuth } from './auth'
 import { evaluateAll, readinessOf } from './eligibility'
 import { assembleProfile, RELATED, type RelatedRows } from './profileShape'
-import { supabase, type Organization, type Profile, errMsg } from './supabase'
+import { allRows, supabase, type Credential, type Organization, type Profile, errMsg } from './supabase'
+import { trustedProfile } from './trust'
 
 export type StudentRow = {
   profile: Profile
+  /** The profile as rankings see it: proven evidence only (lib/trust). */
+  trusted: Profile
   isAdmin: boolean
   readiness: number
   eligible: number
@@ -30,23 +33,13 @@ export function useStudents() {
 
   const reload = useCallback(async () => {
     const tables = Object.entries(RELATED)
-    // The API returns at most 1000 rows per request, so every list is read page by page; a large college would
-    // otherwise silently lose students, skills or repos from the rankings.
-    const all = async <T,>(page: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>) => {
-      const out: T[] = []
-      for (let from = 0; ; from += 1000) {
-        const { data, error } = await page(from, from + 999)
-        if (error) return { data: null, error }
-        out.push(...(data ?? []))
-        if (!data || data.length < 1000) return { data: out, error: null }
-      }
-    }
-    const [profiles, roles, ...related] = await Promise.all([
-      all<Record<string, any>>((a, b) => supabase.from('profiles').select('*').order('full_name').order('id').range(a, b)),
-      all<{ user_id: string; role: string }>((a, b) => supabase.from('user_roles').select('user_id,role').range(a, b)),
+    const [profiles, roles, credentials, ...related] = await Promise.all([
+      allRows<Record<string, any>>((a, b) => supabase.from('profiles').select('*').order('full_name').order('id').range(a, b)),
+      allRows<{ user_id: string; role: string }>((a, b) => supabase.from('user_roles').select('user_id,role').range(a, b)),
+      allRows<Credential & { user_id: string }>((a, b) => supabase.from('credentials').select('*').eq('status', 'verified').order('id').range(a, b)),
       ...tables.map(([t, q]) => {
         const [col, dir] = q.order.split('.')
-        return all<Record<string, any>>((a, b) => supabase.from(t).select(q.select === '*' ? '*' : `user_id,${q.select}`).order(col, { ascending: dir !== 'desc' }).order('user_id').range(a, b))
+        return allRows<Record<string, any>>((a, b) => supabase.from(t).select(q.select === '*' ? '*' : `user_id,${q.select}`).order(col, { ascending: dir !== 'desc' }).order('user_id').range(a, b))
       }),
     ])
     const err = profiles.error ?? roles.error ?? related.find((r) => r.error)?.error
@@ -61,15 +54,17 @@ export function useStudents() {
     const built = (profiles.data ?? []).filter((base) => base.org_id && !admins.has(base.id)).map((base) => {
       const rel = Object.fromEntries(tables.map(([t], i) => [t, byUser(i, base.id)])) as RelatedRows
       const profile = assembleProfile(base, rel)
-      const companies = evaluateAll(profile)
-      const i = profile.integrations ?? {}
+      const trusted = trustedProfile(profile, (credentials.data ?? []).filter((c) => c.user_id === base.id))
+      const companies = evaluateAll(trusted)
+      const i = trusted.integrations ?? {}
       const row = {
         profile,
+        trusted,
         isAdmin: admins.has(base.id),
         readiness: readinessOf(companies),
         eligible: companies.filter((c) => c.bucket === 'eligible').length,
         resume: profile.resume_analysis?.overall ?? null,
-        dsa: profile.skills.find((s) => s.name === 'Data Structures & Algorithms')?.level ?? 0,
+        dsa: trusted.skills.find((s) => s.name === 'Data Structures & Algorithms')?.level ?? 0,
         solved: (i.leetcode?.solved ?? 0) + (i.codeforces?.solved ?? 0) + (i.codechef?.solved ?? 0),
         strength: completeness(profile).pct,
       }

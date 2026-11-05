@@ -9,12 +9,12 @@ import { useAuth } from '../lib/auth'
 import { useJobs } from '../lib/jobs'
 import { useApp } from '../lib/store'
 import { collegeEconomics, COSTS, usd, PLANS, type PlanKey } from '../lib/pricing'
-import { errMsg, supabase, type Organization } from '../lib/supabase'
+import { allRows, errMsg, supabase, type Organization } from '../lib/supabase'
 import { plural } from '../lib/format'
 import { HoldButton } from '../components/HoldButton'
 
 type RosterRow = { id: number; email: string; full_name: string; roll_number: string; branch: string; batch: string; section: string; program: string; user_id: string | null; invited_at: string | null; created_at: string }
-type InviteResult = { email: string; status: 'invited' | 'created' | 'existing' | 'failed' | 'saved'; detail?: string }
+type InviteResult = { email: string; status: 'invited' | 'created' | 'existing' | 'failed' | 'saved'; detail?: string; password?: string }
 type AdminRow = { email: string; user_id: string | null; full_name: string; joined: boolean }
 
 function Denied({ what }: { what: string }) {
@@ -68,38 +68,80 @@ function parseRoster(text: string): RosterInput[] {
 function ResultList({ results }: { results: InviteResult[] }) {
   if (!results.length) return null
   const label: Record<InviteResult['status'], string> = { invited: 'Invite sent', created: 'Login created', existing: 'Already registered', failed: 'Failed', saved: 'Saved, no email sent' }
+  const made = results.filter((r) => r.password)
+  // The passwords exist only here, once: the server keeps none of them in readable form.
+  const download = () => {
+    const url = URL.createObjectURL(new Blob([['email,temporary password', ...made.map((r) => `${r.email},${r.password}`)].join('\n')], { type: 'text/csv' }))
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'temporary-passwords.csv'
+    a.click()
+    URL.revokeObjectURL(url)
+  }
   return (
-    <div className="mt-3 max-h-[220px] overflow-y-auto border border-line">
-      {results.map((r, i) => (
-        <p key={`${i}-${r.email}`} className="flex flex-wrap gap-x-3 border-b border-line px-3 py-1.5 text-[12px] last:border-0">
-          <span className="font-medium text-ink">{r.email}</span>
-          <span className={r.status === 'failed' ? 'text-[#d92d20]' : r.status === 'invited' || r.status === 'created' ? 'text-[#067647]' : 'text-ink-mute'}>{label[r.status]}</span>
-          {r.detail && <span className="text-ink-faint">{r.detail}</span>}
-        </p>
-      ))}
-    </div>
+    <>
+      {made.length > 0 && (
+        <div className="mt-3 flex flex-wrap items-center gap-2 rounded-[10px] border border-[#fbe3bd] bg-[#fff8ec] px-3 py-2 text-[12px] text-[#b45309]">
+          <span className="flex-1">Each person has their own password, shown only now. Give each one privately. They work for 7 days.</span>
+          <button type="button" onClick={download} className="btn-glass py-1 text-[12px]">Download {made.length} as CSV</button>
+        </div>
+      )}
+      <div className="mt-3 max-h-[220px] overflow-y-auto border border-line">
+        {results.map((r, i) => (
+          <p key={`${i}-${r.email}`} className="flex flex-wrap gap-x-3 border-b border-line px-3 py-1.5 text-[12px] last:border-0">
+            <span className="font-medium text-ink">{r.email}</span>
+            <span className={r.status === 'failed' ? 'text-[#d92d20]' : r.status === 'invited' || r.status === 'created' ? 'text-[#067647]' : 'text-ink-mute'}>{label[r.status]}</span>
+            {r.password && <code className="select-all font-mono text-ink">{r.password}</code>}
+            {r.detail && <span className="text-ink-faint">{r.detail}</span>}
+          </p>
+        ))}
+      </div>
+    </>
   )
 }
 
 /**
- * How new logins are delivered: an invite email (limited by the mail provider, 2 per hour on Supabase's built-in mail)
- * or a temporary password set here and shared by the admin, which sends no email.
+ * How new logins are delivered: an invite email (limited by the mail provider until custom SMTP is set up), which proves
+ * the person owns the mailbox, or a login with a random password per person, which sends no email.
  */
-function LoginMethod({ password, setPassword }: { password: string; setPassword: (v: string) => void }) {
-  const [mode, setMode] = useState<'invite' | 'password'>(password ? 'password' : 'invite')
+function LoginMethod({ logins, setLogins }: { logins: boolean; setLogins: (v: boolean) => void }) {
   return (
     <div className="flex flex-col gap-2 rounded-[12px] border border-line bg-white/60 p-3 text-[12.5px] sm:flex-row sm:items-center">
       <span className="font-medium text-ink">New logins:</span>
       <label className="flex items-center gap-1.5">
-        <input type="radio" checked={mode === 'invite'} onChange={() => { setMode('invite'); setPassword('') }} /> Email an invite link
+        <input type="radio" checked={!logins} onChange={() => setLogins(false)} /> Email an invite link
       </label>
       <label className="flex items-center gap-1.5">
-        <input type="radio" checked={mode === 'password'} onChange={() => setMode('password')} /> Create with a temporary password
+        <input type="radio" checked={logins} onChange={() => setLogins(true)} /> Create logins with a random password for each person
       </label>
-      {mode === 'password' && (
-        <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="At least 12 characters" autoComplete="off" className="field h-[34px] sm:max-w-[220px]" />
-      )}
     </div>
+  )
+}
+
+/** Corrects official academics one student at a time, with a reason that goes into the audit log. */
+function AcademicsFix({ row, onDone }: { row: RosterRow; onDone: () => void }) {
+  const { showToast } = useApp()
+  const [open, setOpen] = useState(false)
+  const [f, setF] = useState({ cgpa: '', backlogs: '', class_x: '', class_xii: '', reason: '' })
+  const num = (v: string) => (v.trim() === '' ? null : Number(v))
+  const save = async (e: FormEvent) => {
+    e.preventDefault()
+    const { error } = await supabase.rpc('correct_academics', { target: row.id, new_cgpa: num(f.cgpa), new_backlogs: num(f.backlogs), new_class_x: num(f.class_x), new_class_xii: num(f.class_xii), reason: f.reason })
+    if (error) return showToast(errMsg(error))
+    showToast('Academics corrected. The change is in the audit log.')
+    setOpen(false)
+    onDone()
+  }
+  if (!open) return <button onClick={() => setOpen(true)} className="text-[12px] text-brand underline">Correct</button>
+  return (
+    <form onSubmit={save} className="grid min-w-[220px] grid-cols-2 gap-1">
+      {([['cgpa', 'CGPA'], ['backlogs', 'Backlogs'], ['class_x', 'Class X %'], ['class_xii', 'Class XII %']] as const).map(([k, label]) => (
+        <input key={k} value={f[k]} onChange={(e) => setF({ ...f, [k]: e.target.value })} placeholder={label} aria-label={`${label} for ${row.email}`} inputMode="decimal" className="field h-[28px] px-2 text-[12px]" />
+      ))}
+      <input required minLength={3} value={f.reason} onChange={(e) => setF({ ...f, reason: e.target.value })} placeholder="Reason" aria-label={`Reason for correcting ${row.email}`} className="field col-span-2 h-[28px] px-2 text-[12px]" />
+      <button className="btn-primary h-[28px] py-0 text-[12px]">Save</button>
+      <button type="button" onClick={() => setOpen(false)} className="btn-glass h-[28px] py-0 text-[12px]">Cancel</button>
+    </form>
   )
 }
 
@@ -114,15 +156,15 @@ export function AdminRoster() {
   const [single, setSingle] = useState({ email: '', full_name: '', roll_number: '', branch: '', batch: '', section: '' })
   const [busy, setBusy] = useState(false)
   const [results, setResults] = useState<InviteResult[]>([])
-  const [password, setPassword] = useState('')
+  const [logins, setLogins] = useState(false)
   const [q, setQ] = useState('')
 
   const load = useCallback(async () => {
     if (!orgId) return
     setLoading(true)
-    const { data, error } = await supabase.from('org_students').select('*').eq('org_id', orgId).order('created_at', { ascending: false })
+    const { data, error } = await allRows<RosterRow>((from, to) => supabase.from('org_students').select('*').eq('org_id', orgId).order('created_at', { ascending: false }).order('id').range(from, to))
     if (error) showToast(errMsg(error))
-    setRows((data ?? []) as RosterRow[])
+    setRows(data ?? [])
     setLoading(false)
   }, [orgId, showToast])
   useEffect(() => {
@@ -148,10 +190,19 @@ export function AdminRoster() {
       return showToast(`This adds more students than your ${org.seat_limit} seats. Contact the platform admin to raise the limit.`)
     setBusy(true)
     try {
-      if (send && password && password.length < 8) throw new Error('Temporary password must be at least 8 characters.')
-      const { results } = await callApi<{ results: InviteResult[] }>('admin', { action: 'invite', org_id: orgId, role: 'student', people, send, password: send ? password || undefined : undefined })
-      setResults(results ?? [])
-      showToast(`${results.length} student record${results.length === 1 ? '' : 's'} processed.`)
+      // The server takes 50 people per call, so a long paste goes in batches. What was already saved stays visible if one fails.
+      const done: InviteResult[] = []
+      try {
+        for (let i = 0; i < people.length; i += 50) {
+          const { results } = await callApi<{ results: InviteResult[] }>('admin', { action: 'invite', org_id: orgId, role: 'student', people: people.slice(i, i + 50), send, logins: send && logins })
+          done.push(...(results ?? []))
+          setResults([...done])
+        }
+      } catch (e) {
+        load()
+        throw new Error(`${errMsg(e)} ${done.length} of ${people.length} were saved; the paste is still in the box.`)
+      }
+      showToast(`${done.length} student record${done.length === 1 ? '' : 's'} processed.`)
       setPaste('')
       setSingle({ email: '', full_name: '', roll_number: '', branch: '', batch: '', section: '' })
       load()
@@ -181,7 +232,7 @@ export function AdminRoster() {
   const joined = rows.filter((r) => r.user_id).length
 
   return (
-    <Page title="Student roster" subtitle="Only students on this list can use PlacementIQ. Students register themselves with their college email and roll number, or you create their login with a temporary password." wide actions={picker}>
+    <Page title="Student roster" subtitle="Only students on this list can use PlacementIQ. Students register from a link emailed to their college address, or you create logins with a random password for each person." wide actions={picker}>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="On roster" value={`${rows.length}`} />
         <Stat label="Joined PlacementIQ" value={`${joined}`} />
@@ -189,7 +240,7 @@ export function AdminRoster() {
         <Stat label="Seats" value={`${rows.length} / ${org?.seat_limit ?? '∞'}`} sub={org?.email_domains.length ? `Only ${org.email_domains.map((d) => '@' + d).join(', ')} emails` : 'Any email allowed'} />
       </div>
 
-      <LoginMethod password={password} setPassword={setPassword} />
+      <LoginMethod logins={logins} setLogins={setLogins} />
 
       <Card title="Add one student">
         <form
@@ -205,7 +256,7 @@ export function AdminRoster() {
           <input value={single.branch} onChange={(e) => setSingle({ ...single, branch: e.target.value })} placeholder="Branch" className="field" />
           <input value={single.batch} onChange={(e) => setSingle({ ...single, batch: e.target.value })} placeholder="Grad. year" inputMode="numeric" className="field" />
           <input value={single.section} onChange={(e) => setSingle({ ...single, section: e.target.value.toUpperCase() })} placeholder="Section" className="field" />
-          <button disabled={busy || !orgId} className="btn-primary">{password ? 'Save and create login' : 'Save and invite'}</button>
+          <button disabled={busy || !orgId} className="btn-primary">{logins ? 'Save and create login' : 'Save and invite'}</button>
         </form>
       </Card>
 
@@ -217,7 +268,7 @@ export function AdminRoster() {
         <textarea value={paste} onChange={(e) => setPaste(e.target.value)} rows={6} className="field mt-2 h-auto py-2 font-mono text-[12px]" placeholder={'23eg105a01@anurag.edu.in, Asha Reddy, 23EG105A01, CSE, 2027, A'} />
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <span className="text-[12px] text-ink-mute">{parsed.length} valid row{parsed.length === 1 ? '' : 's'}</span>
-          <button disabled={busy || !parsed.length} onClick={() => submit(parsed, true)} className="btn-primary">{password ? 'Save and create logins' : 'Save and send invites'}</button>
+          <button disabled={busy || !parsed.length} onClick={() => submit(parsed, true)} className="btn-primary">{logins ? 'Save and create logins' : 'Save and send invites'}</button>
           <button disabled={busy || !parsed.length} onClick={() => submit(parsed, false)} className="btn-glass">Save without emailing</button>
         </div>
         <ResultList results={results} />
@@ -253,7 +304,7 @@ export function AdminRoster() {
             <table className="w-full min-w-[640px] text-left text-[12.5px]">
               <thead>
                 <tr className="border-b border-line text-[11px] font-semibold text-ink-mute">
-                  {['Roll no.', 'Name', 'Email', 'Year', 'Branch', 'Section', 'Status', ''].map((h) => <th key={h} className="px-2 py-2">{h}</th>)}
+                  {['Roll no.', 'Name', 'Email', 'Year', 'Branch', 'Section', 'Academics', 'Status', ''].map((h) => <th key={h} className="px-2 py-2">{h}</th>)}
                 </tr>
               </thead>
               <tbody>
@@ -273,6 +324,7 @@ export function AdminRoster() {
                         className="field h-[30px] w-[64px] px-2 text-center text-[12px] uppercase"
                       />
                     </td>
+                    <td className="px-2 py-2"><AcademicsFix row={r} onDone={load} /></td>
                     <td className={`px-2 py-2 ${r.user_id ? 'text-[#067647]' : 'text-ink-mute'}`}>{r.user_id ? 'Joined' : r.invited_at ? 'Invited' : 'Not invited'}</td>
                     <td className="px-2 py-2 text-right">
                       {!r.user_id && (
@@ -301,7 +353,7 @@ function RecruitersCard({ orgId }: { orgId: string }) {
   const { showToast } = useApp()
   const [rows, setRows] = useState<RecruiterRow[]>([])
   const [f, setF] = useState({ email: '', company: '', full_name: '' })
-  const [password, setPassword] = useState('')
+  const [logins, setLogins] = useState(false)
   const [busy, setBusy] = useState(false)
   const [results, setResults] = useState<InviteResult[]>([])
 
@@ -318,11 +370,10 @@ function RecruitersCard({ orgId }: { orgId: string }) {
   const add = async (e: FormEvent) => {
     e.preventDefault()
     if (!f.email.trim() || !f.company.trim()) return showToast('Enter the recruiter email and their company.')
-    if (password && password.length < 8) return showToast('Temporary password must be at least 8 characters.')
     setBusy(true)
     try {
       const { results } = await callApi<{ results: InviteResult[] }>('admin', {
-        action: 'invite', org_id: orgId, role: 'recruiter', password: password || undefined,
+        action: 'invite', org_id: orgId, role: 'recruiter', logins,
         people: [{ email: f.email.trim().toLowerCase(), company: f.company.trim(), full_name: f.full_name.trim() }],
       })
       setResults(results ?? [])
@@ -351,9 +402,9 @@ function RecruitersCard({ orgId }: { orgId: string }) {
         <input type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} placeholder="hr@company.com" className="field" />
         <input value={f.company} onChange={(e) => setF({ ...f, company: e.target.value })} placeholder="Company" className="field" />
         <input value={f.full_name} onChange={(e) => setF({ ...f, full_name: e.target.value })} placeholder="Name (optional)" className="field" />
-        <button disabled={busy || !orgId} className="btn-primary">{password ? 'Add and create login' : 'Add and invite'}</button>
+        <button disabled={busy || !orgId} className="btn-primary">{logins ? 'Add and create login' : 'Add and invite'}</button>
       </form>
-      <div className="mt-3"><LoginMethod password={password} setPassword={setPassword} /></div>
+      <div className="mt-3"><LoginMethod logins={logins} setLogins={setLogins} /></div>
       <ResultList results={results} />
       <div className="mt-3 divide-y divide-line">
         {rows.map((r) => (
@@ -382,7 +433,7 @@ export function AdminTeam() {
   const [email, setEmail] = useState('')
   const [busy, setBusy] = useState(false)
   const [results, setResults] = useState<InviteResult[]>([])
-  const [password, setPassword] = useState('')
+  const [logins, setLogins] = useState(false)
 
   const load = useCallback(async () => {
     if (!orgId) return
@@ -401,7 +452,7 @@ export function AdminTeam() {
     if (!email.trim()) return showToast('Enter an email address first.')
     setBusy(true)
     try {
-      const { results } = await callApi<{ results: InviteResult[] }>('admin', { action: 'invite', org_id: orgId, role: 'org_admin', people: [{ email: email.trim() }], password: password || undefined })
+      const { results } = await callApi<{ results: InviteResult[] }>('admin', { action: 'invite', org_id: orgId, role: 'org_admin', people: [{ email: email.trim() }], logins })
       setResults(results ?? [])
       setEmail('')
       load()
@@ -429,8 +480,8 @@ export function AdminTeam() {
           <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder={`placement@${org?.email_domains[0] ?? 'college.edu'}`} className="field" />
           <button disabled={busy || !orgId} className="btn-primary shrink-0">Add and invite</button>
         </form>
-        <div className="mt-3"><LoginMethod password={password} setPassword={setPassword} /></div>
-        <p className="mt-2 text-[12px] text-ink-mute">Existing accounts get access immediately. New addresses get an invite email, or a login with the temporary password you set.</p>
+        <div className="mt-3"><LoginMethod logins={logins} setLogins={setLogins} /></div>
+        <p className="mt-2 text-[12px] text-ink-mute">Existing accounts get access immediately. New addresses get an invite email, or a login with its own random password.</p>
         <ResultList results={results} />
       </Card>
 
@@ -581,7 +632,7 @@ export function SuperOrgs() {
   const [f, setF] = useState(blankOrg)
   const [busy, setBusy] = useState(false)
   const [results, setResults] = useState<InviteResult[]>([])
-  const [password, setPassword] = useState('')
+  const [logins, setLogins] = useState(false)
 
   const loadUsage = useCallback(async () => {
     const { data, error } = await supabase.rpc('org_usage')
@@ -631,7 +682,6 @@ export function SuperOrgs() {
     const domains = list(f.email_domains).map((d) => d.replace(/^@/, ''))
     if (f.name.trim().length < 2) return showToast('Enter the college name.')
     if (!admins.length) return showToast('Add the placement cell login email for this college.')
-    if (password && password.length < 8) return showToast('Temporary password must be at least 8 characters.')
     if (admins.some((x) => !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(x))) return showToast('Admin emails must be valid email addresses.')
     if (domains.some((d) => !/^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(d))) return showToast('Email domains must look like college.edu.in')
     const row = {
@@ -648,11 +698,16 @@ export function SuperOrgs() {
       setBusy(false)
       return showToast(res.error.message.includes('official_code') ? 'Another college already uses that official code.' : res.error.message)
     }
+    // Taking an email off the list ends that person's admin access, not just the line in this form.
+    for (const gone of (editing?.admin_emails ?? []).filter((x) => !admins.includes(x))) {
+      const { error } = await supabase.rpc('remove_org_admin', { target_org: res.data.id, target_email: gone })
+      if (error) showToast(`Could not remove ${gone}: ${errMsg(error)}`)
+    }
     // Send login invites to admin emails that are new for this college.
     const fresh = admins.filter((x) => !editing?.admin_emails.includes(x))
     if (fresh.length) {
       try {
-        const { results } = await callApi<{ results: InviteResult[] }>('admin', { action: 'invite', org_id: res.data.id, role: 'org_admin', people: fresh.map((email) => ({ email })), password: password || undefined })
+        const { results } = await callApi<{ results: InviteResult[] }>('admin', { action: 'invite', org_id: res.data.id, role: 'org_admin', people: fresh.map((email) => ({ email })), logins })
         setResults(results ?? [])
       } catch (err) {
         showToast(`College saved, but invites failed: ${errMsg(err)}`)
@@ -707,7 +762,7 @@ export function SuperOrgs() {
               {input('admin_emails', 'Placement cell email(s)', 'placement@anurag.edu.in, tpo@gmail.com')}
               {input('email_domains', 'Student email domain (optional, checks roster emails)', 'anurag.edu.in')}
             </div>
-            <div className="mt-3"><LoginMethod password={password} setPassword={setPassword} /></div>
+            <div className="mt-3"><LoginMethod logins={logins} setLogins={setLogins} /></div>
           </div>
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <label className="block">
@@ -739,7 +794,7 @@ export function SuperOrgs() {
           </div>
           {input('notes', 'Notes', 'Contact person, payment terms…')}
           <div className="flex gap-2">
-            <button disabled={busy} className="btn-primary">{busy ? 'Saving…' : editing ? 'Save changes' : password ? 'Create college and its login' : 'Create college and invite admins'}</button>
+            <button disabled={busy} className="btn-primary">{busy ? 'Saving…' : editing ? 'Save changes' : logins ? 'Create college and its login' : 'Create college and invite admins'}</button>
             {editing && <button type="button" onClick={() => startEdit(null)} className="btn-glass">Cancel</button>}
           </div>
         </form>
@@ -833,7 +888,6 @@ export function SuperAdmins() {
   const [email, setEmail] = useState('')
   const [busy, setBusy] = useState(false)
   const [results, setResults] = useState<InviteResult[]>([])
-  const [password, setPassword] = useState('')
 
   const load = useCallback(async () => {
     const { data, error } = await supabase.rpc('platform_admins')
@@ -850,7 +904,7 @@ export function SuperAdmins() {
     if (!email.trim()) return showToast('Enter an email address first.')
     setBusy(true)
     try {
-      const { results } = await callApi<{ results: InviteResult[] }>('admin', { action: 'invite', role: 'platform_admin', people: [{ email: email.trim() }], password: password || undefined })
+      const { results } = await callApi<{ results: InviteResult[] }>('admin', { action: 'invite', role: 'platform_admin', people: [{ email: email.trim() }] })
       setResults(results ?? [])
       setEmail('')
       load()
@@ -878,7 +932,7 @@ export function SuperAdmins() {
           <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="owner@yourcompany.com" className="field" />
           <button disabled={busy} className="btn-primary shrink-0">Add and invite</button>
         </form>
-        <div className="mt-3"><LoginMethod password={password} setPassword={setPassword} /></div>
+        
         <p className="mt-2 text-[12px] text-ink-mute">
           A platform admin account is separate from student and placement-cell accounts: it only sees the platform pages. New addresses get an invite and become
           platform admins when they sign up.

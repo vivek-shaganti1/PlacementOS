@@ -8,6 +8,7 @@ import { extractResumeText } from '../lib/resumeText'
 import { supabase } from '../lib/supabase'
 import { useApp } from '../lib/store'
 import { errMsg, type Profile } from '../lib/supabase'
+import { provenIntegrations } from '../lib/trust'
 import { allEvidence } from '../lib/verify'
 import { Card } from './Page'
 import { safeUrl } from '../lib/links'
@@ -98,14 +99,16 @@ export function ConnectedAccounts({ p }: { p: Profile }) {
   const { showToast } = useApp()
   const [busy, setBusy] = useState<string | null>(null)
   const [draft, setDraft] = useState<Record<string, string>>({})
+  const [proof, setProof] = useState<Record<string, { code: string; where: string }>>({})
   const [links, setLinks] = useState({ linkedin_url: p.linkedin_url ?? '', portfolio_url: p.portfolio_url ?? '', hackerrank_username: p.hackerrank_username ?? '' })
 
   const sync = async (platform: string, username: string | null) => {
     setBusy(platform)
     try {
-      await callApi('connect', { platform, username })
+      const res = await callApi<{ proven?: boolean; code?: string; where?: string }>('connect', { platform, username })
       await refreshProfile()
-      showToast(username ? `${platform[0].toUpperCase() + platform.slice(1)} synced.` : 'Disconnected.')
+      setProof(({ [platform]: _, ...rest }) => (res.code && res.where ? { ...rest, [platform]: { code: res.code, where: res.where } } : rest))
+      showToast(!username ? 'Disconnected.' : res.proven === false ? 'Connected. Prove it is yours to make it count.' : `${platform[0].toUpperCase() + platform.slice(1)} synced.`)
       setDraft((d) => ({ ...d, [platform]: '' }))
     } catch (e) {
       showToast(errMsg(e))
@@ -149,6 +152,7 @@ export function ConnectedAccounts({ p }: { p: Profile }) {
           {shown.map(({ key, label, placeholder, url }) => {
             const username = usernameOf(p, key)
             const synced = p.integrations?.[key]?.synced_at
+            const proven = p.integrations?.[key]?.ownership?.proven === true
             return (
               <div key={key} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-3">
                 <span className="w-full text-[12.5px] font-semibold text-ink sm:w-[92px]">{label}</span>
@@ -156,8 +160,15 @@ export function ConnectedAccounts({ p }: { p: Profile }) {
                   <>
                     <div className="min-w-0 flex-1">
                       <a href={url(username)} target="_blank" rel="noreferrer" className="text-[12.5px] font-medium text-brand-dark hover:underline">@{username}</a>
+                      <span className={`ml-2 rounded-full border px-1.5 py-0.5 text-[10px] font-semibold ${proven ? 'border-[#c9f0d9] bg-[#ecfdf3] text-[#067647]' : 'border-[#fbe3bd] bg-[#fff8ec] text-[#b45309]'}`}>{proven ? 'Proven yours' : 'Not proven'}</span>
                       <p className="truncate text-[11.5px] text-ink-mute">{statsLine(p, key)}</p>
                       {synced && <p className="text-[10.5px] text-ink-faint">Synced {ago(synced)}</p>}
+                      {!proven && !proof[key] && <p className="mt-1 text-[11px] text-[#b45309]">Does not count for colleges or recruiters until you prove it is yours. Press Prove it for your code.</p>}
+                      {!proven && proof[key] && (
+                        <p className="mt-1 text-[11px] text-ink-soft">
+                          Add <code className="select-all rounded bg-[#f4f2ff] px-1 font-mono text-[11px] text-ink">{proof[key].code}</code> to {proof[key].where}, save it there, then press Prove it. You can remove the code afterwards.
+                        </p>
+                      )}
                       {key === 'github' && signals.length > 0 && (
                         <div className="mt-1.5 flex flex-wrap gap-1.5">
                           {signals.map(([sig, v]) => (
@@ -174,7 +185,7 @@ export function ConnectedAccounts({ p }: { p: Profile }) {
                         </p>
                       )}
                     </div>
-                    <button onClick={() => sync(key, username)} disabled={!!busy} className={btnGhost}>{busy === key ? 'Syncing…' : 'Sync'}</button>
+                    <button onClick={() => sync(key, username)} disabled={!!busy} className={btnGhost}>{busy === key ? 'Checking…' : proven ? 'Sync' : 'Prove it'}</button>
                     <button onClick={() => sync(key, null)} disabled={!!busy} className="text-[11px] text-ink-faint hover:text-[#d92d20]">Disconnect</button>
                   </>
                 ) : (
@@ -214,12 +225,12 @@ export function VerifiedSkills({ p }: { p: Profile }) {
   const { updateProfile } = useAuth()
   const { showToast } = useApp()
   const SKILLS = skillsFor(p)
-  const evidence = allEvidence(p.integrations ?? {}, p.resume_analysis, { skills: SKILLS, credentials: p.credentials })
+  const evidence = allEvidence(provenIntegrations(p.integrations), p.resume_analysis, { skills: SKILLS, credentials: p.credentials })
   const names = SKILLS.filter((n) => evidence[n])
   if (!names.length)
     return (
       <Card title="Verified skill levels">
-        <p className="text-[12px] text-ink-mute">Connect GitHub (with your design or code files), Credly or a coding platform, add an NPTEL certificate, or analyze your resume, to calculate skill levels from real evidence instead of self-rating.</p>
+        <p className="text-[12px] text-ink-mute">Connect GitHub (with your design or code files), Credly or a coding platform and prove it is yours, add an NPTEL certificate, or analyze your resume, to calculate skill levels from real evidence instead of self-rating.</p>
       </Card>
     )
 
@@ -391,7 +402,7 @@ const statusChip: Record<string, string> = {
   rejected: 'border-[#fbd5d1] bg-[#fef3f2] text-[#b42318]',
 }
 
-/** NPTEL certificates (verified at nptel.ac.in) and GATE scorecards (read from the PDF, confirmed by the placement cell). */
+/** NPTEL certificates (looked up on nptel.ac.in) and GATE scorecards (read from the PDF), both confirmed by the placement cell. */
 export function Credentials({ p }: { p: Profile }) {
   const { refreshProfile, session } = useAuth()
   const { showToast } = useApp()
@@ -407,7 +418,7 @@ export function Credentials({ p }: { p: Profile }) {
       await callApi('connect', { credential: 'nptel', ref: nptel.ref.trim(), skill: nptel.skill })
       await refreshProfile()
       setNptel({ ...nptel, ref: '' })
-      showToast('Certificate verified on nptel.ac.in.')
+      showToast('Found on nptel.ac.in. Your placement cell confirms it is yours.')
     } catch (e) {
       showToast(errMsg(e))
     } finally {
@@ -422,8 +433,8 @@ export function Credentials({ p }: { p: Profile }) {
     try {
       const fields = parseGateScorecard(await extractResumeText(file, file.name))
       if (!fields) throw new Error('This does not look like a GATE scorecard. Upload the PDF downloaded from GOAPS.')
-      const path = `${session.user.id}/gate-${fields.year}-${fields.paper}.pdf`
-      const up = await supabase.storage.from('resumes').upload(path, file, { upsert: true, contentType: 'application/pdf' })
+      const path = `${session.user.id}/gate-${fields.year}-${fields.paper}-${Date.now()}.pdf`
+      const up = await supabase.storage.from('resumes').upload(path, file, { contentType: 'application/pdf' })
       if (up.error) throw up.error
       await callApi('connect', { credential: 'gate', ...fields, file_path: path })
       await refreshProfile()
@@ -443,7 +454,7 @@ export function Credentials({ p }: { p: Profile }) {
 
   return (
     <Card title="Certificates & GATE">
-      <p className="text-[12px] text-ink-mute">Only credentials that can be checked count: NPTEL certificates are verified on nptel.ac.in; a GATE score is read from your official scorecard and confirmed by your placement cell.</p>
+      <p className="text-[12px] text-ink-mute">Only credentials that can be checked count: NPTEL certificates are looked up on nptel.ac.in, a GATE score is read from your official scorecard, and your placement cell confirms both are yours.</p>
       {creds.length > 0 && (
         <div className="mt-3 divide-y divide-line rounded-[12px] border border-line bg-white/70">
           {creds.map((c) => (
@@ -451,7 +462,7 @@ export function Credentials({ p }: { p: Profile }) {
               <span className="font-semibold text-ink">{c.kind === 'gate' ? c.title : `NPTEL · ${c.title || c.ref}`}</span>
               <span className="text-ink-mute">{c.kind === 'gate' ? `Score ${c.score}${c.data.air ? ` · AIR ${c.data.air}` : ''}` : `${c.skill} · ${String(c.data.discipline ?? '')}`}</span>
               <span className={`rounded-full border px-2 py-0.5 text-[10.5px] font-medium ${statusChip[c.status]}`}>
-                {c.status === 'verified' ? (c.verified_by === 'college' ? 'Confirmed by placement cell' : 'Verified at source') : c.status === 'pending' ? 'Awaiting placement cell' : 'Rejected'}
+                {c.status === 'verified' ? 'Confirmed by placement cell' : c.status === 'pending' ? 'Awaiting placement cell' : 'Rejected'}
               </span>
               <button onClick={() => remove(c.id)} className="ml-auto text-[11px] text-ink-faint hover:text-[#d92d20]">Remove</button>
             </div>

@@ -181,7 +181,7 @@ export default function Profile() {
         </Card>
 
         <Card
-          title="Skills"
+          title="Your own skill ratings"
           action={
             editingSkills ? (
               <div className="flex gap-2">
@@ -199,6 +199,7 @@ export default function Profile() {
             )
           }
         >
+          <p className="mb-3 text-[11.5px] text-ink-mute">For your own planning. Colleges and recruiters rank on proven evidence below, not on these.</p>
           <div className="space-y-3">
             {editingSkills
               ? skills.map((s, i) => (

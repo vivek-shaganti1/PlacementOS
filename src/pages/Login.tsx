@@ -3,6 +3,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { Logo } from '../components/Logo'
 import { Aurora } from '../components/Page'
+import { callApi } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { errMsg, supabase } from '../lib/supabase'
 
@@ -11,7 +12,7 @@ type Mode = 'signin' | 'signup' | 'forgot' | 'reset'
 const input = 'field mt-1 h-[42px] text-[13px]'
 
 export default function Login({ initialMode = 'signin' }: { initialMode?: Mode }) {
-  const { clearRecovery, linkError, mustChangePassword, refreshProfile } = useAuth()
+  const { clearRecovery, linkError, mustChangePassword, refreshProfile, signOut } = useAuth()
   const navigate = useNavigate()
   const notice = (useLocation().state as { notice?: string } | null)?.notice
   const [mode, setMode] = useState<Mode>(linkError ? 'forgot' : initialMode)
@@ -46,23 +47,16 @@ export default function Login({ initialMode = 'signin' }: { initialMode?: Mode }
         const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
         if (error) throw error
       } else if (mode === 'signup') {
-        if (password.length < 8) throw new Error('Use at least 8 characters for your password.')
-        // Registration happens on the server: only students on a college roster (with a matching roll number)
-        // can register. By default the account is ready immediately; with SIGNUP_VERIFY_EMAIL on, it is finished from an email link.
+        // Registration happens on the server: only students on a college roster (with a matching roll number) can
+        // register, and the account is finished from an emailed link, where they choose their password.
         const res = await fetch('/api/signup', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ email: email.trim(), password, full_name: name.trim(), roll_number: roll.trim() }),
+          body: JSON.stringify({ email: email.trim(), full_name: name.trim(), roll_number: roll.trim() }),
         })
-        const body = (await res.json().catch(() => ({}))) as { error?: string; verify?: boolean }
+        const body = (await res.json().catch(() => ({}))) as { error?: string }
         if (!res.ok) throw new Error(body.error || `Sign-up failed (${res.status})`)
-        // Email verification on: the account is finished from the link in their inbox, not here.
-        if (body.verify) {
-          setInfo(`Check ${email.trim()} for a link to finish creating your account.`)
-          return
-        }
-        const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password })
-        if (error) throw error
+        setInfo(`Check ${email.trim()} for a link to finish creating your account.`)
       } else if (mode === 'forgot') {
         const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
           redirectTo: `${window.location.origin}/reset-password`,
@@ -70,9 +64,18 @@ export default function Login({ initialMode = 'signin' }: { initialMode?: Mode }
         if (error) throw error
         setInfo('If an account exists for that email, a reset link is on its way.')
       } else {
-        if (password.length < 8) throw new Error('Use at least 8 characters for your password.')
-        // Clearing must_change_password here ends the forced change for accounts made with a temporary password.
-        const { error } = await supabase.auth.updateUser({ password, data: { must_change_password: false } })
+        if (password.length < 10) throw new Error('Use at least 10 characters for your password.')
+        // A temporary password is ended by the server, because only it can clear the flag that holds the account back.
+        if (mustChangePassword) {
+          await callApi('password', { password })
+          const { error } = await supabase.auth.refreshSession()
+          if (error) throw error
+          clearRecovery()
+          await refreshProfile()
+          navigate('/', { replace: true })
+          return
+        }
+        const { error } = await supabase.auth.updateUser({ password })
         // Changing a password ends the account's other sessions. If this page's session was one of them (the password
         // was already set in another tab or on another device), it can never succeed: sign out here and say why.
         if (error && (error.name === 'AuthSessionMissingError' || error.code === 'session_not_found')) {
@@ -95,7 +98,7 @@ export default function Login({ initialMode = 'signin' }: { initialMode?: Mode }
 
   const titles: Record<Mode, [string, string, string]> = {
     signin: ['Welcome back', 'Sign in to see your eligibility stacks.', 'Sign in'],
-    signup: ['Create your account', 'For students your college has added to PlacementIQ.', 'Create account'],
+    signup: ['Create your account', 'For students your college has added. We email you a link to finish.', 'Email me a link'],
     forgot: ['Reset your password', 'We will email you a link to choose a new one.', 'Send reset link'],
     reset: ['Choose a new password', mustChangePassword ? 'You signed in with a temporary password. Choose your own to continue.' : 'Enter a new password for your account.', 'Update password'],
   }
@@ -174,7 +177,7 @@ export default function Login({ initialMode = 'signin' }: { initialMode?: Mode }
               </label>
             )}
 
-            {mode !== 'forgot' && (
+            {(mode === 'signin' || mode === 'reset') && (
               <label className="block">
                 <span className="text-[11.5px] font-medium text-ink-mute">{mode === 'reset' ? 'New password' : 'Password'}</span>
                 <input
@@ -183,7 +186,7 @@ export default function Login({ initialMode = 'signin' }: { initialMode?: Mode }
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   autoComplete={mode === 'signin' ? 'current-password' : 'new-password'}
-                  minLength={mode === 'signin' ? undefined : 8}
+                  minLength={mode === 'signin' ? undefined : 10}
                   className={input}
                 />
               </label>
@@ -196,7 +199,7 @@ export default function Login({ initialMode = 'signin' }: { initialMode?: Mode }
                 </motion.p>
               )}
               {info && (
-                <motion.p initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="rounded-[11px] border border-[#c9f0d9] bg-[#ecfdf3]/90 px-3 py-2 text-[12px] text-[#0d9a5b]">
+                <motion.p role="status" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="rounded-[11px] border border-[#c9f0d9] bg-[#ecfdf3]/90 px-3 py-2 text-[12px] text-[#0d9a5b]">
                   {info}
                 </motion.p>
               )}
@@ -216,6 +219,11 @@ export default function Login({ initialMode = 'signin' }: { initialMode?: Mode }
                     Create an account
                   </button>
                 </>
+              )}
+              {mode === 'reset' && (
+                <button type="button" onClick={() => signOut()} className="text-ink-mute hover:underline">
+                  Sign out
+                </button>
               )}
               {(mode === 'signup' || mode === 'forgot') && (
                 <button type="button" onClick={() => switchTo('signin')} className="font-semibold text-brand-dark hover:underline">
