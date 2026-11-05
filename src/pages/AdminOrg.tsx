@@ -265,7 +265,7 @@ export function AdminRoster() {
           Paste rows from a spreadsheet, one student per line: <span className="tabular-nums text-ink">email, full name, roll number, branch, graduation year, section</span>, and optionally the official <span className="tabular-nums text-ink">CGPA, backlogs, Class X %, Class XII %</span> (these lock the student's academics as verified).
           Commas or tabs both work. Year of study (1st to 4th) is worked out from the graduation year. Re-importing a student updates their record.
         </p>
-        <textarea value={paste} onChange={(e) => setPaste(e.target.value)} rows={6} className="field mt-2 h-auto py-2 font-mono text-[12px]" placeholder={'23eg105a01@anurag.edu.in, Asha Reddy, 23EG105A01, CSE, 2027, A'} />
+        <textarea value={paste} onChange={(e) => setPaste(e.target.value)} rows={6} className="field mt-2 h-auto py-2 font-mono text-[12px]" placeholder={'student@college.edu, Student Name, ROLL001, CSE, 2027, A'} />
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <span className="text-[12px] text-ink-mute">{parsed.length} valid row{parsed.length === 1 ? '' : 's'}</span>
           <button disabled={busy || !parsed.length} onClick={() => submit(parsed, true)} className="btn-primary">{logins ? 'Save and create logins' : 'Save and send invites'}</button>
@@ -1100,7 +1100,7 @@ export function AdminClasses() {
               <table className="w-full min-w-[980px] text-left text-[12.5px]">
                 <thead>
                   <tr className="border-b border-line text-[11px] font-semibold text-ink-mute">
-                    {['Section', 'On roster', 'Joined', 'Onboarded', 'Avg CGPA', 'Avg readiness', 'Avg score', 'Avg DSA', 'Avg resume', 'Applications', 'Offers', 'Need attention', 'Top student'].map((h) => <th key={h} className="px-2 py-2">{h}</th>)}
+                    {['Section', 'On roster', 'Joined', 'Onboarded', 'Avg CGPA', 'Avg readiness', 'Avg score', 'Avg lead skill', 'Avg resume', 'Applications', 'Offers', 'Need attention', 'Top student'].map((h) => <th key={h} className="px-2 py-2">{h}</th>)}
                   </tr>
                 </thead>
                 <tbody>

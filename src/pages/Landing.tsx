@@ -80,7 +80,7 @@ function Pricing() {
         ))}
       </div>
       <motion.p variants={reveal} className="mt-5 text-[12px] text-ink-faint">
-        Prices in US dollars, excluding applicable taxes. Seats are counted by students on your roster. The platform fee covers hosting, security, backups and onboarding for your college.
+        Prices in US dollars, excluding applicable taxes. Seats are counted by students on your roster. The platform fee covers hosting, security and onboarding for your college.
         AI actions are assistant replies, resume analyses and job-description matches.
       </motion.p>
     </Section>

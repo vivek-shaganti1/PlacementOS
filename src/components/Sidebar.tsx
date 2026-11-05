@@ -42,7 +42,6 @@ const groups = [
       { to: '/jobs', label: 'Campus Jobs', Icon: IconDrives },
       { to: '/drives', label: 'Company Insights', Icon: IconStacks },
       { to: '/applications', label: 'Applications', Icon: IconFile },
-      { to: '/alumni', label: 'Alumni Network', Icon: IconUsers },
     ],
   },
   {

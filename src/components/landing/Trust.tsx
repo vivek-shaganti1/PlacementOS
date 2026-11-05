@@ -6,17 +6,18 @@ const ease = [0.16, 1, 0.3, 1] as const
 const reveal: Variants = { hidden: { opacity: 0, y: 24 }, show: { opacity: 1, y: 0, transition: { duration: 0.7, ease } } }
 
 const cards = [
-  { title: 'Row-level security', body: 'Every table (skills, projects, analyses, matches) is locked to your account in the database itself.', Icon: IconLock },
+  { title: 'Row-level security', body: 'Every table (skills, projects, analyses, matches) has access rules in the database itself, so your records open only to you and the roles allowed to see them.', Icon: IconLock },
   { title: 'Private resume storage', body: 'Resumes live in a private bucket under your user ID and open through short-lived signed links.', Icon: IconFileText },
   { title: 'Keys stay server-side', body: 'AI and integration calls run in server functions. Nothing secret ever ships to the browser.', Icon: IconSettings },
 ]
 
-// An abridged version of a real policy from the database (a recruiter only sees applicants of its own college).
+// A real policy from the database, abridged (a recruiter only sees applications to its own drives).
 const policy = [
-  ['k', 'create policy'], ['s', ' "recruiters see applicants"'],
+  ['k', 'create policy'], ['s', ' "recruiters see applications to own jobs"'],
   ['n', ''], ['k', '  on '], ['t', 'job_applications'], ['k', ' for select'],
-  ['n', ''], ['k', '  using '], ['t', '('], ['f', 'can_view_user'], ['t', '(user_id));'],
-  ['n', ''], ['n', ''], ['c', '-- 39 / 39 access tests pass on production'],
+  ['n', ''], ['k', '  using '], ['t', '('], ['f', 'exists'], ['t', ' (select 1 from job_postings j'],
+  ['n', ''], ['t', '    where j.id = job_id and j.recruiter_id = '], ['f', 'auth.uid'], ['t', '()));'],
+  ['n', ''], ['n', ''], ['c', '-- 48 RLS + 56 regression tests, on a replayed copy of every migration'],
 ] as const
 const tone: Record<string, string> = { k: 'text-[#b9a7ff]', s: 'text-[#8ef5d9]', t: 'text-white/80', f: 'text-[#7dd3fc]', c: 'text-white/40', n: '' }
 
@@ -41,7 +42,7 @@ export function Trust() {
           <div className="mb-3 flex items-center gap-1.5">
             {['#ff5f57', '#febc2e', '#28c840'].map((c) => <span key={c} className="h-2.5 w-2.5 rounded-full" style={{ background: c }} />)}
             <span className="ml-2 min-w-0 truncate text-[10.5px] text-white/40">supabase/migrations · security</span>
-            <span className="ml-auto flex shrink-0 items-center gap-1.5 rounded-full bg-[#12b76a]/15 px-2 py-0.5 text-[10px] text-[#6ee7b7]"><span className="pulse-dot h-1.5 w-1.5 rounded-full bg-[#34d399]" /> 39/39</span>
+            <span className="ml-auto flex shrink-0 items-center gap-1.5 rounded-full bg-[#12b76a]/15 px-2 py-0.5 text-[10px] text-[#6ee7b7]"><span className="pulse-dot h-1.5 w-1.5 rounded-full bg-[#34d399]" /> 103 tests</span>
           </div>
           <code className="block whitespace-pre-wrap">
             {policy.map(([k, text], i) => (k === 'n' ? <br key={i} /> : <span key={i} className={tone[k]}>{text}</span>))}

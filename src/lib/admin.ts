@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import { completeness } from '../components/ProfileExtras'
 import { useAuth } from './auth'
-import { evaluateAll, readinessOf } from './eligibility'
+import { evaluateAll } from './eligibility'
+import { coreSkills, trackReadiness } from './predict'
 import { assembleProfile, RELATED, type RelatedRows } from './profileShape'
 import { allRows, supabase, type Credential, type Organization, type Profile, errMsg } from './supabase'
 import { trustedProfile } from './trust'
@@ -14,6 +15,7 @@ export type StudentRow = {
   readiness: number
   eligible: number
   resume: number | null
+  /** Level of the lead skill of the student's strongest track (Data Structures & Algorithms for software). */
   dsa: number
   solved: number
   strength: number
@@ -21,9 +23,13 @@ export type StudentRow = {
   rank: number
 }
 
-/** Composite placement score used for rankings (0-100). */
+/**
+ * Composite placement score used for rankings (0-100): 50% readiness against the student's own tracks, 30% the lead skill of
+ * their strongest track, 20% CGPA. Only proven evidence and academics count. The resume score and profile strength are
+ * shown beside it but stay out, because a student writes both.
+ */
 export const scoreOf = (r: Omit<StudentRow, 'score' | 'rank'>) =>
-  Math.round(0.35 * r.readiness + 0.2 * (r.resume ?? 0) + 0.2 * r.dsa + 0.15 * r.strength + 0.1 * Math.min(100, r.profile.cgpa * 10))
+  Math.round(0.5 * r.readiness + 0.3 * r.dsa + 0.2 * Math.min(100, r.profile.cgpa * 10))
 
 /** Loads every student with all related tables (admin RLS) and ranks them. */
 export function useStudents() {
@@ -61,10 +67,10 @@ export function useStudents() {
         profile,
         trusted,
         isAdmin: admins.has(base.id),
-        readiness: readinessOf(companies),
+        readiness: trackReadiness(trusted),
         eligible: companies.filter((c) => c.bucket === 'eligible').length,
         resume: profile.resume_analysis?.overall ?? null,
-        dsa: trusted.skills.find((s) => s.name === 'Data Structures & Algorithms')?.level ?? 0,
+        dsa: coreSkills(trusted).lead.level,
         solved: (i.leetcode?.solved ?? 0) + (i.codeforces?.solved ?? 0) + (i.codechef?.solved ?? 0),
         strength: completeness(profile).pct,
       }

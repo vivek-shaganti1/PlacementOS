@@ -6,7 +6,7 @@ const BASE = process.env.BASE ?? 'http://localhost:5199'
 const OUT = new URL('./public/shots/', import.meta.url).pathname
 mkdirSync(OUT, { recursive: true })
 
-const browser = await chromium.launch({ executablePath: process.env.CHROME ?? '/Users/vivekshaganti/Library/Caches/ms-playwright/chromium_headless_shell-1223/chrome-headless-shell-mac-arm64/chrome-headless-shell' })
+const browser = await chromium.launch({ executablePath: process.env.CHROME })
 const wait = (ms) => new Promise((r) => setTimeout(r, ms))
 
 async function ctx(role, viewport = { width: 1600, height: 900 }, scale = 2) {
@@ -56,7 +56,7 @@ async function scrollTo(page, y) {
   await p.goto(BASE + '/login')
   await settle(p, 2000)
   await shot(p, 'login')
-  await p.locator('input[type=email]').first().fill('23eg105f59@anurag.edu.in')
+  await p.locator('input[type=email]').first().fill('student@college.example')
   await p.locator('input[type=password]').first().fill('example-password')
   await wait(400)
   await shot(p, 'login-filled')
@@ -144,7 +144,7 @@ async function scrollTo(page, y) {
   await p.goto(BASE + '/admin/roster')
   await settle(p, 3000)
   await shot(p, 'admin-roster')
-  await p.locator('textarea').fill('23eg105e14@anurag.edu.in, Nikhil Reddy, 23EG105E14, CSE, 2027\n23eg105e15@anurag.edu.in, Pooja Rao, 23EG105E15, CSE, 2027')
+  await p.locator('textarea').fill('student.one@college.example, Student One, EX2027001, CSE, 2027\nstudent.two@college.example, Student Two, EX2027002, CSE, 2027')
   await wait(400)
   await shot(p, 'admin-roster-paste')
   await p.goto(BASE + '/admin/jobs')

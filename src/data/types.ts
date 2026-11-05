@@ -1,14 +1,5 @@
 export type Bucket = 'eligible' | 'nearly' | 'canBecome' | 'notEligible'
 
-export type Alumnus = {
-  name: string
-  title: string
-  batch: string
-  years: string
-  location: string
-  avatar: string
-}
-
 export type Category =
   | 'top' | 'quant' | 'ai' | 'product' | 'fintech' | 'startup' | 'infra' | 'hardware' | 'service' | 'consulting'
   // core (non-software) recruiters
@@ -43,7 +34,6 @@ export type CompanyBase = {
   careers: string
   process: { stage: string; detail: string; duration: string }[]
   stats: { label: string; value: string }[]
-  alumni: Alumnus[]
 }
 
 export type Company = CompanyBase & {

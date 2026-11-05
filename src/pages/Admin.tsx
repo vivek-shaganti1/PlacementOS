@@ -444,7 +444,7 @@ export function AdminStudents() {
   if (!isAdmin) return <Denied />
 
   const exportCsv = () => {
-    const head = ['Rank', 'Name', 'Roll number', 'College', 'Email', 'Phone', 'Year', 'Branch', 'Section', 'Batch', 'CGPA', 'Backlogs', 'Projects', 'Internships', 'Applications', 'Readiness', 'Resume', 'DSA', 'Problems solved', 'Profile strength', 'Score']
+    const head = ['Rank', 'Name', 'Roll number', 'College', 'Email', 'Phone', 'Year', 'Branch', 'Section', 'Batch', 'CGPA', 'Backlogs', 'Projects', 'Internships', 'Applications', 'Readiness', 'Resume', 'Lead skill', 'Problems solved', 'Profile strength', 'Score']
     const lines = shown.map((r) => [r.rank, r.profile.full_name, r.profile.roll_number ?? '', orgName(r.profile.org_id), r.profile.email, r.profile.phone, yearLabel(yearOfStudy(r.profile.batch, r.profile.program)), r.profile.branch, r.profile.section, r.profile.batch, r.profile.cgpa, r.profile.backlogs, r.profile.projects.length, r.profile.internships.length, appsOf.get(r.profile.id)?.length ?? 0, r.readiness, r.resume ?? '', r.dsa, r.solved, r.strength, r.score])
     // A cell starting with = + - @ is a formula in Excel and Sheets; prefix it so student-entered text stays text.
     const cell = (v: unknown) => {
@@ -461,7 +461,7 @@ export function AdminStudents() {
   }
 
   return (
-    <Page title="Students" subtitle="Ranked by a composite placement score: 35% readiness, 20% resume, 20% DSA, 15% profile strength, 10% CGPA." wide actions={<button onClick={exportCsv} className="btn-glass">Export CSV</button>}>
+    <Page title="Students" subtitle="Ranked by a composite placement score: 50% readiness for their tracks, 30% lead skill, 20% CGPA. Only proven evidence and academics count." wide actions={<button onClick={exportCsv} className="btn-glass">Export CSV</button>}>
       <Card>
         <div className="flex flex-wrap gap-2">
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, email, roll number" className="field w-full sm:w-[260px]" />
@@ -494,7 +494,7 @@ export function AdminStudents() {
             <option value="readiness">Sort: Readiness</option>
             <option value="cgpa">Sort: CGPA</option>
             <option value="resume">Sort: Resume</option>
-            <option value="dsa">Sort: DSA</option>
+            <option value="dsa">Sort: lead skill</option>
             <option value="solved">Sort: Problems solved</option>
             <option value="projects">Sort: Projects</option>
             <option value="internships">Sort: Internships</option>
@@ -551,7 +551,7 @@ export function AdminStudents() {
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[13px] font-semibold text-ink">{r.profile.full_name || '—'}</span>
                 <span className="block truncate text-[11px] text-ink-mute">{r.profile.branch || '—'} · {r.profile.batch || '—'} · CGPA {r.profile.cgpa || '—'}</span>
-                <span className="block text-[11px] text-ink-faint">Readiness {r.readiness} · Resume {r.resume ?? '—'} · DSA {r.dsa}</span>
+                <span className="block text-[11px] text-ink-faint">Readiness {r.readiness} · Resume {r.resume ?? '—'} · Lead skill {r.dsa}</span>
               </span>
               <span className="text-[16px] font-semibold tabular-nums text-brand-dark">{r.score}</span>
             </button>
@@ -561,7 +561,7 @@ export function AdminStudents() {
           <table className="w-full text-left text-[12.5px]">
             <thead>
               <tr className="border-b border-line text-[11px] font-semibold text-ink-mute">
-                {['#', 'Student', 'Roll no.', ...(isSuperAdmin ? ['College'] : []), 'Class', 'CGPA', 'Backlogs', 'Projects', 'Apps', 'Readiness', 'Resume', 'DSA', 'Solved', 'Profile', 'Score'].map((h) => <th key={h} className="px-2 py-2">{h}</th>)}
+                {['#', 'Student', 'Roll no.', ...(isSuperAdmin ? ['College'] : []), 'Class', 'CGPA', 'Backlogs', 'Projects', 'Apps', 'Readiness', 'Resume', 'Lead skill', 'Solved', 'Profile', 'Score'].map((h) => <th key={h} className="px-2 py-2">{h}</th>)}
               </tr>
             </thead>
             <tbody>

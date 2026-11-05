@@ -3,7 +3,8 @@
  * simulator. Every number is a transparent function of the student's own data, so the UI can always say why.
  */
 import type { Bucket, Company } from '../data/types'
-import { evaluateAll, readinessOf, type StudentLike } from './eligibility'
+import { skillsFor, skillShort, TRACK_BY_ID, tracksFor } from './branches'
+import { catalogFor, evaluate, evaluateAll, readinessOf, requirementsFor, type StudentLike } from './eligibility'
 
 /* ---------------------------------------------------------------- salary prediction */
 
@@ -36,6 +37,12 @@ function weightedQuantile(items: { v: number; w: number }[], q: number) {
   return sorted[sorted.length - 1].v
 }
 
+/**
+ * `expected` is a weighted mean of company packages, not a sum. Improving a skill raises the weight of every company that
+ * tests it, and if those companies pay less than the current mean, the mean falls even though no offer got less likely.
+ * So raising aptitude (tested hardest by IT services) can lower expected CTC while eligibility improves. This is kept on
+ * purpose, because it reflects where the student's likely offers are, and the What-If page says so next to the number.
+ */
 export function predictSalary(companies: Company[]): SalaryPrediction {
   const items = companies.filter((c) => c.ctcAvg > 0).map((c) => ({ c, v: c.ctcAvg, w: weightOf(c) }))
   const total = items.reduce((a, x) => a + x.w, 0)
@@ -64,21 +71,42 @@ export type InterviewReadiness = {
 
 type InterviewInput = StudentLike & { mock_feedback?: { score: number }[]; resume_analysis?: { overall: number } | null }
 
-const skill = (p: StudentLike, name: string) => p.skills.find((s) => s.name === name)?.level ?? 0
+const APTITUDE = 'Aptitude & Reasoning'
+const skill = (p: Pick<StudentLike, 'skills'>, name: string) => p.skills.find((s) => s.name === name)?.level ?? 0
+
+type SkillLevel = { name: string; level: number }
+export type CoreSkills = { track: string; lead: SkillLevel; second: SkillLevel }
 
 /**
- * Interview readiness (0-100): coding rounds (DSA 30%), aptitude round (15%), system design (15%),
- * mock interview performance (20%, average of logged mock scores out of 10), resume quality (10%)
- * and hands-on experience (10%, projects and internships).
+ * The two skills a student's technical rounds are measured on: the first two non-aptitude skills of their strongest track
+ * (lead counted double, matching the 30% and 15% weights below). For the software track these are Data Structures &
+ * Algorithms and System Design, so a software student's numbers are unchanged, while a civil student is measured on
+ * structural analysis and a VLSI student on digital design. Taking the strongest track means adding a track never lowers
+ * a score. `levelOf` lets a caller supply its own levels, for example evidence-only levels for rankings.
+ */
+export function coreSkills(p: Pick<StudentLike, 'skills' | 'tracks' | 'branch'>, levelOf: (name: string) => number = (name) => skill(p, name)): CoreSkills {
+  return tracksFor(p)
+    .map((track) => {
+      const [lead, second] = (TRACK_BY_ID.get(track)?.skills ?? []).filter((s) => s !== APTITUDE)
+      return { track, lead: { name: lead, level: levelOf(lead) }, second: { name: second, level: levelOf(second) } }
+    })
+    .reduce((best, t) => (2 * t.lead.level + t.second.level > 2 * best.lead.level + best.second.level ? t : best))
+}
+
+/**
+ * Interview readiness (0-100): the lead skill of the student's strongest track (30%), the aptitude round (15%), that
+ * track's second skill (15%), mock interview performance (20%, average of logged mock scores out of 10), resume quality
+ * (10%) and hands-on experience (10%, projects and internships). The maximum is 100 on every branch.
  */
 export function interviewReadiness(p: InterviewInput): InterviewReadiness {
   const mocks = p.mock_feedback ?? []
   const mockAvg = mocks.length ? (mocks.reduce((a, m) => a + Number(m.score), 0) / mocks.length) * 10 : 0
   const experience = Math.min(100, p.projects.length * 20 + p.internships.length * 25)
+  const core = coreSkills(p)
   const components = [
-    { label: 'Coding (DSA)', value: skill(p, 'Data Structures & Algorithms'), weight: 0.3 },
-    { label: 'Aptitude', value: skill(p, 'Aptitude & Reasoning'), weight: 0.15 },
-    { label: 'System design', value: skill(p, 'System Design'), weight: 0.15 },
+    { label: skillShort(core.lead.name), value: core.lead.level, weight: 0.3 },
+    { label: 'Aptitude', value: skill(p, APTITUDE), weight: 0.15 },
+    { label: skillShort(core.second.name), value: core.second.level, weight: 0.15 },
     { label: 'Mock interviews', value: Math.round(mockAvg), weight: 0.2 },
     { label: 'Resume', value: p.resume_analysis?.overall ?? 0, weight: 0.1 },
     { label: 'Projects and internships', value: experience, weight: 0.1 },
@@ -88,7 +116,34 @@ export function interviewReadiness(p: InterviewInput): InterviewReadiness {
   return { score, components, weakest, mockCount: mocks.length }
 }
 
+/**
+ * Placement readiness for rankings: the same average as readinessOf, but each company is scored only on skills inside the
+ * student's own tracks. Whole categories hire for a track, so a company can test skills the track does not measure (a
+ * structural student meets construction planning, a robotics student meets PCB design). Those gaps stay on the student's
+ * own pages as advice, but a ranking must not hold them against the student: left in, readiness stops between 40 and 80
+ * on 12 of the 18 tracks however strong the student is. For the software track this equals readinessOf.
+ */
+export function trackReadiness(p: StudentLike): number {
+  const own = new Set(skillsFor(p))
+  return readinessOf(
+    catalogFor(p).map((c) => {
+      const { category, requirements } = requirementsFor(c)
+      const skills = Object.fromEntries(Object.entries(requirements.skills).filter(([name]) => own.has(name)))
+      return evaluate(c, p, { category, requirements: { ...requirements, skills } })
+    }),
+  )
+}
+
 /* ---------------------------------------------------------------- what-if simulator */
+
+/** The student's skills with some levels replaced. Skills not named keep their level, so a simulation with no change changes nothing. */
+export function withSkillLevels(skills: SkillLevel[], levels: Record<string, number>): SkillLevel[] {
+  const known = new Set(skills.map((s) => s.name))
+  return [
+    ...skills.map((s) => (s.name in levels ? { ...s, level: levels[s.name] } : s)),
+    ...Object.entries(levels).filter(([name]) => !known.has(name)).map(([name, level]) => ({ name, level })),
+  ]
+}
 
 export type Snapshot = {
   companies: Company[]

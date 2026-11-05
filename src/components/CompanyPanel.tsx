@@ -1,15 +1,13 @@
 import { motion } from 'motion/react'
 import { useEffect, useState, useRef } from 'react'
 import type { Company } from '../data/types'
-import Avatar from './Avatar'
 import CompanyLogo from './CompanyLogo'
-import { IconArrowRight, IconBookmark, IconBot, IconChevronDown, IconClose, IconLinkedIn, IconMessage, IconSpark } from './Icons'
+import { IconArrowRight, IconBookmark, IconBot, IconClose, IconSpark } from './Icons'
 import { useApp } from '../lib/store'
-import { linkedInSearch } from '../lib/links'
 import { SwapText } from './motion/SwapText'
 import { useDialog } from '../lib/useDialog'
 
-const TABS = ['Overview', 'Eligibility Criteria', 'Recruitment Process', 'Alumni', 'Statistics'] as const
+const TABS = ['Overview', 'Eligibility Criteria', 'Recruitment Process', 'Statistics'] as const
 type Tab = (typeof TABS)[number]
 
 const pill = (c: Company) => {
@@ -39,13 +37,11 @@ function Bar({ label, value }: { label: string; value: number }) {
 
 export default function CompanyPanel({ company, onClose, overlay }: { company: Company; onClose: () => void; overlay?: boolean }) {
   const [tab, setTab] = useState<Tab>('Overview')
-  const [showAllAlumni, setShowAllAlumni] = useState(false)
   const { saved, toggleSave, applied, apply, openAssistant } = useApp()
   const criteria = company.criteria
 
   useEffect(() => {
     setTab('Overview')
-    setShowAllAlumni(false)
   }, [company.id])
   // Escape closes the panel (but not while the assistant is open on top of it); as an overlay it also traps focus.
   const ref = useRef<HTMLElement>(null)
@@ -54,7 +50,6 @@ export default function CompanyPanel({ company, onClose, overlay }: { company: C
   const p = pill(company)
   const isSaved = saved.includes(company.id)
   const isApplied = applied.includes(company.id)
-  const alumni = showAllAlumni ? company.alumni : company.alumni.slice(0, 4)
   const b = company.breakdown
   const overall = company.match
 
@@ -119,7 +114,6 @@ export default function CompanyPanel({ company, onClose, overlay }: { company: C
 
       <div className="sticky top-0 z-10 flex shrink-0 gap-5 overflow-x-auto whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden border-b border-line bg-white/85 px-4 backdrop-blur-xl sm:gap-6 sm:px-6">
         {TABS.map((t) => {
-          const label = t === 'Alumni' ? `Alumni (${company.alumni.length})` : t
           const active = tab === t
           return (
             <button
@@ -129,7 +123,7 @@ export default function CompanyPanel({ company, onClose, overlay }: { company: C
                 active ? 'font-semibold text-ink' : 'font-medium text-ink-mute hover:text-ink-soft'
               }`}
             >
-              {label}
+              {t}
               {active && <motion.span layoutId="panel-tab" className="absolute inset-x-0 -bottom-px h-[2px] rounded-full bg-brand" transition={{ type: 'spring', stiffness: 500, damping: 38 }} />}
             </button>
           )
@@ -187,66 +181,6 @@ export default function CompanyPanel({ company, onClose, overlay }: { company: C
               </div>
             </div>
 
-            <div className="card p-4">
-              <div className="flex items-center justify-between">
-                <p className="text-[13px] font-semibold text-ink">
-                  Alumni from your college ({company.alumni.length})
-                </p>
-                <button
-                  onClick={() => setTab('Alumni')}
-                  className="inline-flex items-center gap-1.5 text-[11.5px] font-medium text-brand-dark hover:underline"
-                >
-                  View All Alumni <IconArrowRight className="h-3.5 w-3.5" />
-                </button>
-              </div>
-
-              <div className="mt-3 divide-y divide-line">
-                {alumni.map((a) => (
-                  <div key={a.name + a.batch} className="flex items-center gap-3 py-2.5">
-                    <Avatar src={a.avatar} name={a.name} size={34} />
-                    <div className="min-w-0 flex-1 sm:w-[188px] sm:flex-none">
-                      <p className="truncate text-[12.5px] font-semibold text-ink">{a.name}</p>
-                      <p className="truncate text-[11px] text-ink-mute">{a.title}</p>
-                      <p className="truncate text-[10.5px] text-ink-faint">{a.batch}</p>
-                    </div>
-                    <div className="hidden w-[76px] sm:block">
-                      <p className="text-[10.5px] text-ink-faint">Experience</p>
-                      <p className="text-[11.5px] font-medium text-ink-soft">{a.years}</p>
-                    </div>
-                    <div className="hidden w-[80px] sm:block">
-                      <p className="text-[10.5px] text-ink-faint">Location</p>
-                      <p className="text-[11.5px] font-medium text-ink-soft">{a.location}</p>
-                    </div>
-                    <a
-                      href={linkedInSearch(a.name, company.name)}
-                      target="_blank"
-                      rel="noreferrer"
-                      aria-label={`Find ${a.name} on LinkedIn (opens in a new tab)`}
-                      className="grid h-7 w-7 place-items-center rounded-md border border-line text-[#0A66C2] hover:bg-[#f7f8fa]"
-                    >
-                      <IconLinkedIn className="h-[15px] w-[15px]" />
-                    </a>
-                    <button
-                      onClick={() => openAssistant(`Draft a short intro message to ${a.name}, ${a.title}.`)}
-                      className="flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[11.5px] font-medium text-ink-soft hover:bg-[#f7f8fa]"
-                    >
-                      <IconMessage className="h-[14px] w-[14px]" />
-                      Message
-                    </button>
-                  </div>
-                ))}
-              </div>
-
-              {company.alumni.length > 4 && (
-                <button
-                  onClick={() => setShowAllAlumni((v) => !v)}
-                  className="mt-2 flex w-full items-center justify-center gap-1.5 rounded-[9px] border border-line py-2 text-[11.5px] font-medium text-ink-soft hover:bg-[#f7f8fa]"
-                >
-                  {showAllAlumni ? 'Show less' : `Show ${company.alumni.length - 4} more alumni`}
-                  <IconChevronDown className={`h-3.5 w-3.5 transition ${showAllAlumni ? 'rotate-180' : ''}`} />
-                </button>
-              )}
-            </div>
           </>
         )}
 
@@ -294,32 +228,6 @@ export default function CompanyPanel({ company, onClose, overlay }: { company: C
                 </li>
               ))}
             </ol>
-          </div>
-        )}
-
-        {tab === 'Alumni' && (
-          <div className="card p-4">
-            <p className="text-[13px] font-semibold text-ink">All alumni at {company.name} ({company.alumni.length})</p>
-            <div className="mt-2 divide-y divide-line">
-              {company.alumni.map((a) => (
-                <div key={a.name + a.batch} className="flex items-center gap-3 py-2.5">
-                  <Avatar src={a.avatar} name={a.name} size={34} />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-[12.5px] font-semibold text-ink">{a.name}</p>
-                    <p className="truncate text-[11px] text-ink-mute">{a.title} · {a.batch}</p>
-                  </div>
-                  <span className="text-[11.5px] text-ink-mute">{a.years}</span>
-                  <span className="hidden w-[80px] text-[11.5px] text-ink-mute sm:inline">{a.location}</span>
-                  <button
-                    onClick={() => openAssistant(`Draft a short intro message to ${a.name}, ${a.title}.`)}
-                    className="flex items-center gap-1.5 rounded-md border border-line px-2.5 py-1.5 text-[11.5px] font-medium text-ink-soft hover:bg-[#f7f8fa]"
-                  >
-                    <IconMessage className="h-[14px] w-[14px]" />
-                    Message
-                  </button>
-                </div>
-              ))}
-            </div>
           </div>
         )}
 
