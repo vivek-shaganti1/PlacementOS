@@ -2,7 +2,9 @@ import { AnimatePresence, motion, useMotionValue, useMotionValueEvent, useReduce
 import { lazy, Suspense, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Logo, LogoMark } from '../components/Logo'
-import { AnimatedValue, Aurora } from '../components/Page'
+import { AnimatedValue } from '../components/Page'
+import { SkipLink } from '../components/SkipLink'
+import { Aurora } from '../components/effects/Aurora'
 import { companyCatalog } from '../data/companies'
 import { coreCatalog } from '../data/coreCompanies'
 
@@ -17,7 +19,7 @@ import { HowItWorks } from '../components/landing/HowItWorks'
 import { MegaFooter } from '../components/landing/MegaFooter'
 import { Trust } from '../components/landing/Trust'
 
-// three.js loads only on devices that get WebGL, after the page is interactive.
+// three.js loads only on devices that get WebGL, once the browser is idle after the first paint.
 // Decorative: if the 3D chunk cannot load (slow network, or a deploy replaced it), keep the static glow.
 const HeroScene = lazy(() =>
   import('../components/3d/HeroScene').catch(() => ({ default: (_: { className?: string }) => <Glow size={560} className="right-[10%] top-[10%]" /> })),
@@ -90,44 +92,6 @@ function Section({ id, children, className }: { id?: string; children: ReactNode
     <motion.section id={id} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-80px' }} variants={stagger} className={`relative mx-auto max-w-[1160px] px-6 ${className ?? ''}`}>
       {children}
     </motion.section>
-  )
-}
-
-/* ---------------------------------------------------------------- launch intro */
-function LaunchIntro({ onDone }: { onDone: () => void }) {
-  useEffect(() => {
-    const t = window.setTimeout(onDone, 2100)
-    return () => window.clearTimeout(t)
-  }, [onDone])
-  return (
-    <motion.div
-      className="fixed inset-0 z-[100] grid place-items-center bg-[#0d0a24]"
-      exit={{ clipPath: 'inset(0 0 100% 0)' }}
-      transition={{ duration: 0.8, ease: [0.65, 0, 0.35, 1] }}
-      onClick={onDone}
-    >
-      <div className="pointer-events-none absolute left-1/2 top-1/2 h-[520px] w-[520px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[oklch(0.55_0.24_285)] opacity-30 blur-[120px]" />
-      <div className="relative flex flex-col items-center">
-        <LogoMark size={96} animate />
-        <motion.p
-          initial={{ opacity: 0, y: 10, letterSpacing: '0.3em' }}
-          animate={{ opacity: 1, y: 0, letterSpacing: '-0.03em' }}
-          transition={{ delay: 0.9, duration: 0.8, ease }}
-          className="mt-6 text-[34px] font-semibold text-white"
-        >
-          Placement<span className="text-gradient font-bold">IQ</span>
-        </motion.p>
-        <motion.span
-          initial={{ scaleX: 0 }}
-          animate={{ scaleX: 1 }}
-          transition={{ delay: 1.1, duration: 0.9, ease }}
-          className="mt-4 block h-px w-48 origin-left bg-gradient-to-r from-transparent via-white/60 to-transparent"
-        />
-        <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.35, duration: 0.5 }} className="mt-3 text-[11px] font-semibold uppercase tracking-[0.3em] text-white/50">
-          Placement intelligence
-        </motion.p>
-      </div>
-    </motion.div>
   )
 }
 
@@ -403,7 +367,7 @@ function FloatingChips() {
           key={c.name}
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 2.1 + i * 0.12, duration: 0.6, ease }}
+          transition={{ delay: 1.2 + i * 0.08, duration: 0.5, ease }}
           className={`absolute ${c.pos} z-20`}
         >
           <div className="float-y glass flex items-center gap-2 rounded-full py-1.5 pl-1.5 pr-3.5" style={{ animationDelay: c.delay }}>
@@ -563,45 +527,43 @@ function Roles() {
 }
 
 /* ---------------------------------------------------------------- page */
+/** True once the browser has a free moment after the first paint, so heavy decoration never competes with the content. */
+function useIdle() {
+  const [idle, setIdle] = useState(false)
+  useEffect(() => {
+    if ('requestIdleCallback' in window) {
+      const id = window.requestIdleCallback(() => setIdle(true), { timeout: 2500 })
+      return () => window.cancelIdleCallback(id)
+    }
+    const t = globalThis.setTimeout(() => setIdle(true), 1200)
+    return () => globalThis.clearTimeout(t)
+  }, [])
+  return idle
+}
+
 export default function Landing() {
-  const reduce = useReducedMotion()
-  const [intro, setIntro] = useState(() => {
-    if (reduce) return false
-    try {
-      return !sessionStorage.getItem('piq-intro')
-    } catch {
-      return true
-    }
-  })
-  const finishIntro = () => {
-    setIntro(false)
-    try {
-      sessionStorage.setItem('piq-intro', '1')
-    } catch {
-      /* private mode */
-    }
-  }
+  const idle = useIdle()
   const names = companyCatalog.map((c) => c.name)
   const tier = useMotionTier()
 
   return (
     <SmoothScroll>
     <div className="relative min-h-[calc(100svh/var(--z))] overflow-x-hidden">
+      <SkipLink />
       <Aurora />
       <CursorFollower />
-      <AnimatePresence>{intro && <LaunchIntro onDone={finishIntro} />}</AnimatePresence>
       <ScrollProgress />
 
       <Announcement />
       <Nav />
-      {!intro && <AskDock />}
+      {!import.meta.env.SSR && <AskDock />}
 
-      <main className="relative z-10">
+      <main id="main" tabIndex={-1} className="relative z-10 outline-none">
         {/* hero */}
         <section className="relative mx-auto grid max-w-[1160px] grid-cols-1 items-center gap-10 px-6 pb-16 pt-12 sm:gap-14 sm:pb-24 sm:pt-16 lg:grid-cols-[0.85fr_1.15fr]">
           {/* 3D brand orb behind the product preview; a static glow everywhere WebGL is off. */}
           <div aria-hidden className="pointer-events-none absolute inset-y-0 right-[-8%] -z-10 hidden w-[70%] lg:block">
-            {!intro && intensity[tier].webgl ? (
+            {idle && intensity[tier].webgl ? (
               <Suspense fallback={<Glow size={560} className="right-[10%] top-[10%]" />}>
                 <HeroScene className="h-full w-full" />
               </Suspense>
@@ -609,8 +571,9 @@ export default function Landing() {
               <Glow size={560} className="right-[10%] top-[10%]" />
             )}
           </div>
-          {!intro && <FloatingChips />}
-          <motion.div initial="hidden" animate={intro ? 'hidden' : 'show'} variants={stagger}>
+          {!import.meta.env.SSR && <FloatingChips />}
+          {/* The hero text and call to action are there from the first paint; only the product preview beside them animates in. */}
+          <motion.div initial={false} animate="show" variants={stagger}>
             <motion.p variants={reveal} className="label-mono">
               <span className="h-1.5 w-1.5 rounded-full bg-[#12b76a] shadow-[0_0_0_4px_rgba(18,183,106,.18)]" /> Live eligibility engine
             </motion.p>
@@ -633,13 +596,13 @@ export default function Landing() {
             <motion.div variants={reveal} className="mt-10 flex items-center gap-6 text-[12px] text-ink-mute">
               {[[String(RECRUITERS), 'recruiters scored'], ['9', 'evidence sources'], ['< 10s', 'resume analysis']].map(([n, l]) => (
                 <div key={l}>
-                  <p className="text-[22px] font-semibold tracking-[-0.03em] text-ink"><AnimatedValue value={n} /></p>
+                  <p className="text-[22px] font-semibold tracking-[-0.03em] text-ink">{n}</p>
                   <p className="font-mono text-[10.5px] uppercase tracking-[0.1em] text-ink-faint">{l}</p>
                 </div>
               ))}
             </motion.div>
           </motion.div>
-          {!intro && <ProductPreview />}
+          {!import.meta.env.SSR && <ProductPreview />}
         </section>
 
         {/* marquee */}

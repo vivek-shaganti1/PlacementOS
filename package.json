@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "typecheck": "tsc -b && tsc -p tsconfig.api.json --noEmit",
-    "build": "tsc -b && tsc -p tsconfig.api.json --noEmit && vite build",
+    "build": "tsc -b && tsc -p tsconfig.api.json --noEmit && vite build && node scripts/prerender.mjs",
     "preview": "vite preview",
     "test:unit": "esbuild tests/api.test.ts --bundle --platform=node --format=esm --outfile=node_modules/.cache/api.test.mjs --log-level=warning --banner:js=\"import{createRequire}from'module';const require=createRequire(import.meta.url);\" && node node_modules/.cache/api.test.mjs",
     "test:db": "bash scripts/test-db.sh"

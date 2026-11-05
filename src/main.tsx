@@ -2,6 +2,7 @@ import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App'
+import { holdPrerender } from './lib/prerendered'
 import './index.css'
 
 // After a new deploy, an open tab still references the previous build's chunk names; loading one fails. Reload once to
@@ -20,7 +21,10 @@ window.addEventListener('vite:preloadError', (event) => {
   window.location.reload()
 })
 
-ReactDOM.createRoot(document.getElementById('root')!).render(
+const root = document.getElementById('root')!
+holdPrerender(root)
+
+ReactDOM.createRoot(root).render(
   <React.StrictMode>
     <BrowserRouter>
       <App />

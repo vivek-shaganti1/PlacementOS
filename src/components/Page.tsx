@@ -4,6 +4,8 @@ import { useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { navMeta } from './Sidebar'
 
+export { Aurora } from './effects/Aurora'
+
 const ease = [0.16, 1, 0.3, 1] as const
 
 export const listVariants: Variants = { show: { transition: { staggerChildren: 0.05 } } }
@@ -62,10 +64,10 @@ export function Card({ title, action, children, className, icon }: { title?: str
       {(title || action) && (
         <div className="mb-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
           {title && (
-            <p className="flex items-center gap-2 text-[14px] font-semibold tracking-[-0.01em] text-ink">
+            <h2 className="flex items-center gap-2 text-[14px] font-semibold tracking-[-0.01em] text-ink">
               {icon}
               {title}
-            </p>
+            </h2>
           )}
           {action}
         </div>
@@ -104,7 +106,7 @@ export function AnimatedValue({ value }: { value: string }) {
   return (
     <span ref={ref} className="tabular-nums">
       {m[1]}
-      <span ref={num}>{(reduce ? target : 0).toFixed(decimals)}</span>
+      <span ref={num}>{(reduce || import.meta.env.SSR ? target : 0).toFixed(decimals)}</span>
       {m[3]}
     </span>
   )
@@ -255,19 +257,6 @@ export function Ring({ value, size = 120, stroke = 10, label, sub, color = '#6d4
         {sub && <p className="text-[10px] text-ink-faint">{sub}</p>}
       </div>
     </div>
-  )
-}
-
-export function Aurora() {
-  return (
-    <>
-      <div className="aurora" aria-hidden>
-        <div className="aurora__blob aurora__blob--a" />
-        <div className="aurora__blob aurora__blob--b" />
-        <div className="aurora__blob aurora__blob--c" />
-      </div>
-      <div className="grain" aria-hidden />
-    </>
   )
 }
 

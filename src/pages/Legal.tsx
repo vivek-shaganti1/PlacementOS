@@ -1,8 +1,9 @@
 import { motion } from 'motion/react'
-import { useEffect, type ReactNode } from 'react'
+import { useEffect, useRef, type ReactNode } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import { Logo } from '../components/Logo'
-import { Aurora } from '../components/Page'
+import { SkipLink } from '../components/SkipLink'
+import { Aurora } from '../components/effects/Aurora'
 
 const UPDATED = '21 October 2026'
 
@@ -55,6 +56,11 @@ const DOCS: Record<'privacy' | 'terms' | 'security', Doc> = {
 export default function Legal({ doc }: { doc: keyof typeof DOCS }) {
   const d = DOCS[doc]
   const { hash } = useLocation()
+  // The document that opens the page is already on screen (prerendered); only switching between documents animates.
+  const first = useRef(true)
+  useEffect(() => {
+    first.current = false
+  }, [])
   useEffect(() => {
     if (hash) document.getElementById(hash.slice(1))?.scrollIntoView({ block: 'start' })
     else window.scrollTo(0, 0)
@@ -62,6 +68,7 @@ export default function Legal({ doc }: { doc: keyof typeof DOCS }) {
 
   return (
     <div className="relative min-h-[calc(100svh/var(--z))] overflow-x-clip">
+      <SkipLink />
       <Aurora />
       <div className="relative z-10 mx-auto max-w-[860px] px-4 pb-24 pt-6 sm:px-6">
         <header className="flex flex-wrap items-center justify-between gap-3">
@@ -75,7 +82,8 @@ export default function Legal({ doc }: { doc: keyof typeof DOCS }) {
           </nav>
         </header>
 
-        <motion.article key={doc} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }} className="mt-14">
+        <main id="main" tabIndex={-1} className="outline-none">
+        <motion.article key={doc} initial={first.current ? false : { opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }} className="mt-14">
           <p className="label-mono"><b>{doc === 'privacy' ? '01' : doc === 'terms' ? '02' : '03'}</b> Last updated {UPDATED}</p>
           <h1 className="mt-4 text-[clamp(2.2rem,1.6rem+2.4vw,3.6rem)] font-semibold leading-[1.02] tracking-[-0.045em] text-ink">
             {d.title} <span className="font-display font-normal italic text-gradient">{d.accent}</span>
@@ -98,6 +106,7 @@ export default function Legal({ doc }: { doc: keyof typeof DOCS }) {
             Questions? <Link to="/privacy#contact" className="font-medium text-brand-dark hover:underline">Contact</Link> · <Link to="/" className="font-medium text-brand-dark hover:underline">Back to PlacementIQ</Link>
           </p>
         </motion.article>
+        </main>
       </div>
     </div>
   )

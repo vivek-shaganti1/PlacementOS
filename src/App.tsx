@@ -1,190 +1,22 @@
-import { AnimatePresence, motion } from 'motion/react'
-import { lazy, Suspense, useEffect, useState, type ReactNode } from 'react'
+import { motion, MotionConfig } from 'motion/react'
+import { lazy, Suspense, type ReactNode } from 'react'
 import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
-import AssistantDrawer from './components/AssistantDrawer'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { LogoMark } from './components/Logo'
-import { Aurora } from './components/Page'
-import Sidebar from './components/Sidebar'
-import Topbar from './components/Topbar'
-import { PageTransition } from './components/motion/PageTransition'
-import { AuthProvider, HOME, useAuth } from './lib/auth'
-import { AppProvider, useApp } from './lib/store'
+import { RouteMeta } from './components/RouteMeta'
+import { Aurora } from './components/effects/Aurora'
+import { AuthProvider, useAuth } from './lib/auth'
+import { hasStoredSession, heldHtml } from './lib/prerendered'
+import { isAppPath, normalizePath } from './lib/seo'
 import { supabaseConfigured } from './lib/supabase'
-import { useIsMobile } from './lib/useMediaQuery'
-import Login from './pages/Login'
 
-import Profile from './pages/Profile'
-import EligibilityStacks from './pages/EligibilityStacks'
-import Drives from './pages/Drives'
-import Roadmap from './pages/Roadmap'
-import Practice from './pages/Practice'
-import MockInterviews from './pages/MockInterviews'
-import AlumniNetwork from './pages/AlumniNetwork'
-import Applications from './pages/Applications'
-import Certifications from './pages/Certifications'
-import Settings from './pages/Settings'
-import Help from './pages/Help'
-
-// Heavier pages (charts, PDF parsing, marketing) load on demand.
-const Analytics = lazy(() => import('./pages/Analytics'))
-const Dashboard = lazy(() => import('./pages/Dashboard'))
-const SkillGap = lazy(() => import('./pages/SkillGap'))
-const WhatIf = lazy(() => import('./pages/WhatIf'))
-const Jobs = lazy(() => import('./pages/Jobs'))
+// Everything below loads on demand: the entry chunk holds only auth, routing and the gate.
+const SignedInApp = lazy(() => import('./components/Shell'))
+const Login = lazy(() => import('./pages/Login'))
 const Onboarding = lazy(() => import('./pages/Onboarding'))
-const AdminOverview = lazy(() => import('./pages/Admin').then((m) => ({ default: m.AdminOverview })))
-const AdminStudents = lazy(() => import('./pages/Admin').then((m) => ({ default: m.AdminStudents })))
-const AdminJobs = lazy(() => import('./pages/Admin').then((m) => ({ default: m.AdminJobs })))
-const AdminTeam = lazy(() => import('./pages/AdminOrg').then((m) => ({ default: m.AdminTeam })))
-const AdminRoster = lazy(() => import('./pages/AdminOrg').then((m) => ({ default: m.AdminRoster })))
-const SuperOrgs = lazy(() => import('./pages/AdminOrg').then((m) => ({ default: m.SuperOrgs })))
-const AdminClasses = lazy(() => import('./pages/AdminOrg').then((m) => ({ default: m.AdminClasses })))
-const SuperAdmins = lazy(() => import('./pages/AdminOrg').then((m) => ({ default: m.SuperAdmins })))
-const SuperCertifications = lazy(() => import('./pages/SuperCertifications'))
-const ResumeAnalyzer = lazy(() => import('./pages/ResumeAnalyzer'))
 const Landing = lazy(() => import('./pages/Landing'))
 const Legal = lazy(() => import('./pages/Legal'))
-
-function Loader() {
-  return (
-    <div className="grid flex-1 place-items-center">
-      <motion.div animate={{ scale: [1, 1.06, 1] }} transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}>
-        <LogoMark size={44} />
-      </motion.div>
-    </div>
-  )
-}
-
-/** Each account type gets only its own pages; anything else lands on that account's home. */
-function RoleRoutes() {
-  const { role } = useAuth()
-  const location = useLocation()
-  const home = HOME[role]
-  const common = [
-    <Route key="root" path="/" element={<Navigate to={home} replace />} />,
-    <Route key="login" path="/login" element={<Navigate to={home} replace />} />,
-    <Route key="signup" path="/signup" element={<Navigate to={home} replace />} />,
-    <Route key="any" path="*" element={<Navigate to={home} replace />} />,
-  ]
-  if (role === 'super')
-    return (
-      <Routes location={location}>
-        <Route path="/super/orgs" element={<SuperOrgs />} />
-        <Route path="/super/admins" element={<SuperAdmins />} />
-        <Route path="/super/certifications" element={<SuperCertifications />} />
-        <Route path="/admin" element={<AdminOverview />} />
-        <Route path="/admin/students" element={<AdminStudents />} />
-        <Route path="/admin/classes" element={<AdminClasses />} />
-        <Route path="/admin/roster" element={<AdminRoster />} />
-        <Route path="/admin/jobs" element={<AdminJobs />} />
-        <Route path="/admin/team" element={<AdminTeam />} />
-        {common}
-      </Routes>
-    )
-  if (role === 'recruiter')
-    return (
-      <Routes location={location}>
-        <Route path="/recruiter" element={<AdminJobs />} />
-        {common}
-      </Routes>
-    )
-  if (role === 'org')
-    return (
-      <Routes location={location}>
-        <Route path="/admin" element={<AdminOverview />} />
-        <Route path="/admin/students" element={<AdminStudents />} />
-        <Route path="/admin/classes" element={<AdminClasses />} />
-        <Route path="/admin/roster" element={<AdminRoster />} />
-        <Route path="/admin/jobs" element={<AdminJobs />} />
-        <Route path="/admin/team" element={<AdminTeam />} />
-        {common}
-      </Routes>
-    )
-  return (
-    <Routes location={location}>
-      <Route path="/dashboard" element={<Dashboard />} />
-      <Route path="/profile" element={<Profile />} />
-      <Route path="/eligibility" element={<EligibilityStacks />} />
-      <Route path="/drives" element={<Drives />} />
-      <Route path="/skill-gap" element={<SkillGap />} />
-      <Route path="/what-if" element={<WhatIf />} />
-      <Route path="/roadmap" element={<Roadmap />} />
-      <Route path="/practice" element={<Practice />} />
-      <Route path="/mock-interviews" element={<MockInterviews />} />
-      <Route path="/alumni" element={<AlumniNetwork />} />
-      <Route path="/applications" element={<Applications />} />
-      <Route path="/analytics" element={<Analytics />} />
-      <Route path="/resume" element={<ResumeAnalyzer />} />
-      <Route path="/certifications" element={<Certifications />} />
-      <Route path="/settings" element={<Settings />} />
-      <Route path="/help" element={<Help />} />
-      <Route path="/jobs" element={<Jobs />} />
-      {common}
-    </Routes>
-  )
-}
-
-function Shell() {
-  const isMobile = useIsMobile()
-  const [sidebarOpen, setSidebarOpen] = useState(() => !window.matchMedia('(max-width: 1023px)').matches)
-  const { openAssistant, toast } = useApp()
-  const { role } = useAuth()
-  const { pathname } = useLocation()
-
-  // The app scrolls inside its panes; the document itself must never stay scrolled (that reads as a blank page).
-  useEffect(() => {
-    const reset = () => {
-      if (window.scrollY || document.documentElement.scrollTop) window.scrollTo(0, 0)
-    }
-    window.addEventListener('scroll', reset, { passive: true })
-    return () => window.removeEventListener('scroll', reset)
-  }, [])
-
-  // Switching between phone and desktop layouts: drawer starts closed on phones, rail starts open on desktop.
-  useEffect(() => setSidebarOpen(!isMobile), [isMobile])
-
-  return (
-    <div className="relative flex h-[calc(100dvh/var(--z))] flex-col overflow-hidden">
-      <Aurora />
-      <div className="relative z-10 flex min-h-0 flex-1 flex-col">
-        <Topbar sidebarOpen={sidebarOpen} onToggleSidebar={() => setSidebarOpen((v) => !v)} />
-        <div className="flex min-h-0 flex-1">
-          <Sidebar open={sidebarOpen} onChat={() => openAssistant()} mobile={isMobile} onClose={() => setSidebarOpen(false)} />
-          <main className="flex min-w-0 flex-1">
-            <PageTransition kind="rise" className="flex min-w-0 flex-1">
-              <ErrorBoundary resetKey={pathname}>
-                <Suspense fallback={<Loader />}>
-                  <RoleRoutes />
-                </Suspense>
-              </ErrorBoundary>
-            </PageTransition>
-          </main>
-        </div>
-      </div>
-      {role === 'student' && (
-        <ErrorBoundary compact>
-          <AssistantDrawer />
-        </ErrorBoundary>
-      )}
-      {/* Centred by a flex row, not translate-x: Motion writes its own transform and would cancel a transform class. */}
-      <div role="status" aria-live="polite" className="pointer-events-none fixed inset-x-0 bottom-[max(1.5rem,env(safe-area-inset-bottom))] z-[60] flex justify-center px-4">
-        <AnimatePresence>
-          {toast && (
-            <motion.div
-              initial={{ opacity: 0, transform: 'translateY(12px) scale(0.97)' }}
-              animate={{ opacity: 1, transform: 'translateY(0px) scale(1)', transition: { duration: 0.24, ease: [0.23, 1, 0.32, 1] } }}
-              exit={{ opacity: 0, transform: 'translateY(6px) scale(0.98)', transition: { duration: 0.16, ease: [0.23, 1, 0.32, 1] } }}
-              className="glass-dark pointer-events-auto w-max max-w-full rounded-[14px] px-4 py-2.5 text-center text-[12.5px] font-medium text-white"
-            >
-              {toast}
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    </div>
-  )
-}
+const NotFound = lazy(() => import('./pages/NotFound'))
 
 function Centered({ children }: { children: ReactNode }) {
   return (
@@ -205,15 +37,24 @@ function Splash() {
   )
 }
 
+/** While a public page's code loads, its prerendered HTML stays on screen instead of a loader. */
+function Hold() {
+  const { pathname } = useLocation()
+  const html = heldHtml(pathname)
+  return html ? <div dangerouslySetInnerHTML={{ __html: html }} /> : <Splash />
+}
+
 function PublicRoutes() {
+  const { pathname } = useLocation()
   return (
-    <Suspense fallback={<Splash />}>
+    <Suspense fallback={<Hold />}>
       <Routes>
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Login initialMode="signup" />} />
         <Route path="/reset-password" element={<Login />} />
-        <Route path="*" element={<Navigate to="/login" replace />} />
+        {/* App links opened while signed out still go to sign-in; anything else is a real not-found page. */}
+        <Route path="*" element={isAppPath(pathname) ? <Navigate to="/login" replace /> : <NotFound />} />
       </Routes>
     </Suspense>
   )
@@ -224,17 +65,22 @@ function Gate() {
   const { pathname } = useLocation()
 
   // Policy pages open for everyone, signed in or not.
-  const legal = ({ '/privacy': 'privacy', '/terms': 'terms', '/security': 'security' } as const)[pathname as '/privacy']
+  const legal = ({ '/privacy': 'privacy', '/terms': 'terms', '/security': 'security' } as const)[normalizePath(pathname) as '/privacy']
   if (legal)
     return (
-      <Suspense fallback={<Splash />}>
+      <Suspense fallback={<Hold />}>
         <Legal doc={legal} />
       </Suspense>
     )
-  if (loading) return <Splash />
+  if (loading) return hasStoredSession() ? <Splash /> : <Hold />
   if (!session) return <PublicRoutes />
   // Accounts created with a temporary password choose their own before anything else.
-  if (recovering || mustChangePassword || pathname === '/reset-password') return <Login initialMode="reset" />
+  if (recovering || mustChangePassword || pathname === '/reset-password')
+    return (
+      <Suspense fallback={<Splash />}>
+        <Login initialMode="reset" />
+      </Suspense>
+    )
   if (!profile)
     return profileError ? (
       <Centered>
@@ -276,31 +122,34 @@ function Gate() {
     )
 
   return (
-    <AppProvider key={session.user.id}>
-      <Shell />
-    </AppProvider>
+    <Suspense fallback={<Splash />}>
+      <SignedInApp key={session.user.id} />
+    </Suspense>
   )
 }
 
 export default function App() {
-  if (!supabaseConfigured)
-    return (
-      <Centered>
-        <div className="card max-w-[460px] p-6 text-left">
-          <p className="text-[15px] font-semibold text-ink">Supabase is not configured</p>
-          <p className="mt-2">
-            Set <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_PUBLISHABLE_KEY</code> in <code>.env.local</code> (or your
-            Vercel project's environment variables) and rebuild.
-          </p>
-        </div>
-      </Centered>
-    )
-
   return (
-    <AuthProvider>
-      <ErrorBoundary>
-        <Gate />
-      </ErrorBoundary>
-    </AuthProvider>
+    // Motion honours prefers-reduced-motion everywhere: transforms are dropped, opacity stays.
+    <MotionConfig reducedMotion="user">
+      <RouteMeta />
+      {supabaseConfigured ? (
+        <AuthProvider>
+          <ErrorBoundary>
+            <Gate />
+          </ErrorBoundary>
+        </AuthProvider>
+      ) : (
+        <Centered>
+          <div className="card max-w-[460px] p-6 text-left">
+            <p className="text-[15px] font-semibold text-ink">Supabase is not configured</p>
+            <p className="mt-2">
+              Set <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_PUBLISHABLE_KEY</code> in <code>.env.local</code> (or your
+              Vercel project's environment variables) and rebuild.
+            </p>
+          </div>
+        </Centered>
+      )}
+    </MotionConfig>
   )
 }

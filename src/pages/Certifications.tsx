@@ -9,7 +9,8 @@ import { useCertCatalog } from '../lib/certs'
 import { skillsFor } from '../lib/branches'
 
 
-const input = 'h-[34px] w-full rounded-[9px] border border-line bg-white px-3 text-[12.5px] outline-none focus:border-[#d5cbff]'
+const input = 'mt-1 h-[34px] w-full rounded-[9px] border border-line bg-white px-3 text-[12.5px] font-normal text-ink outline-none focus:border-[#d5cbff]'
+const label = 'block text-[11px] font-medium text-ink-mute'
 
 export default function Certifications() {
   const p = useProfile()
@@ -67,13 +68,13 @@ export default function Certifications() {
               {safeUrl(c.credential_url) && (
                 <a href={safeUrl(c.credential_url)} target="_blank" rel="noreferrer" className="text-[11.5px] font-medium text-brand-dark hover:underline">Credential</a>
               )}
-              <button onClick={() => save(p.certifications.filter((_, j) => j !== i), 'Certification removed.')} className="text-[11px] text-ink-faint opacity-0 focus-visible:opacity-100 [@media(hover:none)]:opacity-100 hover:text-[#d92d20] group-hover:opacity-100">Remove</button>
+              <button onClick={() => save(p.certifications.filter((_, j) => j !== i), 'Certification removed.')} aria-label={`Remove ${c.name}`} className="text-[11px] text-ink-faint opacity-0 focus-visible:opacity-100 [@media(hover:none)]:opacity-100 hover:text-[#d92d20] group-hover:opacity-100">Remove</button>
             </div>
           ))}
           {p.certifications.length === 0 && <p className="py-3 text-[12px] text-ink-faint">No certifications yet. Add one below or import them from your resume.</p>}
         </div>
         <form
-          className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-[1.6fr_1fr_0.7fr_1.2fr_auto]"
+          className="mt-3 grid grid-cols-1 items-end gap-2 sm:grid-cols-2 lg:grid-cols-[1.6fr_1fr_0.7fr_1.2fr_auto]"
           onSubmit={async (e) => {
             e.preventDefault()
             if (!d.name.trim()) return showToast('Certification name is required.')
@@ -82,11 +83,11 @@ export default function Certifications() {
             if (await save([...p.certifications, entry], 'Certification added.')) setD({ name: '', issuer: '', date: '', credential_url: '' })
           }}
         >
-          <input value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} placeholder="Certification name" className={input} />
-          <input value={d.issuer} onChange={(e) => setD({ ...d, issuer: e.target.value })} placeholder="Issuer" className={input} />
-          <input value={d.date} onChange={(e) => setD({ ...d, date: e.target.value })} placeholder="Jun 2025" className={input} />
-          <input value={d.credential_url} onChange={(e) => setD({ ...d, credential_url: e.target.value })} placeholder="Credential URL (optional)" className={input} />
-          <button className="rounded-md border border-line px-3 text-[11.5px] font-medium text-ink-soft hover:bg-[#f7f8fa]">Add</button>
+          <label className={label}>Certification name<input value={d.name} onChange={(e) => setD({ ...d, name: e.target.value })} className={input} /></label>
+          <label className={label}>Issuer<input value={d.issuer} onChange={(e) => setD({ ...d, issuer: e.target.value })} className={input} /></label>
+          <label className={label}>Date<input value={d.date} onChange={(e) => setD({ ...d, date: e.target.value })} placeholder="Jun 2025" className={input} /></label>
+          <label className={label}>Credential URL (optional)<input value={d.credential_url} onChange={(e) => setD({ ...d, credential_url: e.target.value })} className={input} /></label>
+          <button className="h-[34px] rounded-md border border-line px-3 text-[11.5px] font-medium text-ink-soft hover:bg-[#f7f8fa]">Add</button>
         </form>
       </Card>
 
