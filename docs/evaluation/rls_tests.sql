@@ -9,18 +9,18 @@ grant insert, select on t_results to authenticated;
 -- ---------------------------------------------------------------- fixtures (as postgres)
 insert into public.organizations (id, name, admin_emails, email_domains, plan)
 values ('0b000000-0000-4000-8000-00000000000b', 'Beta Institute', array['tpo@beta.example'], array['beta.example'], 'basic');
-update public.organizations set admin_emails = array_append(admin_emails, 'tpo@anurag.example') where name = 'Anurag University';
+update public.organizations set admin_emails = array_append(admin_emails, 'tpo@anurag.example'), email_domains = array_append(email_domains, 'anurag.example') where name = 'Anurag University';
 insert into public.org_students (org_id, email, full_name, roll_number) values
   ((select id from public.organizations where name = 'Anurag University'), 's.a@anurag.example', 'Student A', 'A1'),
   ('0b000000-0000-4000-8000-00000000000b', 's.b@beta.example', 'Student B', 'B1');
 insert into public.org_recruiters (org_id, email, company)
 values ((select id from public.organizations where name = 'Anurag University'), 'hr@acme.example', 'Acme');
 
-insert into auth.users (id, email, instance_id, aud, role) values
-  ('a1000000-0000-4000-8000-0000000000a1', 's.a@anurag.example', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated'),
-  ('b1000000-0000-4000-8000-0000000000b1', 's.b@beta.example', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated'),
-  ('ad000000-0000-4000-8000-0000000000ad', 'tpo@anurag.example', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated'),
-  ('cc000000-0000-4000-8000-0000000000cc', 'hr@acme.example', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated');
+insert into auth.users (id, email, instance_id, aud, role, invited_at, email_confirmed_at) values
+  ('a1000000-0000-4000-8000-0000000000a1', 's.a@anurag.example', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', now(), now()),
+  ('b1000000-0000-4000-8000-0000000000b1', 's.b@beta.example', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', now(), now()),
+  ('ad000000-0000-4000-8000-0000000000ad', 'tpo@anurag.example', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', now(), now()),
+  ('cc000000-0000-4000-8000-0000000000cc', 'hr@acme.example', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', now(), now());
 
 insert into public.job_postings (id, org_id, company, role, location, job_type, description, min_cgpa, max_backlogs, min_class_x, min_class_xii, min_internships, min_projects, branches, batches, skill_requirements, status, recruiter_id)
 values
@@ -29,13 +29,13 @@ values
 insert into public.job_applications (job_id, user_id, status) values ('d1000000-0000-4000-8000-0000000000d1', 'a1000000-0000-4000-8000-0000000000a1', 'applied');
 update public.organizations set ai_monthly_limit = 2 where name = 'Anurag University';
 
-insert into t_results values ('T01 allowlist: unregistered email cannot create an account', (
-  select not exists (select 1 from auth.users where email = 'nobody@gmail.example')));
 do $$ begin
   insert into auth.users (id, email, instance_id, aud, role) values ('ee000000-0000-4000-8000-0000000000ee', 'nobody@gmail.example', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated');
   insert into t_results values ('T02 allowlist trigger rejects unregistered sign-up', false);
-exception when others then insert into t_results values ('T02 allowlist trigger rejects unregistered sign-up', true);
+exception when sqlstate '42501' then insert into t_results values ('T02 allowlist trigger rejects unregistered sign-up', true);
 end $$;
+insert into t_results values ('T01 allowlist: unregistered email cannot create an account', (
+  select not exists (select 1 from auth.users where email = 'nobody@gmail.example')));
 insert into t_results values ('T03 admin emails cannot self-register', (select public.signup_check('tpo@anurag.example', '') = 'admin'));
 insert into t_results values ('T04 roll number must match roster', (select public.signup_check('s.a@anurag.example', 'WRONG') = 'roll_mismatch'));
 insert into t_results values ('T05 roles assigned at sign-up', (
@@ -132,12 +132,17 @@ insert into t_results values ('T24 can_provision refuses a pending admin email o
 insert into t_results values ('T25 can_provision refuses a platform admin email', (select not public.can_provision((select id from public.organizations where name = 'Anurag University'), 'pending.boss@platform.example')));
 insert into t_results values ('T26 can_provision allows a brand-new email for own college', (select public.can_provision((select id from public.organizations where name = 'Anurag University'), 'fresh.student@anurag.example')));
 -- rostering the recruiter's email as a "student" must not pull that account into the college
-insert into public.org_students (org_id, email, full_name) values ((select id from public.organizations where name = 'Anurag University'), 'hr@acme.example', 'Not a student');
+do $$ begin
+  insert into public.org_students (org_id, email, full_name) values ((select id from public.organizations where name = 'Anurag University'), 'hr@acme.example', 'Not a student');
+exception when check_violation then null; -- since 20261105 an outside domain is refused outright, which also satisfies T27
+end $$;
 reset role;
 insert into t_results values ('T27 roster entry never moves an account that holds a role', (select org_id is null from public.profiles where id = 'cc000000-0000-4000-8000-0000000000cc'));
 
 -- student: edit own application, forge links, change roster fields, read org pricing, apply below minimums
 update public.job_postings set min_cgpa = 9.9 where id = 'd2000000-0000-4000-8000-0000000000d2';
+-- Real academics, so T29 is refused for the CGPA and not for the placeholder values.
+update public.profiles set cgpa = 7.2, backlogs = 0, class_x = 80, class_xii = 78, academics_source = 'student' where id = 'a1000000-0000-4000-8000-0000000000a1';
 insert into public.job_postings (id, org_id, company, role, location, job_type, description, min_cgpa, max_backlogs, min_class_x, min_class_xii, min_internships, min_projects, branches, batches, skill_requirements, status)
 values ('d3000000-0000-4000-8000-0000000000d3', (select id from public.organizations where name = 'Anurag University'), 'HardCo', 'SDE', 'x', 'Full Time', 'x', 9.99, 0, 0, 0, 0, 0, '{}', '{}', '{}', 'open');
 select set_config('request.jwt.claims', '{"sub":"a1000000-0000-4000-8000-0000000000a1","role":"authenticated"}', true);
@@ -150,7 +155,7 @@ end $$;
 do $$ begin
   insert into public.job_applications (job_id, user_id, status) values ('d3000000-0000-4000-8000-0000000000d3', 'a1000000-0000-4000-8000-0000000000a1', 'applied');
   insert into t_results values ('T29 student cannot apply below a drive''s minimum CGPA', false);
-exception when others then insert into t_results values ('T29 student cannot apply below a drive''s minimum CGPA', true);
+exception when sqlstate '42501' then insert into t_results values ('T29 student cannot apply below a drive''s minimum CGPA', true);
 end $$;
 do $$ begin
   update public.profiles set linkedin_url = 'javascript:alert(1)' where id = 'a1000000-0000-4000-8000-0000000000a1';
@@ -200,13 +205,13 @@ set local role authenticated;
 update public.job_applications set status = 'shortlisted' where job_id = 'd1000000-0000-4000-8000-0000000000d1' and user_id = 'a1000000-0000-4000-8000-0000000000a1';
 reset role;
 insert into t_results values ('T38 a status change by the recruiter still notifies the student', (
-  select count(*) >= 1 from public.notifications where user_id = 'a1000000-0000-4000-8000-0000000000a1' and created_at >= now() - interval '1 minute'));
+  select count(*) = 1 from public.notifications where user_id = 'a1000000-0000-4000-8000-0000000000a1' and text ilike '%shortlisted%'));
 select set_config('request.jwt.claims', '{"sub":"a1000000-0000-4000-8000-0000000000a1","role":"authenticated"}', true);
 set local role authenticated;
 do $$ begin
-  insert into public.notifications (user_id, title, body) values ('a1000000-0000-4000-8000-0000000000a1', 'Offer!', 'fake');
+  insert into public.notifications (user_id, text, link) values ('a1000000-0000-4000-8000-0000000000a1', 'Offer!', '/jobs');
   insert into t_results values ('T39 students cannot create their own notifications', false);
-exception when others then insert into t_results values ('T39 students cannot create their own notifications', true);
+exception when sqlstate '42501' then insert into t_results values ('T39 students cannot create their own notifications', true);
 end $$;
 reset role;
 
@@ -239,7 +244,7 @@ exception when others then insert into t_results values ('T43 student with enter
 end $$;
 reset role;
 -- The college uploads official academics on the roster: they replace the student's and are marked verified.
-update public.org_students set cgpa = 8.4, backlogs = 0 where email = 's.a@anurag.example';
+update public.org_students set cgpa = 8.4, backlogs = 0, class_x = 85, class_xii = 88 where email = 's.a@anurag.example';
 insert into t_results values ('T44 roster academics override and are marked verified', (
   select cgpa = 8.4 and academics_source = 'college' from public.profiles where id = 'a1000000-0000-4000-8000-0000000000a1'));
 -- A student who never entered academics cannot apply on the placeholder values.
