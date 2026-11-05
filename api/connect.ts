@@ -1,9 +1,11 @@
 // Connects an evidence account and caches its public, verifiable data (server-written; students cannot edit it).
 // POST { platform: 'github' | 'leetcode' | 'codeforces' | 'codechef' | 'credly' | 'huggingface' | 'ctftime', username: string | null }
-// POST { credential: 'nptel', ref, skill }                                   -> verified against nptel.ac.in
+// Every platform account must be proven: the response carries a short code, and the account counts once that code appears
+// on the public profile (see PROOF_WHERE). Until then its stats are shown as unproven and never reach rankings.
+// POST { credential: 'nptel', ref, skill }                                   -> checked on nptel.ac.in, then confirmed by the placement cell
 // POST { credential: 'gate', ref, paper, score, year, name, file_path }       -> pending until the placement cell confirms
 import { FILE_SIGNALS, GATE_PAPERS, IGNORED_PATH, SKILL_BY_NAME, type FileSignal } from '../src/lib/branches'
-import { bearer, deleteRows, env, handle, HttpError, insertVerified, json, loadProfile, rest, saveProfile, timeout } from './_lib'
+import { bearer, deleteRows, env, handle, HttpError, insertVerified, json, loadProfile, rest, rosterName, saveProfile, SUPABASE_URL, timeout } from './_lib'
 
 export const config = { runtime: 'edge' }
 
@@ -47,7 +49,7 @@ export async function github(username: string) {
         const { body } = await getJson(`https://api.github.com/repos/${encodeURIComponent(r.owner?.login ?? username)}/${encodeURIComponent(r.name)}/git/trees/${encodeURIComponent(r.default_branch ?? 'HEAD')}?recursive=1`, { headers })
         return { repo: r.name as string, branch: (r.default_branch as string) ?? 'HEAD', paths: ((body?.tree ?? []) as { path: string; type: string }[]).filter((t) => t.type === 'blob').map((t) => t.path).filter((p) => !IGNORED_PATH.test(p)) }
       } catch {
-        return { repo: r.name as string, branch: 'HEAD', paths: [] as string[] }
+        return { repo: r.name as string, branch: 'HEAD', paths: [] as string[], failed: true }
       }
     }),
   )
@@ -106,6 +108,9 @@ export async function github(username: string) {
 
   return {
     all_repos: all,
+    proof: [user.bio, user.name, user.company, user.blog].join(' '),
+    // Repositories whose files could not be read (rate limit, timeout): the evidence is incomplete, not absent.
+    unread_repos: trees.filter((t) => 'failed' in t).length,
     username: user.login,
     name: user.name ?? null,
     avatar_url: user.avatar_url,
@@ -131,12 +136,13 @@ export function sameName(a: string, b: string) {
 }
 
 // Verified badges (Cisco, IBM, AWS, Autodesk, NI, Ansys, ...). Only badges issued to this student's name count.
-export async function credly(username: string, profileName = '') {
+export async function credly(username: string, collegeName: string) {
+  if (!collegeName) throw new HttpError(422, 'Your college has no name on record for you yet. Ask your placement cell to add it, then connect Credly.')
   const { res, body } = await getJson(`https://www.credly.com/users/${encodeURIComponent(username)}/badges.json`)
   if (res.status === 404 || !body) throw new HttpError(404, `Credly profile "${username}" not found, or it is private.`)
   const all = ((body.data ?? []) as any[]).filter((b) => b.state === 'accepted' && b.public !== false)
-  const mine = profileName ? all.filter((b) => sameName(String(b.issued_to ?? ''), profileName)) : all
-  if (all.length && !mine.length) throw new HttpError(422, `These badges are issued to "${all[0].issued_to}", not to the name on your profile.`)
+  const mine = all.filter((b) => sameName(String(b.issued_to ?? ''), collegeName))
+  if (all.length && !mine.length) throw new HttpError(422, `These badges are issued to "${all[0].issued_to}", not to the name your college has for you.`)
   return {
     username,
     badges: mine.slice(0, 60).map((b) => ({
@@ -146,6 +152,8 @@ export async function credly(username: string, profileName = '') {
       url: String(b.badge_template?.url ?? `https://www.credly.com/users/${username}`),
     })),
     solved: mine.length,
+    // The badge holder's name was matched to the college roster, which proves this one without a code.
+    name_matched: mine.length > 0,
     synced_at: now(),
   }
 }
@@ -164,6 +172,7 @@ export async function huggingface(username: string) {
     downloads: list.reduce((a, m) => a + m.downloads, 0),
     top: list.slice(0, 5),
     solved: Number(u.numModels ?? 0),
+    proof: JSON.stringify(u),
     synced_at: now(),
   }
 }
@@ -185,13 +194,14 @@ export async function ctftime(teamId: string) {
     events: years.length,
     year: Number(year),
     rating: Math.round(Number(latest.rating_points ?? 0)),
+    proof: JSON.stringify(body),
     synced_at: now(),
   }
 }
 
 async function leetcode(username: string) {
   const query = `query($u: String!) {
-    matchedUser(username: $u) { username submitStatsGlobal { acSubmissionNum { difficulty count } } profile { ranking } }
+    matchedUser(username: $u) { username submitStatsGlobal { acSubmissionNum { difficulty count } } profile { ranking aboutMe realName } }
     userContestRanking(username: $u) { rating attendedContestsCount topPercentage }
   }`
   const { body } = await getJson('https://leetcode.com/graphql', {
@@ -214,6 +224,7 @@ async function leetcode(username: string) {
     contest_rating: c?.rating ? Math.round(c.rating) : null,
     contests: c?.attendedContestsCount ?? 0,
     top_percentage: num(c?.topPercentage),
+    proof: [u.profile?.aboutMe, u.profile?.realName].join(' '),
     synced_at: now(),
   }
 }
@@ -236,6 +247,7 @@ async function codeforces(username: string) {
     rank: u.rank ?? null,
     solved,
     contests: (rating?.result ?? []).length,
+    proof: [u.firstName, u.lastName, u.organization, u.city].join(' '),
     synced_at: now(),
   }
 }
@@ -256,17 +268,49 @@ async function codechef(username: string) {
     max_rating: max ? Number(max) : null,
     stars: stars || null,
     solved: solved ? Number(solved) : 0,
+    proof: html,
     synced_at: now(),
   }
 }
 
 const fetchers = { github, leetcode, codeforces, codechef, credly, huggingface, ctftime }
+/** Where the student puts the code. Each is a public field the server can read back. */
+const PROOF_WHERE: Record<string, string> = {
+  github: 'your GitHub profile bio',
+  leetcode: 'your LeetCode profile summary',
+  codeforces: 'your Codeforces first name or organization',
+  codechef: 'your CodeChef profile (name or about)',
+  huggingface: 'your Hugging Face full name',
+  ctftime: 'your CTFtime team description',
+}
+
+/** A code tied to this student, platform and handle. Nothing is stored; the same inputs always give the same code. */
+async function proofCode(userId: string, platform: string, handleName: string) {
+  const secret = env('CONNECT_PROOF_SECRET') || env('SUPABASE_SECRET_KEY')
+  if (!secret) throw new HttpError(503, 'Connecting accounts is not available right now.')
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
+  const mac = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`${userId}:${platform}:${handleName.toLowerCase()}`))
+  const hex = [...new Uint8Array(mac)].slice(0, 6).map((b) => b.toString(16).padStart(2, '0')).join('')
+  return `piq-${hex}`
+}
+
+/** Counts this request before anything is fetched, so failures and disconnects are limited too. */
+async function allowConnect(token: string) {
+  const res = await rest(token, 'rpc/connect_attempt', { method: 'POST', body: '{}' }).catch((e: unknown) => {
+    // Before the migration the function does not exist; the per-platform sync limit below still applies.
+    if (e instanceof HttpError && e.status === 502) return null
+    throw e
+  })
+  if (res && (await res.json()) === false) throw new HttpError(429, 'Too many attempts. Wait a few minutes and try again.')
+}
+
 /** Platforms that also keep a username column on the profile (shown to the placement cell). */
 const PROFILE_COLUMN = new Set(['github', 'leetcode', 'codeforces', 'codechef'])
 
 /**
- * NPTEL: the certificate ID (printed on the certificate, e.g. NPTEL24EE42S12345678) is checked on nptel.ac.in, and its
- * discipline code (EE, ME, CE, CS, CH, ...) must fit the skill it is claimed for.
+ * NPTEL: the certificate ID (printed on the certificate, e.g. NPTEL24EE42S12345678) is looked up on nptel.ac.in, and its
+ * discipline code (EE, ME, CE, CS, CH, ...) must fit the skill it is claimed for. The lookup shows a certificate exists,
+ * not whose it is, so it counts only after the placement cell confirms it, and one certificate can be on one student.
  */
 async function nptelCredential(token: string, profileId: string, ref: string, skill: string) {
   const id = ref.trim().toUpperCase()
@@ -277,16 +321,17 @@ async function nptelCredential(token: string, profileId: string, ref: string, sk
   const discipline = m[2]
   if (!(rule.nptel ?? []).includes(discipline)) throw new HttpError(422, `An NPTEL ${discipline} course cannot verify "${skill}". Pick a skill from that discipline.`)
   const res = await fetch(`https://archive.nptel.ac.in/noc/Ecertificate/?q=${encodeURIComponent(id)}`, { signal: timeout(10000), headers: { 'user-agent': UA }, redirect: 'follow' })
-  if (!res.ok) throw new HttpError(502, 'Could not reach NPTEL to verify the certificate. Try again later.')
+  if (!res.ok) throw new HttpError(502, 'Could not reach NPTEL to check the certificate. Try again later.')
   const type = res.headers.get('content-type') ?? ''
-  const body = type.includes('pdf') ? '' : (await res.text()).slice(0, 200_000)
+  const pdf = type.includes('pdf')
+  const body = pdf ? '' : (await res.text()).slice(0, 200_000)
   if (/dont have a Certificate|don't have a certificate|not found/i.test(body)) throw new HttpError(404, 'NPTEL has no certificate with that ID.')
   const title = (body.match(/<title>([^<]{3,200})<\/title>/i)?.[1] ?? '').replace(/NPTEL Certificate/i, '').trim()
   await insertVerified(token, profileId, 'credentials', {
-    kind: 'nptel', ref: id, skill, title: title.slice(0, 200), status: 'verified', verified_by: 'platform',
-    data: { year: 2000 + Number(m[1]), discipline, course: Number(m[3]) },
+    kind: 'nptel', ref: id, skill, title: title.slice(0, 200), status: 'pending', verified_by: null,
+    data: { year: 2000 + Number(m[1]), discipline, course: Number(m[3]), source_check: pdf ? 'certificate_found' : 'page_found' },
   }, 'user_id,kind,ref')
-  return { ok: true, discipline }
+  return { ok: true, discipline, status: 'pending' }
 }
 
 /**
@@ -304,11 +349,17 @@ async function gateCredential(token: string, profile: Record<string, any>, b: Re
   if (!Number.isFinite(score) || score < 0 || score > 1000) throw new HttpError(422, 'The GATE score must be between 0 and 1000.')
   if (!(year >= 2015 && year <= new Date().getFullYear() + 1)) throw new HttpError(422, 'Could not read the GATE year from the scorecard.')
   if (!path.startsWith(`${profile.id}/`) || !/\.pdf$/i.test(path)) throw new HttpError(422, 'Upload the scorecard PDF first.')
-  if (b.name && profile.full_name && !sameName(String(b.name), String(profile.full_name)))
-    throw new HttpError(422, `The scorecard is for "${b.name}", not the name on your profile.`)
+  // The roster name, because students can edit the name on their profile.
+  const onRoster = await rosterName(profile.id)
+  if (!onRoster) throw new HttpError(422, 'Your college has no name on record for you yet. Ask your placement cell to add it first.')
+  if (!b.name || !sameName(String(b.name), onRoster)) throw new HttpError(422, `The scorecard is for "${String(b.name ?? 'someone else')}", not the name your college has for you.`)
+  // Fingerprint of the stored PDF: the placement cell's review compares it, so the file cannot be swapped after submission.
+  const key = env('SUPABASE_SECRET_KEY')
+  const stored = key ? await fetch(`${SUPABASE_URL}/storage/v1/object/resumes/${path.split('/').map(encodeURIComponent).join('/')}`, { signal: timeout(10_000), headers: { apikey: key, authorization: `Bearer ${key}` } }) : null
+  const digest = stored?.ok ? [...new Uint8Array(await crypto.subtle.digest('SHA-256', await stored.arrayBuffer()))].map((x) => x.toString(16).padStart(2, '0')).join('') : null
   await insertVerified(token, profile.id, 'credentials', {
     kind: 'gate', ref, skill: '', title: `GATE ${year} · ${GATE_PAPERS[paper]}`, score, status: 'pending', verified_by: null, file_path: path,
-    data: { paper, year, name: String(b.name ?? '').slice(0, 120), air: Number(b.air) || null },
+    data: { paper, year, name: String(b.name ?? '').slice(0, 120), air: Number(b.air) || null, sha256: digest },
   }, 'user_id,kind,ref')
   return { ok: true, status: 'pending' }
 }
@@ -320,9 +371,8 @@ export default handle(async (req) => {
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>
   if (body.credential === 'nptel' || body.credential === 'gate') {
     const profile = await loadProfile(token)
-    // One credential submission a minute per student keeps nptel.ac.in and the storage check unhammered.
-    const [recent] = (await (await rest(token, `credentials?user_id=eq.${profile.id}&select=created_at&order=created_at.desc&limit=1`)).json().catch(() => [])) as { created_at: string }[]
-    if (recent && Date.now() - Date.parse(recent.created_at) < 20_000) throw new HttpError(429, 'One moment: add the next certificate in a few seconds.')
+    if (!profile.org_id) throw new HttpError(403, 'Your college has not added you to PlacementIQ.')
+    await allowConnect(token)
     return json(body.credential === 'nptel' ? await nptelCredential(token, profile.id, String(body.ref ?? ''), String(body.skill ?? '')) : await gateCredential(token, profile, body))
   }
   const { platform, username } = body as { platform?: string; username?: string | null }
@@ -330,6 +380,9 @@ export default handle(async (req) => {
   const p = platform as Platform
 
   const profile = await loadProfile(token)
+  // Students a college has removed keep their login but no longer use the service.
+  if (!profile.org_id) throw new HttpError(403, 'Your college has not added you to PlacementIQ.')
+  await allowConnect(token)
 
   if (!username) {
     await deleteRows(token, 'coding_profiles', `user_id=eq.${profile.id}&platform=eq.${p}`)
@@ -346,14 +399,22 @@ export default handle(async (req) => {
 
   // One sync per platform every 5 minutes per student, whatever the username, so nobody can burn the shared GitHub
   // token (or get the server rate-limited by the coding sites) by cycling through usernames.
-  const [last] = (await (await rest(token, `coding_profiles?user_id=eq.${profile.id}&platform=eq.${p}&select=synced_at,username`)).json()) as { synced_at: string | null; username: string }[]
-  if (last?.synced_at && Date.now() - Date.parse(last.synced_at) < 5 * 60_000)
+  const [last] = (await (await rest(token, `coding_profiles?user_id=eq.${profile.id}&platform=eq.${p}&select=synced_at,username,stats`)).json()) as { synced_at: string | null; username: string; stats: Record<string, any> | null }[]
+  const sameHandle = last?.username?.toLowerCase() === handleName.toLowerCase()
+  const wasProven = sameHandle && last?.stats?.ownership?.proven === true
+  // A proven account has fresh stats within five minutes. An unproven one may be re-checked sooner, since the student is
+  // waiting on their code to show up; the attempt limit above still holds.
+  if (wasProven && last?.synced_at && Date.now() - Date.parse(last.synced_at) < 5 * 60_000)
     throw new HttpError(429, 'Synced a moment ago. You can sync this account again in a few minutes.')
 
-  const fetched = p === 'credly' ? await credly(handleName, String(profile.full_name ?? '')) : await fetchers[p](handleName)
-  const { all_repos, top_repos, ...stats } = fetched as typeof fetched & { all_repos?: unknown[]; top_repos?: unknown[] }
+  const fetched = p === 'credly' ? await credly(handleName, await rosterName(profile.id)) : await fetchers[p](handleName)
+  const { all_repos, top_repos, proof, ...stats } = fetched as typeof fetched & { all_repos?: unknown[]; top_repos?: unknown[]; proof?: string }
   void top_repos
   const s = stats as Record<string, any>
+  // Ownership: the code is on the public profile now, or was when this same handle was proven.
+  const code = p === 'credly' ? null : await proofCode(profile.id, p, s.username ?? handleName)
+  const proven = wasProven || (p === 'credly' ? s.name_matched === true : !!code && String(proof ?? '').includes(code))
+  s.ownership = proven ? { proven: true, at: wasProven ? last?.stats?.ownership?.at ?? now() : now() } : { proven: false }
   // Written by the server only: these numbers are what "verified" skill levels and recruiters rely on.
   await insertVerified(
     token,
@@ -375,5 +436,5 @@ export default handle(async (req) => {
     if (all_repos?.length) await insertVerified(token, profile.id, 'github_repos', all_repos as Record<string, unknown>[])
   }
   if (PROFILE_COLUMN.has(p)) await saveProfile(token, profile.id, { [`${p}_username`]: s.username })
-  return json({ ok: true, stats })
+  return json({ ok: true, stats, proven, ...(proven || !code ? {} : { code, where: PROOF_WHERE[p] }) })
 })

@@ -994,6 +994,18 @@ $$;
 revoke all on function public.refund_ai(uuid) from public, anon, authenticated;
 grant execute on function public.refund_ai(uuid) to service_role;
 
+-- Liveness only: proves the API can reach the database and returns nothing about it.
+create or replace function public.health_probe()
+returns boolean
+language sql
+stable
+set search_path = ''
+as $$
+  select true;
+$$;
+revoke all on function public.health_probe() from public;
+grant execute on function public.health_probe() to anon, authenticated;
+
 create table if not exists private.connect_attempts (
   id bigint generated always as identity primary key,
   user_id uuid not null,

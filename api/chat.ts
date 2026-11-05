@@ -1,7 +1,7 @@
 // AI Career Assistant backed by Groq. The key never reaches the browser; callers must be signed in,
 // and the student's own profile (read under RLS) grounds every answer.
 import { evaluateAll, type StudentLike } from '../src/lib/eligibility'
-import { bearer, consumeAi, groq, handle, HttpError, json, loadStudent, STYLE_RULES, tidy } from './_lib'
+import { bearer, consumeAi, groq, handle, HttpError, json, loadStudent, refundAi, STYLE_RULES, tidy } from './_lib'
 
 export const config = { runtime: 'edge' }
 
@@ -36,16 +36,16 @@ When relevant, point to app pages: Eligibility Stacks, Company Drives, Skill Gap
 Use only the data below for this student's numbers. If something is missing (e.g. no resume, no coding accounts), say so and suggest adding it.
 
 STUDENT PROFILE
-Name: ${p.full_name} | Target role: ${p.target_roles}
-Program: ${p.meta}, ${p.branch}, batch ${p.batch}, ${p.college}
+Name: ${clip(p.full_name, 120)} | Target role: ${clip(p.target_roles, 200)}
+Program: ${clip(p.meta, 120)}, ${clip(p.branch, 80)}, batch ${clip(p.batch, 10)}, ${clip(p.college, 120)}
 CGPA: ${p.cgpa}/10 | Active backlogs: ${p.backlogs} | Class X: ${p.class_x}% | Class XII: ${p.class_xii}%
-Skills (0-100): ${JSON.stringify(p.skills)}
+Skills (0-100): ${JSON.stringify(cap(p.skills, 40).map((x: any) => ({ name: clip(x.name, 60), level: x.level })))}
 Projects: ${JSON.stringify(cap(p.projects, 8).map((x: any) => ({ title: clip(x.title, 80), tech: clip(x.tech, 120), description: clip(x.description, 200) })))}
 Internships: ${JSON.stringify(cap(p.internships, 6).map((x: any) => ({ org: clip(x.org, 80), role: clip(x.role, 80), period: clip(x.period, 40) })))}
 Certifications: ${JSON.stringify(cap(p.certifications, 10).map((c: any) => clip(c.name, 100)))}
 Achievements: ${JSON.stringify(cap(p.achievements, 8).map((a: any) => clip(a.title, 120)))}
 Coding profiles: ${coding.length ? coding.join(' | ') : 'none connected'}
-Resume: ${ra ? `score ${ra.overall}/100. ${ra.summary} Improvements: ${(ra.improvements ?? []).join('; ')}` : 'not analyzed yet'}
+Resume: ${ra ? `score ${ra.overall}/100. ${clip(ra.summary, 800)} Improvements: ${clip((ra.improvements ?? []).join('; '), 800)}` : 'not analyzed yet'}
 
 COMPANIES — ${all.filter((c) => c.bucket === 'eligible').length} eligible of ${all.length} tracked; showing the strongest matches and the closest stretch targets (name | stack and match | CTC | top gaps)
 ${catalog}`
@@ -66,13 +66,17 @@ export default handle(async (req) => {
   await consumeAi(token, 'chat')
   const content = await groq(
     [
-      { role: 'system', content: systemPrompt(profile) },
+      // Hard ceiling: everything above is already clipped, this keeps one action one small model call whatever the data.
+      { role: 'system', content: systemPrompt(profile).slice(0, 16_000) },
       // Earlier replies come from the browser, so they are passed back as quoted context inside user turns rather than
       // as assistant messages: a client cannot forge what the assistant "already said" to steer it.
       ...messages.map((m) => ({ role: 'user' as const, content: m.role === 'bot' ? `(Your earlier reply, for context:)\n${m.text}` : m.text })),
     ],
     { maxTokens: 900, temperature: 0.5 },
-  )
+  ).catch(async (e: unknown) => {
+    await refundAi(profile.id)
+    throw e
+  })
   // The chat UI shows plain text, so strip markdown emphasis and headings.
   const reply = tidy(content.replace(/\*\*(.+?)\*\*/g, '$1').replace(/^#{1,6}\s+/gm, ''))
   return json({ reply })

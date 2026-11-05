@@ -1,5 +1,6 @@
 // Organization administration that needs the Supabase secret key: sending account invites.
-// POST { action: 'invite', org_id, role: 'student' | 'org_admin' | 'platform_admin', password? (creates logins instead of emailing), people: [{ email, full_name?, roll_number?, branch?, batch? }] }
+// POST { action: 'invite', org_id, role: 'student' | 'org_admin' | 'recruiter' | 'platform_admin', logins?: true (creates logins with a
+// random password per person instead of emailing), people: [{ email, full_name?, roll_number?, branch?, batch? }] }
 // The caller must be the super admin or an admin of org_id. Roster rows are written as the caller (RLS applies);
 // only the invite email itself uses the secret key, which never leaves the server.
 import { bearer, env, handle, HttpError, json, rest, SUPABASE_URL, timeout, tokenSubject } from './_lib'
@@ -7,7 +8,7 @@ import { bearer, env, handle, HttpError, json, rest, SUPABASE_URL, timeout, toke
 export const config = { runtime: 'edge' }
 
 type Person = { email: string; full_name?: string; roll_number?: string; branch?: string; batch?: string; section?: string; program?: string; company?: string; cgpa?: unknown; backlogs?: unknown; class_x?: unknown; class_xii?: unknown }
-type Result = { email: string; status: 'invited' | 'created' | 'existing' | 'failed' | 'saved'; detail?: string }
+type Result = { email: string; status: 'invited' | 'created' | 'existing' | 'failed' | 'saved'; detail?: string; password?: string }
 
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 const clip = (v: unknown, n: number) => String(v ?? '').trim().slice(0, n)
@@ -28,7 +29,7 @@ async function sendInvite(email: string, fullName: string, redirectTo: string): 
   const res = await fetch(`${SUPABASE_URL}/auth/v1/invite?redirect_to=${encodeURIComponent(redirectTo)}`, {
     signal: timeout(10_000),
     method: 'POST',
-    headers: { apikey: key, 'content-type': 'application/json' },
+    headers: { apikey: key, authorization: `Bearer ${key}`, 'content-type': 'application/json' },
     body: JSON.stringify({ email, data: fullName ? { full_name: fullName } : {} }),
   })
   if (res.ok) return { email, status: 'invited' }
@@ -63,27 +64,47 @@ async function domainAllowed(email: string, orgId: string, role: string): Promis
   return true
 }
 
-async function createLogin(email: string, fullName: string, password: string): Promise<Result> {
+/** A random password for one person: 96 bits from an alphabet with no look-alike characters, so it survives being read aloud. */
+function tempPassword() {
+  const alphabet = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+  const bytes = crypto.getRandomValues(new Uint32Array(18))
+  return Array.from(bytes, (b) => alphabet[b % alphabet.length]).join('')
+}
+
+const TEMP_DAYS = 7
+
+async function createLogin(email: string, fullName: string, orgId: string): Promise<Result> {
   const key = env('SUPABASE_SECRET_KEY')
   if (!key) return { email, status: 'failed', detail: 'Creating logins needs SUPABASE_SECRET_KEY on the server.' }
+  const password = tempPassword()
   const res = await fetch(`${SUPABASE_URL}/auth/v1/admin/users`, {
     signal: timeout(10_000),
     method: 'POST',
     headers: { apikey: key, authorization: `Bearer ${key}`, 'content-type': 'application/json' },
-    // must_change_password: the app asks the person to choose their own password on first sign-in.
-    body: JSON.stringify({ email, password, email_confirm: true, user_metadata: { ...(fullName ? { full_name: fullName } : {}), must_change_password: true } }),
+    // app_metadata only the server can write. must_change_password: everything is refused until the person chooses their own.
+    // provisioned_org: this mailbox was never proven, so the account can only ever receive access in this college.
+    body: JSON.stringify({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: fullName ? { full_name: fullName } : {},
+      app_metadata: { must_change_password: true, temp_password_expires_at: new Date(Date.now() + TEMP_DAYS * 86_400_000).toISOString(), provisioned_org: orgId },
+    }),
   })
-  if (res.ok) return { email, status: 'created', detail: 'Login created. Share the temporary password with them; they must change it at first sign-in.' }
+  if (res.ok) return { email, status: 'created', password, detail: `Login created. Give this password to this person only; it works for ${TEMP_DAYS} days and they must replace it.` }
   const body = (await res.json().catch(() => ({}))) as { msg?: string; error_code?: string; message?: string }
   const msg = body.msg ?? body.message ?? `HTTP ${res.status}`
   if (/already been registered|already registered|email_exists/i.test(msg + (body.error_code ?? ''))) return { email, status: 'existing', detail: 'Already has an account.' }
   return { email, status: 'failed', detail: msg }
 }
 
+// The account belongs to another college, or its owner never proved the mailbox, so a role cannot be attached to it.
+const REFUSED = (email: string): Result => ({ email, status: 'failed', detail: 'This account cannot be given admin access: it belongs elsewhere, or its email was never confirmed through an invite.' })
+
 export default handle(async (req) => {
   if (req.method !== 'POST') throw new HttpError(405, 'Method not allowed')
   const token = bearer(req)
-  const body = (await req.json().catch(() => ({}))) as { action?: string; org_id?: string; role?: string; people?: Person[]; send?: boolean; password?: string }
+  const body = (await req.json().catch(() => ({}))) as { action?: string; org_id?: string; role?: string; people?: Person[]; send?: boolean; logins?: boolean }
   if (body.action !== 'invite') throw new HttpError(400, 'Unknown action')
   const role = body.role === 'platform_admin' ? 'platform_admin' : body.role === 'org_admin' ? 'org_admin' : body.role === 'recruiter' ? 'recruiter' : 'student'
   const roles = await callerRoles(token)
@@ -96,7 +117,9 @@ export default handle(async (req) => {
     if (!isSuper && !roles.some((r) => r.role === 'org_admin' && r.org_id === orgId)) throw new HttpError(403, 'You do not administer this organization.')
   }
   // 50 per request keeps one call well inside the function time limit (each person is up to three upstream calls).
-  const people = (Array.isArray(body.people) ? body.people : []).slice(0, 50).map((p) => ({
+  // The browser sends larger pastes in batches; anything else is refused rather than silently cut short.
+  if (Array.isArray(body.people) && body.people.length > 50) throw new HttpError(422, 'Send at most 50 people at a time.')
+  const people = (Array.isArray(body.people) ? body.people : []).map((p) => ({
     email: clip(p.email, 200).toLowerCase(),
     full_name: clip(p.full_name, 160),
     company: clip(p.company, 120),
@@ -115,23 +138,22 @@ export default handle(async (req) => {
   const bad = people.filter((p) => !EMAIL.test(p.email)).map((p) => p.email || '(blank)')
   if (bad.length) throw new HttpError(422, `Invalid email: ${bad.slice(0, 5).join(', ')}`)
 
-  const password = typeof body.password === 'string' ? body.password : ''
-  if (password && password.length < 12) throw new HttpError(422, 'Temporary password must be at least 12 characters.')
+  const logins = body.logins === true
   // Platform admins hold every college's data: they must accept an emailed invite, never a password set by someone else.
-  if (password && role === 'platform_admin') throw new HttpError(422, 'Platform admins must be invited by email, not created with a temporary password.')
+  if (logins && role === 'platform_admin') throw new HttpError(422, 'Platform admins must be invited by email, not created with a temporary password.')
   const redirectTo = `${new URL(req.url).origin}/reset-password`
-  // With a temporary password, logins are created directly; otherwise an invite email is sent.
+  // Logins are created directly, each with its own random password; otherwise an invite email is sent.
   // A login created with a password the caller knows must only ever reach this college's own people. An email that is
   // pending anywhere else (another college's roster or admin list, a recruiter elsewhere, a platform admin) would
   // otherwise be claimed with that password and granted the other role on first sign-in.
   const mayProvision = async (email: string) =>
     role === 'platform_admin' || ((await (await rest(token, 'rpc/can_provision', { method: 'POST', body: JSON.stringify({ target_org: orgId, target_email: email }) })).json()) as boolean)
   const provision = async (p: { email: string; full_name: string }): Promise<Result> => {
-    if (!password) return sendInvite(p.email, p.full_name, redirectTo)
+    if (!logins) return sendInvite(p.email, p.full_name, redirectTo)
     if (!(await mayProvision(p.email))) return { email: p.email, status: 'failed', detail: 'This email is already registered elsewhere on PlacementIQ. Send an email invite instead.' }
     if (!(await domainAllowed(p.email, orgId, role)))
       return { email: p.email, status: 'failed', detail: 'This email is outside your college\'s domains. Send an email invite instead, so only the owner of the mailbox can sign in.' }
-    return createLogin(p.email, p.full_name, password)
+    return createLogin(p.email, p.full_name, orgId)
   }
   const results: Result[] = []
 
@@ -175,12 +197,12 @@ export default handle(async (req) => {
   } else if (role === 'platform_admin') {
     for (const p of people) {
       const granted = (await (await rest(token, 'rpc/add_platform_admin', { method: 'POST', body: JSON.stringify({ target_email: p.email }) })).json()) as string
-      results.push(granted === 'granted' ? { email: p.email, status: 'existing', detail: 'Platform admin access granted to the existing account.' } : await provision(p))
+      results.push(granted === 'refused' ? REFUSED(p.email) : granted === 'granted' ? { email: p.email, status: 'existing', detail: 'Platform admin access granted to the existing account.' } : await provision(p))
     }
   } else {
     for (const p of people) {
       const granted = (await (await rest(token, 'rpc/add_org_admin', { method: 'POST', body: JSON.stringify({ target_org: orgId, target_email: p.email }) })).json()) as string
-      results.push(granted === 'granted' ? { email: p.email, status: 'existing', detail: 'Admin access granted to the existing account.' } : await provision(p))
+      results.push(granted === 'refused' ? REFUSED(p.email) : granted === 'granted' ? { email: p.email, status: 'existing', detail: 'Admin access granted to the existing account.' } : await provision(p))
     }
   }
 

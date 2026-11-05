@@ -49,6 +49,10 @@ export async function rest(token: string, path: string, init: RequestInit = {}, 
   if (!res.ok) {
     const text = await res.text()
     // Turn the common database refusals into messages an admin can act on.
+    const known = text.match(/(ROSTER_DOMAIN|APPLICATION_STEP|DRIVE_HAS_OUTCOMES): ([^"]{1,200})/)
+    if (known) throw new HttpError(422, known[2])
+    if (/coding_profiles_one_owner/.test(text)) throw new HttpError(409, 'Another student has already proven this account is theirs. If it is yours, ask your placement cell.')
+    if (/credentials_one_owner/.test(text)) throw new HttpError(409, 'This certificate is already on another student\'s profile.')
     if (/org_students_roll_key/.test(text)) throw new HttpError(409, 'That roll number is already used by another student in this college. Check the roll number or update that student instead.')
     if (/"code":"23505"/.test(text)) throw new HttpError(409, 'This record already exists.')
     if (/"code":"42501"|row-level security/.test(text)) throw new HttpError(403, 'You do not have permission to change this.')
@@ -93,7 +97,19 @@ export function tokenSubject(token: string): string {
   throw new HttpError(401, 'Session expired. Please sign in again.')
 }
 
+/** The claims of a token Supabase has already accepted. Not a verification on its own. */
+export function tokenClaims(token: string): Record<string, any> {
+  try {
+    const part = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
+    return JSON.parse(atob(part.padEnd(part.length + ((4 - (part.length % 4)) % 4), '='))) as Record<string, any>
+  } catch {
+    return {}
+  }
+}
+
 export async function loadProfile(token: string): Promise<Record<string, any>> {
+  // Accounts on a temporary password can do nothing else until they choose their own (the database enforces this too).
+  if (tokenClaims(token).app_metadata?.must_change_password === true) throw new HttpError(403, 'Choose your own password first.')
   // Filter by the caller's own id: admins and recruiters can see other profiles, so "the first visible row" is not "mine".
   const [profile] = (await (await rest(token, `profiles?select=*&id=eq.${tokenSubject(token)}&limit=1`)).json()) as Record<string, any>[]
   if (!profile) throw new HttpError(401, 'Not signed in')
@@ -149,6 +165,32 @@ export async function saveProfile(token: string, id: string, patch: Record<strin
   await rest(token, `profiles?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify(patch), headers: { prefer: 'return=minimal' } })
 }
 
+/** Profile columns students cannot write themselves (resume_text). Falls back to their token before the migration. */
+export async function saveServerField(token: string, id: string, patch: Record<string, unknown>) {
+  const key = env('SUPABASE_SECRET_KEY')
+  await rest(key || token, `profiles?id=eq.${id}`, { method: 'PATCH', body: JSON.stringify(patch), headers: { prefer: 'return=minimal' } }, key || SUPABASE_KEY)
+}
+
+/** The name the college has on its roster: the only name a student cannot edit. */
+export async function rosterName(id: string): Promise<string> {
+  const key = env('SUPABASE_SECRET_KEY')
+  if (!key) return ''
+  const rows = (await (await rest(key, `org_students?user_id=eq.${id}&select=full_name&limit=1`, {}, key)).json()) as { full_name: string | null }[]
+  return String(rows[0]?.full_name ?? '').trim()
+}
+
+/** Gives an AI action back when the model call failed. Never blocks the error the student should see. */
+export async function refundAi(userId: string) {
+  const key = env('SUPABASE_SECRET_KEY')
+  if (!key) return
+  await fetch(`${SUPABASE_URL}/rest/v1/rpc/refund_ai`, {
+    signal: timeout(5_000),
+    method: 'POST',
+    headers: { apikey: key, authorization: `Bearer ${key}`, 'content-type': 'application/json' },
+    body: JSON.stringify({ target: userId }),
+  }).catch(() => undefined)
+}
+
 type ChatMessage = { role: 'system' | 'user' | 'assistant'; content: string }
 
 /** Models tried in order. Each Groq model has its own per-minute token budget, so falling back on 429 multiplies capacity. */
@@ -160,12 +202,16 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
 export async function groq(messages: ChatMessage[], opts: { json?: boolean; maxTokens?: number; temperature?: number } = {}) {
   const key = env('GROQ_API_KEY')
-  if (!key) throw new HttpError(503, 'The AI is not configured (GROQ_API_KEY missing).')
+  if (!key) throw new HttpError(503, 'The AI is not available right now.')
   let lastStatus = 0
+  // One budget for the whole call, so a slow model leaves time for the next and the function ends before the platform kills it.
+  const deadline = Date.now() + 24_000
   for (const model of MODELS) {
     for (let attempt = 0; attempt < 2; attempt++) {
+      const left = deadline - Date.now()
+      if (left < 2_000) throw new HttpError(504, 'The AI took too long to answer. Try again in a moment.')
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        signal: timeout(20_000),
+        signal: timeout(Math.min(left, 14_000)),
         method: 'POST',
         headers: { authorization: `Bearer ${key}`, 'content-type': 'application/json' },
         body: JSON.stringify({
@@ -176,7 +222,15 @@ export async function groq(messages: ChatMessage[], opts: { json?: boolean; maxT
           ...(opts.json ? { response_format: { type: 'json_object' } } : {}),
           messages,
         }),
+      }).catch((e: unknown) => {
+        // A timeout on one model moves on to the next instead of failing the whole request.
+        console.error('Groq fetch', model, e instanceof Error ? e.name : 'error')
+        return null
       })
+      if (!res) {
+        lastStatus = 504
+        break
+      }
       if (res.ok) {
         const data = (await res.json()) as { choices?: { message?: { content?: string } }[] }
         // Some models wrap reasoning in <think> tags; never show that to users.
