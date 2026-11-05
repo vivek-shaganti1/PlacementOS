@@ -117,9 +117,9 @@ export default function Login({ initialMode = 'signin' }: { initialMode?: Mode }
           <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-[oklch(0.6_0.22_285)] opacity-40 blur-[80px]" />
           <div className="pointer-events-none absolute -bottom-24 -left-10 h-64 w-64 rounded-full bg-[oklch(0.75_0.12_200)] opacity-30 blur-[80px]" />
           <Link to="/" className="relative inline-block"><Logo light /></Link>
-          <h2 className="relative mt-12 font-display text-[44px] leading-[1.02] tracking-[-0.01em]">
+          <p className="relative mt-12 font-display text-[44px] leading-[1.02] tracking-[-0.01em]">
             Know exactly where you stand <span className="italic text-white/70">before</span> the drive opens.
-          </h2>
+          </p>
           <p className="relative mt-4 max-w-[420px] text-[14px] leading-[1.6] text-white/70">
             Your academics, resume, GitHub and coding profiles, scored against 66 recruiters, with the next best step for each one.
           </p>

@@ -1105,7 +1105,7 @@ export function AdminClasses() {
                 </thead>
                 <tbody>
                   {gs.map((g) => (
-                    <tr key={g.key} onClick={() => open(g)} className="cursor-pointer border-b border-line/70 tabular-nums transition hover:bg-white/70">
+                    <tr key={g.key} onClick={() => open(g)} tabIndex={0} role="link" aria-label={`Open class ${g.key}`} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(g) } }} className="cursor-pointer border-b border-line/70 tabular-nums transition hover:bg-white/70">
                       <td className="px-2 py-2.5 font-semibold text-ink">{sectionLabel(g.section)}</td>
                       <td className="px-2 py-2.5">{g.rostered}</td>
                       <td className="px-2 py-2.5">{g.joined}<span className="ml-1 text-[11px] text-ink-faint">{g.rostered ? `${Math.round((g.joined / g.rostered) * 100)}%` : ''}</span></td>
