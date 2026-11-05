@@ -1,0 +1,17 @@
+Feature_ID,Feature,Frontend,Backend,Database,Role_Coverage,Security_Coverage,Functional_Coverage,Test_Coverage,Status,Blockers
+FEAT-001,Roster,AdminOrg,api/admin,org_students,org_admin (source),"SEC-02,SEC-16","DEF-02,DEF-04",none automated except partial rls_tests.sql/evaluate.ts,PARTIAL,runtime tests blocked
+FEAT-002,Signup,Login,api/signup,signup_attempts,student (source),"SEC-01,SEC-18",NV-04,none automated except partial rls_tests.sql/evaluate.ts,PARTIAL,runtime tests blocked
+FEAT-003,Onboarding,Onboarding,"RPC, api/connect",profiles + collections,student (source),none found in source,"DEF-01,DEF-06",none automated except partial rls_tests.sql/evaluate.ts,PARTIAL,runtime tests blocked
+FEAT-004,Academics lock,Profile,pin_roster_fields,profiles,"student, org_admin (source)",none found in source,"DEF-01,DEF-04",none automated except partial rls_tests.sql/evaluate.ts,PARTIAL,runtime tests blocked
+FEAT-005,Resume,ResumeAnalyzer,api/resume,resume_analyses,student (source),SEC-10,DEF-09,none automated except partial rls_tests.sql/evaluate.ts,PARTIAL,runtime tests blocked
+FEAT-006,Connect accounts,ProfileExtras,api/connect,"coding_profiles, github_repos, credentials",student (source),"SEC-04,SEC-08,SEC-09",REL-07,none automated except partial rls_tests.sql/evaluate.ts,PARTIAL,runtime tests blocked
+FEAT-007,Eligibility and What-If,"EligibilityStacks, WhatIf",client lib,none,student (source),SEC-05,"DEF-10,DEF-14",none automated except partial rls_tests.sql/evaluate.ts,PARTIAL,runtime tests blocked
+FEAT-008,Drives,Admin,RLS,job_postings,"org_admin, recruiter (source)",none found in source,DEF-07,none automated except partial rls_tests.sql/evaluate.ts,PARTIAL,runtime tests blocked
+FEAT-009,Apply and status,"Jobs, Admin",RLS,job_applications,all (source),"SEC-11,SEC-19",DEF-05,none automated except partial rls_tests.sql/evaluate.ts,PARTIAL,runtime tests blocked
+FEAT-010,Rankings and CSV,Admin,RLS,student tables,"org_admin, recruiter (source)","SEC-05,SEC-12",DEF-13,none automated except partial rls_tests.sql/evaluate.ts,PARTIAL,runtime tests blocked
+FEAT-011,Notifications,Topbar,triggers,notifications,student (source),none found in source,DEF-08,none automated except partial rls_tests.sql/evaluate.ts,PARTIAL,runtime tests blocked
+FEAT-012,AI assistant and quota,Drawer,"api/chat, consume_ai",ai_usage,student (source),SEC-14,REL-06,none automated except partial rls_tests.sql/evaluate.ts,PARTIAL,runtime tests blocked
+FEAT-013,Plans and orgs,AdminOrg,RLS,organizations,super_admin (source),SEC-06,DEF-11,none automated except partial rls_tests.sql/evaluate.ts,PARTIAL,runtime tests blocked
+FEAT-014,Snapshots and analytics,Analytics,upsert,progress_snapshots,student (source),none found in source,NV-07,none automated except partial rls_tests.sql/evaluate.ts,PARTIAL,runtime tests blocked
+FEAT-015,Alumni,AlumniNetwork,none,static data,student (source),none found in source,DEF-03,none automated except partial rls_tests.sql/evaluate.ts,PARTIAL,runtime tests blocked
+FEAT-016,Certifications catalogue,"Certifications, SuperCertifications",RLS,certification tables,"student, super_admin (source)",none found in source,none found in source,none automated except partial rls_tests.sql/evaluate.ts,PARTIAL,runtime tests blocked

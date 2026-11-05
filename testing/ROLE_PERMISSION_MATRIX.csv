@@ -1,0 +1,60 @@
+Role,Resource,Action,Expected_Access,Actual_Access,Enforcement_Layer,Evidence,Status
+anon,profiles,as listed,none,none (from final policies; not run),Postgres RLS and grants,own profile select/update; admins read profiles,PARTIAL
+student,profiles,as listed,own RW (columns),own RW (columns) (from final policies; not run),Postgres RLS and grants,own profile select/update; admins read profiles,PARTIAL
+recruiter,profiles,as listed,"applicant R, not private","applicant R, not private (from final policies; not run)",Postgres RLS and grants,own profile select/update; admins read profiles,PARTIAL
+org_admin,profiles,as listed,org R,org R (from final policies; not run),Postgres RLS and grants,own profile select/update; admins read profiles,PARTIAL
+super_admin,profiles,as listed,all R,all R (from final policies; not run),Postgres RLS and grants,own profile select/update; admins read profiles,PARTIAL
+anon,org_students,as listed,none,none (from final policies; not run),Postgres RLS and grants,org admins manage roster,PARTIAL
+student,org_students,as listed,none,none (from final policies; not run),Postgres RLS and grants,org admins manage roster,PARTIAL
+recruiter,org_students,as listed,none,none (from final policies; not run),Postgres RLS and grants,org admins manage roster,PARTIAL
+org_admin,org_students,as listed,org RW,org RW (from final policies; not run),Postgres RLS and grants,org admins manage roster,PARTIAL
+super_admin,org_students,as listed,all RW,all RW (from final policies; not run),Postgres RLS and grants,org admins manage roster,PARTIAL
+anon,job_postings,as listed,none,none (from final policies; not run),Postgres RLS and grants,students see open jobs; recruiters manage own jobs; admins manage jobs,PARTIAL
+student,job_postings,as listed,"org R, non-draft","org R, non-draft (from final policies; not run)",Postgres RLS and grants,students see open jobs; recruiters manage own jobs; admins manage jobs,PARTIAL
+recruiter,job_postings,as listed,own RW,own RW (from final policies; not run),Postgres RLS and grants,students see open jobs; recruiters manage own jobs; admins manage jobs,PARTIAL
+org_admin,job_postings,as listed,org RW,org RW (from final policies; not run),Postgres RLS and grants,students see open jobs; recruiters manage own jobs; admins manage jobs,PARTIAL
+super_admin,job_postings,as listed,all RW,all RW (from final policies; not run),Postgres RLS and grants,students see open jobs; recruiters manage own jobs; admins manage jobs,PARTIAL
+anon,job_applications,as listed,none,none (from final policies; not run),Postgres RLS and grants,own applications select; students apply; students withdraw; recruiters; admins update,PARTIAL
+student,job_applications,as listed,"own R, insert, delete if applied","own R, insert, delete if applied (from final policies; not run)",Postgres RLS and grants,own applications select; students apply; students withdraw; recruiters; admins update,PARTIAL
+recruiter,job_applications,as listed,own drive R U,own drive R U (from final policies; not run),Postgres RLS and grants,own applications select; students apply; students withdraw; recruiters; admins update,PARTIAL
+org_admin,job_applications,as listed,org R U,org R U (from final policies; not run),Postgres RLS and grants,own applications select; students apply; students withdraw; recruiters; admins update,PARTIAL
+super_admin,job_applications,as listed,all R U,all R U (from final policies; not run),Postgres RLS and grants,own applications select; students apply; students withdraw; recruiters; admins update,PARTIAL
+anon,resumes storage,as listed,none,none (from final policies; not run),Postgres RLS and grants,resumes own *; resumes admin read,PARTIAL
+student,resumes storage,as listed,own RW,own RW (from final policies; not run),Postgres RLS and grants,resumes own *; resumes admin read,PARTIAL
+recruiter,resumes storage,as listed,applicant R,applicant R (from final policies; not run),Postgres RLS and grants,resumes own *; resumes admin read,PARTIAL
+org_admin,resumes storage,as listed,org R,org R (from final policies; not run),Postgres RLS and grants,resumes own *; resumes admin read,PARTIAL
+super_admin,resumes storage,as listed,all R,all R (from final policies; not run),Postgres RLS and grants,resumes own *; resumes admin read,PARTIAL
+anon,credentials,as listed,none,none (from final policies; not run),Postgres RLS and grants,own rows select/delete; admins read,PARTIAL
+student,credentials,as listed,"own R, delete","own R, delete (from final policies; not run)",Postgres RLS and grants,own rows select/delete; admins read,PARTIAL
+recruiter,credentials,as listed,applicant R,applicant R (from final policies; not run),Postgres RLS and grants,own rows select/delete; admins read,PARTIAL
+org_admin,credentials,as listed,org R + RPC,org R + RPC (from final policies; not run),Postgres RLS and grants,own rows select/delete; admins read,PARTIAL
+super_admin,credentials,as listed,all R + RPC,all R + RPC (from final policies; not run),Postgres RLS and grants,own rows select/delete; admins read,PARTIAL
+anon,organizations,as listed,none,none (from final policies; not run),Postgres RLS and grants,orgs visible to admins; super admin manages orgs,PARTIAL
+student,organizations,as listed,none (my_org),none (my_org) (from final policies; not run),Postgres RLS and grants,orgs visible to admins; super admin manages orgs,PARTIAL
+recruiter,organizations,as listed,none,none (from final policies; not run),Postgres RLS and grants,orgs visible to admins; super admin manages orgs,PARTIAL
+org_admin,organizations,as listed,own R,own R (from final policies; not run),Postgres RLS and grants,orgs visible to admins; super admin manages orgs,PARTIAL
+super_admin,organizations,as listed,all RW,all RW (from final policies; not run),Postgres RLS and grants,orgs visible to admins; super admin manages orgs,PARTIAL
+anon,user_roles,as listed,none,none (from final policies; not run),Postgres RLS and grants,roles visible to self and org admins,PARTIAL
+student,user_roles,as listed,own R,own R (from final policies; not run),Postgres RLS and grants,roles visible to self and org admins,PARTIAL
+recruiter,user_roles,as listed,own R,own R (from final policies; not run),Postgres RLS and grants,roles visible to self and org admins,PARTIAL
+org_admin,user_roles,as listed,org R,org R (from final policies; not run),Postgres RLS and grants,roles visible to self and org admins,PARTIAL
+super_admin,user_roles,as listed,all R,all R (from final policies; not run),Postgres RLS and grants,roles visible to self and org admins,PARTIAL
+anon,ai_usage,as listed,none,none (from final policies; not run),Postgres RLS and grants,read own or administered usage,PARTIAL
+student,ai_usage,as listed,own R,own R (from final policies; not run),Postgres RLS and grants,read own or administered usage,PARTIAL
+recruiter,ai_usage,as listed,own R,own R (from final policies; not run),Postgres RLS and grants,read own or administered usage,PARTIAL
+org_admin,ai_usage,as listed,org R,org R (from final policies; not run),Postgres RLS and grants,read own or administered usage,PARTIAL
+super_admin,ai_usage,as listed,all R,all R (from final policies; not run),Postgres RLS and grants,read own or administered usage,PARTIAL
+anon,notifications,as listed,none,none (from final policies; not run),Postgres RLS and grants,own rows,PARTIAL
+student,notifications,as listed,own R U(read) D,own R U(read) D (from final policies; not run),Postgres RLS and grants,own rows,PARTIAL
+recruiter,notifications,as listed,same,same (from final policies; not run),Postgres RLS and grants,own rows,PARTIAL
+org_admin,notifications,as listed,same,same (from final policies; not run),Postgres RLS and grants,own rows,PARTIAL
+super_admin,notifications,as listed,same,same (from final policies; not run),Postgres RLS and grants,own rows,PARTIAL
+anon,recommendation_feedback,as listed,none,none (from final policies; not run),Postgres RLS and grants,students give feedback; read own or college feedback,PARTIAL
+student,recommendation_feedback,as listed,"own R, insert","own R, insert (from final policies; not run)",Postgres RLS and grants,students give feedback; read own or college feedback,PARTIAL
+recruiter,recommendation_feedback,as listed,same,same (from final policies; not run),Postgres RLS and grants,students give feedback; read own or college feedback,PARTIAL
+org_admin,recommendation_feedback,as listed,org R,org R (from final policies; not run),Postgres RLS and grants,students give feedback; read own or college feedback,PARTIAL
+super_admin,recommendation_feedback,as listed,all R,all R (from final policies; not run),Postgres RLS and grants,students give feedback; read own or college feedback,PARTIAL
+student,skills/projects/internships via replace_rows,write values used in ranking,server-derived only,own write allowed,RLS (invoker),SEC-05,FAIL
+student,job_applications,apply to wrong branch,refused,allowed,RLS missing rule,SEC-11,FAIL
+recruiter,jd_matches,read other drives,refused,allowed,can_view_user,SEC-12,FAIL
+org_admin,other college people,grant role,refused,allowed,add_org_admin,SEC-13,FAIL

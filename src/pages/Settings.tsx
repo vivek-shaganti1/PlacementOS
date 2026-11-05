@@ -64,7 +64,7 @@ export default function Settings() {
   const dirty = visibility !== p.visibility
 
   return (
-    <Page title="Settings" subtitle="Account, notification and privacy preferences.">
+    <Page title="Settings" subtitle="Account, privacy and security.">
       <Card title="Account">
         <div className="grid grid-cols-1 gap-4 text-[12.5px] sm:grid-cols-2">
           {[['Name', p.full_name], ['Sign-in email', session?.user.email ?? ''], ['Branch', p.branch], ['Batch', p.batch]].map(([k, v]) => (
