@@ -9,10 +9,10 @@ const types = ['DSA Round', 'System Design', 'HR & Behavioural', 'Full Loop Simu
 const input = 'h-[34px] rounded-[9px] border border-line bg-white px-3 text-[12.5px] outline-none focus:border-[#d5cbff]'
 
 const slots = [
-  { id: 's1', type: 'DSA Round', mentor: 'Alumni mentor · SDE II, product company', when: 'Tomorrow, 6:00 PM' },
-  { id: 's2', type: 'System Design', mentor: 'Alumni mentor · Senior SWE', when: 'Thu, 7:30 PM' },
+  { id: 's1', type: 'DSA Round', mentor: 'Interviewer not assigned yet', when: 'Tomorrow, 6:00 PM' },
+  { id: 's2', type: 'System Design', mentor: 'Interviewer not assigned yet', when: 'Thu, 7:30 PM' },
   { id: 's3', type: 'HR & Behavioural', mentor: 'Placement cell · HR panel', when: 'Sat, 11:00 AM' },
-  { id: 's4', type: 'Full Loop Simulation', mentor: 'Alumni panel · 3 interviewers', when: 'Sun, 4:00 PM' },
+  { id: 's4', type: 'Full Loop Simulation', mentor: 'Interviewers not assigned yet', when: 'Sun, 4:00 PM' },
 ]
 
 export default function MockInterviews() {
@@ -37,7 +37,7 @@ export default function MockInterviews() {
   }
 
   return (
-    <Page title="Mock Interviews" subtitle="Book a rehearsal with alumni before the real loop.">
+    <Page title="Mock Interviews" subtitle="Rehearse before the real loop and log how each session went.">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Stat label="Interviews completed" value={`${past.length}`} sub={`${last30} in the last 30 days`} />
         <Stat label="Average score" value={avg === null ? '—' : `${avg.toFixed(1)} / 10`} sub="From your logged feedback" tone="text-[#0d9a5b]" />
@@ -104,7 +104,7 @@ function InterviewReadinessCard() {
         ))}
       </div>
       <p className="mt-3 text-[12px] text-ink-mute">
-        Focus next on {r.weakest.join(' and ').toLowerCase()}.{' '}
+        Focus next on {r.weakest.join(' and ')}.{' '}
         {r.mockCount === 0 ? 'Log a mock interview below so your interview performance counts toward the score.' : `Based on ${r.mockCount} logged mock interview${r.mockCount === 1 ? '' : 's'}.`}
       </p>
     </Card>

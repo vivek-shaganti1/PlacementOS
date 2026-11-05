@@ -7,7 +7,7 @@ import type { Bucket } from '../data/types'
 import { useProfile } from '../lib/auth'
 import { SKILL_SHORT } from '../lib/eligibility'
 import { skillsFor } from '../lib/branches'
-import { bucketChanges, snapshot } from '../lib/predict'
+import { bucketChanges, snapshot, withSkillLevels } from '../lib/predict'
 
 const delta = (n: number, unit = '') => (n > 0 ? `+${n}${unit}` : n < 0 ? `${n}${unit}` : `no change`)
 const lpa = (n: number) => `₹${n.toFixed(1)} LPA`
@@ -22,7 +22,8 @@ export default function WhatIf() {
   const SKILLS = useMemo(() => skillsFor(profile), [profile.tracks, profile.branch])
   const baseSkills = useMemo(() => Object.fromEntries(SKILLS.map((s) => [s, profile.skills.find((x) => x.name === s)?.level ?? 0])), [profile.skills, SKILLS])
   const baseMock = profile.mock_feedback.length ? profile.mock_feedback.reduce((a, m) => a + Number(m.score), 0) / profile.mock_feedback.length : 0
-  const initial = { cgpa: profile.cgpa, backlogs: profile.backlogs, skills: baseSkills, extraProjects: 0, extraInternships: 0, mock: Math.round(baseMock * 10) / 10 }
+  const roundedMock = Math.round(baseMock * 10) / 10
+  const initial = { cgpa: profile.cgpa, backlogs: profile.backlogs, skills: baseSkills, extraProjects: 0, extraInternships: 0, mock: roundedMock }
   const [s, setS] = useState(initial)
 
   const before = useMemo(() => snapshot(profile), [profile])
@@ -31,12 +32,14 @@ export default function WhatIf() {
       ...profile,
       cgpa: s.cgpa,
       backlogs: s.backlogs,
-      skills: SKILLS.map((name) => ({ name, level: s.skills[name] })),
+      // Over the whole profile, so skills outside the current tracks stay put and an untouched simulation equals the profile.
+      skills: withSkillLevels(profile.skills, s.skills),
       projects: [...profile.projects, ...Array.from({ length: s.extraProjects }, (_, i) => ({ title: `New project ${i + 1}`, tech: '', description: '', url: null }))],
       internships: [...profile.internships, ...Array.from({ length: s.extraInternships }, (_, i) => ({ org: `New internship ${i + 1}`, role: '', period: '' }))],
-      mock_feedback: s.mock > 0 ? [{ type: 'Simulated', date: '', score: s.mock, note: '' }] : [],
+      // The slider shows the average rounded to one decimal; only a moved slider replaces the real scores.
+      mock_feedback: s.mock === roundedMock ? profile.mock_feedback : s.mock > 0 ? [{ type: 'Simulated', date: '', score: s.mock, note: '' }] : [],
     }),
-    [profile, s],
+    [profile, s, roundedMock],
   )
   const after = useMemo(() => snapshot(simulated), [simulated])
   const changes = useMemo(() => bucketChanges(before, after), [before, after])
@@ -46,7 +49,7 @@ export default function WhatIf() {
     return SKILLS.map((name) => {
       const lvl = s.skills[name]
       if (lvl >= 100) return { name, gain: 0 }
-      const test = snapshot({ ...simulated, skills: SKILLS.map((n) => ({ name: n, level: n === name ? Math.min(100, lvl + 10) : s.skills[n] })) })
+      const test = snapshot({ ...simulated, skills: withSkillLevels(simulated.skills, { [name]: Math.min(100, lvl + 10) }) })
       return { name, gain: test.readiness - after.readiness, moved: bucketChanges(after, test).length }
     })
       .filter((l) => l.gain > 0)
@@ -154,6 +157,7 @@ export default function WhatIf() {
             )}
             <p className="mt-3 text-[11.5px] text-ink-faint">
               Expected CTC weights each company's average package by your chance of converting it (category and match score).
+              It is an average, so a skill that opens more lower-paying companies can lower it even as your eligibility improves.
               Top contributors: {after.salary.drivers.slice(0, 3).map((d) => `${d.name} (₹${d.ctc} LPA)`).join(', ') || 'none yet'}.
             </p>
             <FeedbackPrompt target="what_if" className="mt-3" />

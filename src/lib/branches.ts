@@ -34,6 +34,7 @@ export type SkillRule = {
   gate?: string[]
 }
 
+/** `skills` order matters: the first two non-aptitude skills are the track's lead skills (see coreSkills in lib/predict). */
 export type Track = { id: string; label: string; families: Family[]; blurb: string; skills: string[]; resumeKeywords: string[]; categories: string[] }
 
 const APT: SkillRule = { name: 'Aptitude & Reasoning', short: 'Aptitude', keywords: ['aptitude', 'quantitative', 'reasoning'], gate: ['EC', 'EE', 'ME', 'CE', 'CH', 'IN', 'BT', 'MT', 'PI', 'AE', 'CS', 'DA'] }

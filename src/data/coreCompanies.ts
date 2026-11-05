@@ -3,7 +3,7 @@ import type { Category, CompanyBase } from './types'
 /**
  * Core (non-software) recruiters per track. Selection rounds follow the published campus processes (aptitude plus a
  * branch-subject test, a technical interview on fundamentals and projects, HR). CTC is a typical fresher range in LPA and
- * varies by year and campus; the college's own drives always take precedence. No applicant counts or alumni are shown for
+ * varies by year and campus; the college's own drives always take precedence. No applicant counts are shown for
  * these companies because there is no data behind them.
  */
 type CoreSeed = { name: string; role: string; brand: string; ctc: [number, number, number]; category: Category; location: string; about: string }
@@ -162,6 +162,5 @@ export const coreCatalog: (CompanyBase & { category: Category })[] = SEEDS.map((
   careers: `https://www.google.com/search?q=${encodeURIComponent(`${s.name} careers freshers`)}`,
   process: PROCESS[s.category] ?? [],
   stats: [{ label: 'Typical fresher CTC', value: `₹${s.ctc[1]}–${s.ctc[2]} LPA` }],
-  alumni: [],
   category: s.category,
 }))

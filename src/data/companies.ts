@@ -1,4 +1,4 @@
-import type { Alumnus, Bucket, CompanyBase } from './types'
+import type { Bucket, CompanyBase } from './types'
 
 type Seed = {
   name: string
@@ -14,37 +14,9 @@ type Seed = {
 
 const ROLE = 'Software Engineer (SDE)'
 
-const firstNames = [
-  'Rahul Reddy', 'Sneha Priya', 'Vikram Singh', 'Ananya Sharma', 'Karthik Nair',
-  'Divya Menon', 'Aditya Rao', 'Meera Iyer', 'Rohan Gupta', 'Ishita Bose',
-  'Nikhil Verma', 'Pooja Desai',
-]
-
-const branches = ['CSE', 'IT', 'ECE', 'CSE', 'IT', 'CSE', 'ECE', 'CSE', 'IT', 'CSE', 'CSE', 'ECE']
-const cities = ['Bangalore', 'Hyderabad', 'Pune', 'Bangalore', 'Gurgaon', 'Chennai', 'Bangalore', 'Noida', 'Hyderabad', 'Bangalore', 'Mumbai', 'Bangalore']
-
-function makeAlumni(company: string, count: number): Alumnus[] {
-  const titles = [
-    `SDE II at ${company}`,
-    `Software Engineer at ${company}`,
-    `SDE at ${company}`,
-    `SWE at ${company}`,
-    `Senior Engineer at ${company}`,
-  ]
-  return Array.from({ length: count }, (_, i) => ({
-    name: firstNames[i % firstNames.length],
-    title: titles[i % titles.length],
-    batch: `${2021 + (i % 4)} Batch, ${branches[i % branches.length]}`,
-    years: `${(1.2 + ((i * 0.37) % 3)).toFixed(1)} Years`,
-    location: cities[i % cities.length],
-    avatar: `https://i.pravatar.cc/96?img=${(i % 60) + 1}`,
-  }))
-}
-
-function build(seed: Seed, tier: Bucket): CompanyBase {
+function build(seed: Seed): CompanyBase {
   const [avg, min, max] = seed.ctc
   const m = seed.match
-  const alumniCount = tier === 'eligible' ? 12 : tier === 'nearly' ? 9 : tier === 'canBecome' ? 6 : 3
 
   return {
     id: seed.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
@@ -77,7 +49,6 @@ function build(seed: Seed, tier: Bucket): CompanyBase {
       { label: 'Highest package', value: `₹${max} LPA` },
       { label: 'Median interview rounds', value: '4' },
     ],
-    alumni: makeAlumni(seed.name, alumniCount),
   }
 }
 
@@ -159,23 +130,9 @@ const notEligibleSeeds: Seed[] = [
   { name: 'DE Shaw', match: 16, brand: '#7C3AED', ctc: [50.0, 42, 64], location: 'Hyderabad' },
 ]
 
-const googleAlumni: Alumnus[] = [
-  { name: 'Rahul Reddy', title: 'SDE II at Google', batch: '2022 Batch, CSE', years: '2.4 Years', location: 'Bangalore', avatar: 'https://i.pravatar.cc/96?img=13' },
-  { name: 'Sneha Priya', title: 'Software Engineer at Google', batch: '2023 Batch, CSE', years: '1.6 Years', location: 'Bangalore', avatar: 'https://i.pravatar.cc/96?img=45' },
-  { name: 'Vikram Singh', title: 'SDE at Google', batch: '2022 Batch, IT', years: '2.1 Years', location: 'Hyderabad', avatar: 'https://i.pravatar.cc/96?img=33' },
-  { name: 'Ananya Sharma', title: 'SWE at Google', batch: '2023 Batch, CSE', years: '1.3 Years', location: 'Bangalore', avatar: 'https://i.pravatar.cc/96?img=47' },
-  ...makeAlumni('Google', 12).slice(4),
-]
-
 /** Static company facts. Use `useCompanies()` (lib/companies) for per-student match and stacks. */
 export const companyCatalog: CompanyBase[] = [
-  ...eligibleSeeds.map((s) => {
-    const c = build(s, 'eligible')
-    return c.name === 'Google' ? { ...c, alumni: googleAlumni } : c
-  }),
-  ...nearlySeeds.map((s) => build(s, 'nearly')),
-  ...canBecomeSeeds.map((s) => build(s, 'canBecome')),
-  ...notEligibleSeeds.map((s) => build(s, 'notEligible')),
+  ...[...eligibleSeeds, ...nearlySeeds, ...canBecomeSeeds, ...notEligibleSeeds].map(build),
 ]
 
 export const bucketMeta: Record<

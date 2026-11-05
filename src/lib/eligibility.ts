@@ -1,6 +1,8 @@
 // Eligibility engine: turns a student profile + a company's requirements into a match %,
 // a stack (bucket), per-criterion results and skill gaps. Pure functions, shared by the
-// browser and the /api functions.
+// browser and the /api functions. The catalog is 66 recruiters (data/companies) plus 50 core
+// recruiters (data/coreCompanies) across 23 categories; a student is scored only against the
+// categories their tracks hire for (catalogFor).
 import { companyCatalog } from '../data/companies'
 import { coreCatalog } from '../data/coreCompanies'
 import type { Bucket, Category, Company, CompanyBase, Criterion, Requirements } from '../data/types'
@@ -143,12 +145,15 @@ export function evaluate(base: CompanyBase, p: StudentLike, override?: { categor
   const totalGap = gaps.reduce((a, g) => a + g.need - g.have, 0)
   const skills = Math.round(clamp(100 - 1.2 * totalGap))
 
+  // Where no internship is required, having none still scores 80 and having one scores 100: experience is a plus, not a gate.
   const experience = r.minInternships === 0 ? (internships > 0 ? 100 : 80) : Math.round(Math.min(1, internships / r.minInternships) * 100)
   const projectScore = r.minProjects === 0 ? 100 : Math.round(Math.min(1, projects / r.minProjects) * 100)
 
   const match = Math.round(0.15 * academic + 0.6 * skills + 0.1 * experience + 0.15 * projectScore)
 
   const academicFail = p.cgpa < r.minCgpa || p.backlogs > r.maxBacklogs || p.class_x < r.minClassX || p.class_xii < r.minClassXII
+  // "Near" a cut-off: within 0.5 CGPA, one backlog and 5 percentage points of every minimum, all at once.
+  // A near miss with a match of 55+ reads as Can Become Eligible; anything further is Not Eligible.
   const nearAcademic = p.cgpa >= r.minCgpa - 0.5 && p.backlogs <= r.maxBacklogs + 1 && p.class_x >= r.minClassX - 5 && p.class_xii >= r.minClassXII - 5
   const maxGap = gaps.reduce((m, g) => Math.max(m, g.need - g.have), 0)
 
@@ -185,7 +190,11 @@ export function catalogFor(p: Pick<StudentLike, 'branch' | 'tracks'>): CompanyBa
 
 export const evaluateAll = (p: StudentLike): Company[] => catalogFor(p).map((c) => evaluate(c, p)).sort((a, b) => b.match - a.match)
 
-/** Product-track companies most software students are aiming for; readiness is measured against these and core recruiters. */
+/**
+ * Readiness averages the match over these categories only: the four product-track categories most software students aim
+ * for, plus all 13 core categories. Quant, AI, infra, hardware, IT services and consulting are scored but not averaged, so
+ * a tracked company in those categories changes the stacks and not readiness.
+ */
 export const TARGET_CATEGORIES: Category[] = ['top', 'product', 'startup', 'fintech', ...CORE_CATEGORIES]
 
 export function readinessOf(companies: Company[]) {
@@ -231,7 +240,7 @@ export function evaluateJob(job: JobPosting, p: StudentLike & { branch?: string;
   const base: CompanyBase = {
     id: job.id, name: job.company, role: job.role, brand: '#6d4aff', ctcAvg: Number(job.ctc_max ?? job.ctc_min ?? 0),
     ctcMin: Number(job.ctc_min ?? 0), ctcMax: Number(job.ctc_max ?? 0), location: job.location, jobType: job.job_type,
-    tenure: '', batches: job.batches.join(', '), about: '', careers: '', process: [], stats: [], alumni: [],
+    tenure: '', batches: job.batches.join(', '), about: '', careers: '', process: [], stats: [],
   }
   const requirements: Requirements = {
     minCgpa: Number(job.min_cgpa), maxBacklogs: job.max_backlogs, minClassX: Number(job.min_class_x), minClassXII: Number(job.min_class_xii),
