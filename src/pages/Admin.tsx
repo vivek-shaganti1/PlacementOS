@@ -8,6 +8,7 @@ import { useAdminOrgs, useRecruiter, useStudents, type StudentRow } from '../lib
 import { useAuth } from '../lib/auth'
 import { sectionLabel, yearLabel, yearOfStudy } from '../lib/academics'
 import { provenIntegrations } from '../lib/trust'
+import { ShowMoreButton, useShowMore } from '../components/ShowMore'
 import { branchCode, evaluateJob, SKILL_SHORT, SKILLS, type JobPosting } from '../lib/eligibility'
 import { FILE_SIGNALS, TRACK_BY_ID, TRACKS, tracksFor, type FileSignal } from '../lib/branches'
 import { ctcText, isOpen, STATUS_META, useJobs, type JobApplication, type JobStatus } from '../lib/jobs'
@@ -448,6 +449,7 @@ export function AdminStudents() {
       })
       .sort((a, b) => val(b) - val(a))
   }, [rows, q, branch, batch, year, section, sort, org, minCgpa, maxBacklogs, minProjects, minScore, minSolved, drive, appStatus, onboarding, appsOf])
+  const page = useShowMore(shown)
   if (!isAdmin) return <Denied />
 
   const exportCsv = () => {
@@ -551,7 +553,7 @@ export function AdminStudents() {
         </div>
         {error && <p className="mt-3 text-[12px] text-[#d92d20]">{error}</p>}
         <div className="mt-3 space-y-2 md:hidden">
-          {shown.map((r) => (
+          {page.visible.map((r) => (
             <button key={r.profile.id} onClick={() => setOpen(r)} className="flex w-full items-center gap-3 rounded-[14px] border border-white/80 bg-white/70 p-3 text-left">
               <span className="w-6 text-[12px] font-semibold text-ink-faint">#{r.rank}</span>
               <Avatar src={r.profile.avatar_url ?? undefined} name={r.profile.full_name || r.profile.email} size={34} />
@@ -572,7 +574,7 @@ export function AdminStudents() {
               </tr>
             </thead>
             <tbody>
-              {shown.map((r) => (
+              {page.visible.map((r) => (
                 <tr key={r.profile.id} onClick={() => setOpen(r)} className="cursor-pointer border-b border-line/70 transition hover:bg-white/70">
                   <td className="px-2 py-2.5 font-semibold text-ink-faint">{r.rank}</td>
                   <td className="px-2 py-2.5">
@@ -619,6 +621,7 @@ export function AdminStudents() {
           </table>
           {!shown.length && <p className="py-8 text-center text-[12px] text-ink-faint">{loading ? 'Loading students…' : 'No students match.'}</p>}
         </div>
+        <ShowMoreButton more={page.more} onClick={page.showMore} />
       </Card>
       <AnimatePresence>{open && <StudentDrawer row={open} jobs={jobs} applications={applications} orgName={orgs.find((o) => o.id === open.profile.org_id)?.name} onClose={() => setOpen(null)} />}</AnimatePresence>
     </Page>

@@ -31,6 +31,19 @@ export type StudentRow = {
 export const scoreOf = (r: Omit<StudentRow, 'score' | 'rank'>) =>
   Math.round(0.5 * r.readiness + 0.3 * r.dsa + 0.2 * Math.min(100, r.profile.cgpa * 10))
 
+/**
+ * What the student list reads. Not `*`: a profile row also holds the full resume text and old JSON copies of data that now
+ * lives in its own tables, and job-description matches hold the whole JD. For 1,000 students that is several megabytes
+ * the list never shows.
+ */
+const PROFILE_COLUMNS =
+  'id,full_name,email,phone,meta,branch,batch,college,cgpa,backlogs,class_x,class_xii,avatar_url,visibility,resume_path,resume_name,resume_uploaded_at,created_at,' +
+  'github_username,leetcode_username,codeforces_username,codechef_username,hackerrank_username,linkedin_url,portfolio_url,target_roles,onboarded_at,org_id,roll_number,section,program,academics_source,tracks,notification_prefs'
+const LIST_SELECT: Record<string, string> = {
+  jd_matches: 'id,user_id,jd_title,score,verdict,matched_skills,missing_skills,created_at,job_id',
+  resume_analyses: 'id,user_id,file_name,overall,summary,checks,stats,strengths,improvements,extracted,skill_levels,created_at',
+}
+
 /** Loads every student with all related tables (admin RLS) and ranks them. */
 export function useStudents() {
   const [rows, setRows] = useState<StudentRow[]>([])
@@ -40,12 +53,12 @@ export function useStudents() {
   const reload = useCallback(async () => {
     const tables = Object.entries(RELATED)
     const [profiles, roles, credentials, ...related] = await Promise.all([
-      allRows<Record<string, any>>((a, b) => supabase.from('profiles').select('*').order('full_name').order('id').range(a, b)),
+      allRows<Record<string, any>>((a, b) => supabase.from('profiles').select(PROFILE_COLUMNS).order('full_name').order('id').range(a, b)),
       allRows<{ user_id: string; role: string }>((a, b) => supabase.from('user_roles').select('user_id,role').range(a, b)),
       allRows<Credential & { user_id: string }>((a, b) => supabase.from('credentials').select('*').eq('status', 'verified').order('id').range(a, b)),
       ...tables.map(([t, q]) => {
         const [col, dir] = q.order.split('.')
-        return allRows<Record<string, any>>((a, b) => supabase.from(t).select(q.select === '*' ? '*' : `user_id,${q.select}`).order(col, { ascending: dir !== 'desc' }).order('user_id').range(a, b))
+        return allRows<Record<string, any>>((a, b) => supabase.from(t).select(LIST_SELECT[t] ?? (q.select === '*' ? '*' : `user_id,${q.select}`)).order(col, { ascending: dir !== 'desc' }).order('user_id').range(a, b))
       }),
     ])
     const err = profiles.error ?? roles.error ?? related.find((r) => r.error)?.error

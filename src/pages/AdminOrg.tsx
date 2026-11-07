@@ -9,6 +9,7 @@ import { useAuth } from '../lib/auth'
 import { useJobs } from '../lib/jobs'
 import { useApp } from '../lib/store'
 import { collegeEconomics, COSTS, usd, PLANS, type PlanKey } from '../lib/pricing'
+import { ShowMoreButton, useShowMore } from '../components/ShowMore'
 import { allRows, errMsg, supabase, type Organization } from '../lib/supabase'
 import { plural } from '../lib/format'
 import { HoldButton } from '../components/HoldButton'
@@ -178,6 +179,7 @@ export function AdminRoster() {
     .filter((r) => cls.year === 'all' || String(yearOfStudy(r.batch, r.program)) === cls.year)
     .filter((r) => cls.branch === 'all' || branchCode(r.branch) === cls.branch)
     .filter((r) => cls.section === 'all' || (r.section || '') === cls.section)
+  const page = useShowMore(shown)
   const rosterBranches = [...new Set(rows.map((r) => branchCode(r.branch)))].sort()
   const rosterSections = [...new Set(rows.map((r) => r.section || ''))].sort()
 
@@ -308,7 +310,7 @@ export function AdminRoster() {
                 </tr>
               </thead>
               <tbody>
-                {shown.map((r) => (
+                {page.visible.map((r) => (
                   <tr key={r.id} className="border-b border-line/70">
                     <td className="tabular-nums px-2 py-2">{r.roll_number || 'n/a'}</td>
                     <td className="px-2 py-2 font-medium text-ink">{r.full_name || 'n/a'}</td>
@@ -338,6 +340,7 @@ export function AdminRoster() {
                 ))}
               </tbody>
             </table>
+            <ShowMoreButton more={page.more} onClick={page.showMore} />
           </div>
         )}
       </Card>
