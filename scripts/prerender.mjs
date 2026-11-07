@@ -4,6 +4,7 @@
 //   dist/index.html            "/"        (a host serves this file for "/" before any rewrite, so it must be the landing page)
 //   dist/{privacy,terms,security}/index.html
 //   dist/app.html              the empty shell, served for app routes so they never paint the landing page first
+//   dist/404.html              the same shell, served with status 404 for addresses that are not routes
 import react from '@vitejs/plugin-react'
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
@@ -67,6 +68,8 @@ const page = (path) => {
 let appShell = setHead(shell, /\s*<link rel="canonical" href="[^"]*" \/>/, '')
 appShell = setHead(appShell, /\s*<meta property="og:url" content="[^"]*" \/>/, '')
 writeFileSync(resolve(dist, 'app.html'), appShell)
+// Unknown addresses get a real 404 status. The body is the app shell, so the app still shows its own not-found page.
+writeFileSync(resolve(dist, '404.html'), appShell.replace('<meta name="theme-color"', '<meta name="robots" content="noindex" />\n    <meta name="theme-color"'))
 
 for (const path of routes) {
   const file = resolve(dist, path === '/' ? 'index.html' : `${path.slice(1)}/index.html`)

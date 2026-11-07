@@ -293,7 +293,7 @@ function AskBar({ compact = false }: { compact?: boolean }) {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}
                 transition={{ duration: 0.3, ease }}
-                className="pointer-events-none absolute inset-y-0 left-0 flex items-center truncate text-[14px] text-ink-faint"
+                className="pointer-events-none absolute inset-y-0 left-0 right-0 block truncate leading-[40px] text-[14px] text-ink-faint"
               >
                 {prompts[i]}
               </motion.span>
@@ -486,7 +486,8 @@ function Roles() {
                   </li>
                 ))}
               </ul>
-              <Link to="/signup" className="btn-bracket mt-7 -ml-1">Open the {role.label.toLowerCase().replace(/s$/, '')} view →</Link>
+              {/* Only students register themselves; colleges, recruiters and admins get a login from their college or the platform. */}
+              <Link to={role.key === 'student' ? '/signup' : '/login'} className="btn-bracket mt-7 -ml-1">{role.key === 'student' ? 'Create your student account' : `Sign in to the ${role.label.toLowerCase().replace(/s$/, '')} view`} →</Link>
             </motion.div>
           </AnimatePresence>
         </div>

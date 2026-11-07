@@ -172,7 +172,9 @@ function EvidencePanel({ p }: { p: StudentRow['profile'] }) {
       win?.close()
       return showToast(`Could not open the scorecard: ${error ? errMsg(error) : 'not found'}`)
     }
+    // A blocked pop-up must not fail silently: open it here instead.
     if (win) win.location.href = data.signedUrl
+    else window.location.assign(data.signedUrl)
   }
   const empty = !signals.length && !parts.length && !i.credly?.badges.length && !i.huggingface && !i.ctftime && !creds.length
   return (
@@ -241,7 +243,9 @@ function StudentDrawer({ row, applications, jobs, orgName, onClose }: { row: Stu
       win?.close()
       return showToast(`Could not open resume: ${error ? errMsg(error) : 'not found'}`)
     }
+    // A blocked pop-up must not fail silently: open it here instead.
     if (win) win.location.href = data.signedUrl
+    else window.location.assign(data.signedUrl)
   }
   const apps = applications.filter((a) => a.user_id === p.id)
   return (
