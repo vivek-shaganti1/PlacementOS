@@ -1,5 +1,3 @@
 # CI/CD audit
 
-No .github, no tests on merge, no branch-protection evidence. vercel.json has CSP and security headers; no explicit HSTS or immutable asset rule.
-
-Plan: 1 protect main. 2 PR: npm ci, build, chunk budget. 3 PR: replay migrations on a throwaway DB, run fixed rls_tests.sql. 4 grant test for student-writable columns. 5 staging project and per-environment proxy; previews get no production keys. 6 tracked migrations before app deploy. 7 npm audit, gitleaks, licence check, Dependabot. 8 post-deploy smoke test, error reporting, rollback runbook.
+See W6-1 to W6-11 in testing/SECURITY_RISK_REGISTER.md and testing/DEFECT_REGISTER.md. Priorities: branch protection and Vercel waiting for checks; fix test pass logic (NULL, totals, SQLSTATEs, exit codes); per-environment Supabase target and CSP; migration ledger and restore drill; real entry-chunk check; SHA-pinned actions and Dependabot; scheduled npm audit; declare esbuild; engines and timeouts.

@@ -1,10 +1,10 @@
-| Tool | Version | Status |
-|---|---|---|
-| gitleaks | 8.30.1 | Ran |
-| semgrep | installed | Not run: no local rules, network not approved |
-| playwright (Python) | installed | Not run: app not run |
-| docker | CLI 29.9.1 | Daemon unavailable |
-| psql | 16.14 | Not run |
-| codeql, trufflehog, trivy, osv-scanner, syft, actionlint, zizmor, checkov, prowler, nuclei, zap, k6, lighthouse, pgTAP, supabase CLI | n/a | Missing, not installed |
+# Tool inventory
 
-No SBOM generated. Archify not used.
+| Tool | Status |
+|---|---|
+| gitleaks | Ran locally (history and tree), redacted |
+| Semgrep 1.181.0 | Ran (approved): p/javascript, p/typescript, p/react, p/secrets, p/owasp-top-ten; 0 findings, 130 files |
+| npm audit (npm 11.19.1) | Ran (approved): see raw/npm-audit.json |
+| PostgreSQL 16.14 | Ran throwaway cluster on a private socket (approved, weaker isolation than the brief requires) |
+| Playwright, axe, Lighthouse, k6 | BLOCKED (execution and staging) |
+| Trivy, OSV-Scanner, CodeQL, Syft, TruffleHog | Not installed; installing needs approval |

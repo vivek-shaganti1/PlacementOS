@@ -1,81 +1,23 @@
-# Remediation log
+# Remediation plan (nothing has been fixed in this audit)
 
-Baseline `261d422`, audit 2026-11-05. Approved by the owner in chat ("all are approved ... push it"), which answered: batches 1 to 7, Docker and scanners, copying reports into the repo, and pushing. It did not cover running migrations on production, which the brief forbids from here, so the owner applies the migration.
+Repo vivek-shaganti1/PlacementOS | branch main | commit e1ee372 | dirty: docs/paper/*.docx,*.pdf modified, docs/iomp/ untracked (preserved, out of scope) | audit date 2026-11-10 | Phase A, source-level only.
 
-**Decision taken for the owner (Batch 2):** the approval did not answer "should self-entered skills count in rankings?". The stricter option was taken, matching the owner's goal and the rule in `docs/EVIDENCE.md`: they do not count, and they are labelled self-rated. Reversing it means changing `src/lib/trust.ts`.
+| Batch | Scope | Findings | Main files | DB change | Size |
+|---|---|---|---|---|---|
+| 0 | Read-only production checks | W1-10, W2-3, W2-10, W1-5, W1-6, W1-9, W3-14 | none | none | Small |
+| 1 | Tenant and ownership | W1-1, W1-2, W1-3, W1-4, W2-1, W3-1, W3-7 | migration (new), api/connect.ts | Yes | Medium |
+| 2 | Accessibility blocker and labels | W4-1, W4-2, W4-3, W4-4, W4-5, W4-9, W4-10 | Onboarding, ResumeAnalyzer, Profile, ProfileExtras, shared field styles | No | Medium |
+| 3 | Data integrity | W5-4, W5-8, W5-9, W5-18, W2-8 | api/admin.ts, api/account.ts, resumeFlow.ts, connect.ts | No | Medium |
+| 4 | Test runner and CI | W6-2, W6-3, W6-4, W6-5, W6-6, W6-10, W1-T | scripts/test-db.sh, tests, ci.yml, package.json | No | Small |
+| 5 | Honest content | W5-11, W4-13, W4-14, W4-15, W4-16, W4-17, W4-22, W5-10, W5-12 | data/companies.ts, MockInterviews, Roadmap, Analytics, Legal, Trust, HowItWorks | No | Medium |
+| 6 | Smaller security hardening | W1-7, W1-8, W1-12, W2-6, W2-7, W2-11, W3-2, W3-4, W3-5, W3-8, W3-10, W3-20 | api/*, migration | Yes | Medium |
+| 7 | Environments and release | W6-1, W6-8, W6-9, W2-9 | vercel.json, supabase.ts, _lib.ts, process | Staging project | Medium |
+| 8 | Performance | W5-22, W5-24, W5-25, W5-14, W5-23 | auth.tsx, store.tsx, admin.ts, jobs.ts | Optional RPCs | Large |
+| 9 | Remaining functional Low items | W5-1, W5-2, W5-3, W5-6, W5-7, W5-13, W5-15, W5-16, W5-20, W5-21, W4-6, W4-7, W4-23, W4-24 | many | Small | Medium |
 
-**Status meaning.** Fixed: code and tests are in, and tests pass on a local stand-in. Partly: the main path is closed, with the remainder stated. Not done: stated with the reason. Nothing here has run on the real Supabase Auth, the live database or Vercel: see `RELEASE_RUNBOOK.md`.
+Regression plan: a test for every confirmed item that fails on the old behaviour; replay plus the three suites (with W6-2 fixed first so results are trustworthy); a legacy-data replay; a keyboard-only Playwright onboarding run; verifier re-check. Rollback: code by redeploy; database by forward-fix migration and a backup taken before applying.
 
-## Security
-
-| ID | Root cause | Correction | Tests | Status |
-|---|---|---|---|---|
-| SEC-01 | Sign-up created confirmed accounts unless an env flag was set | Direct path removed; always the emailed link | API | Fixed, needs custom SMTP |
-| SEC-02 | Domain rule only in the browser; roles attached to any account with the email | Domain trigger; roles need a proven mailbox; a college-made account stays in that college | DB | Fixed for new accounts. Squats from before the release cannot be told apart from real accounts |
-| SEC-03 | One password per paste; flag in user-writable metadata | Random password per person, flag in `app_metadata`, 7-day expiry, RLS restrictive policies, admin functions refuse, `/api/password`, old passwords need a reset email | DB, API | Fixed |
-| SEC-04 | No ownership proof | HMAC code on the public profile; one proven owner per handle; unproven stats excluded from rankings and recruiter views | DB, API | Fixed. Upstream field names are unverified against the live sites |
-| SEC-05 | Rankings read typed levels, projects and internships | `lib/trust.ts` ranks on proven evidence, confirmed credentials and academics only | API | Fixed. Academics may be the student's own entry, locked at onboarding |
-| SEC-06 | Form never removed the role | Trigger reconciles roles to the list; form calls the RPC; existing leftovers removed | DB, legacy | Fixed |
-| SEC-07 | Removal joined on current email | Reconcile by user id; role holders cannot change email | DB | Fixed |
-| SEC-08 | Fail-open lookup, not tied to the holder | Never self-verifies; placement cell confirms; one certificate one student; existing ones re-queued | DB, API, legacy | Fixed |
-| SEC-09 | Compared editable `full_name` | Compares the roster name, fails closed | API | Fixed |
-| SEC-10 | Scores from client text | `resume_text` server-written; AI fit advisory and out of sort; resume out of composite; prompts treat the resume as data | DB | Partly: analysis still reads browser-extracted text. A resume is the student's own document, so the score stays advisory |
-| SEC-11 | Branches missing in the RLS check | `private.branch_codes` generated from `branches.ts`, parity tested | DB, parity | Fixed |
-| SEC-12 | Recruiter predicate too wide | Admin-only predicate on three tables | DB | Fixed |
-| SEC-13 | Grants ignored other colleges | `add_org_admin` and recruiter trigger refuse | DB | Fixed |
-| SEC-14 | Fields unclipped | Clipping, 16 kB prompt ceiling, per-minute limit, length limits on writes | DB | Fixed |
-| SEC-15 | Public text drifted from code | Legal, Help, Trust, Landing rewritten | Reviewed | Fixed, needs a real grievance contact and legal review |
-| SEC-16 | Email edits kept stale links | Unlink on change | DB | Fixed |
-| SEC-17 | Limiter read deletable rows | `connect_attempt` written before fetching | DB, API | Fixed |
-| SEC-18 | Count per email only | Per email and IP pair, wider caps, serialized | DB | Fixed |
-| SEC-19 | Client value kept | Trigger clears it | DB | Fixed |
-| SEC-20 | Small gaps | Recruiter email change, removed students, resume path, scorecard fingerprint fixed | DB, API | Partly: admins can still learn whether an email has an account (accepted, low) |
-| SEC-21 | Personal data in tracked files | README, capture script, portrait replaced or removed | Reviewed | Partly: historic emails remain in applied migrations 20261007, 20261008, 20261010 and in git history. History was not rewritten |
-
-## Needs-validation items
-
-| ID | Result |
-|---|---|
-| NV-01 | Reproduced on the old schema (a sign-up got the platform admin role). Fixed in the database. Turn public sign-up off as well |
-| NV-02 | Fixed: role holders and rostered accounts cannot change email |
-| NV-03 | Not tested: needs staging |
-| NV-04, NV-05 | Fixed with advisory locks; parallel load not run |
-| NV-06 | Header added, tested |
-| NV-07 | Fixed: deadlines use India time in the policy and the UI |
-| NV-08 | Unverified. The backup promise was removed from the landing page |
-| NV-09 | `npm audit`: 0 high, 2 moderate, both react-router. Not exploitable here: one needs server rendering, the other an attacker-controlled path, and `notifications.link` is trigger-written. Fixing needs a major upgrade. Accepted |
-| NV-10 | Contrast fixed; 375 px checked on two pages; no axe or screen-reader run |
-| NV-11 | Open: no live schema comparison was possible |
-
-## Defects
-
-| ID | Status |
-|---|---|
-| DEF-01, 02, 03, 04, 05, 07, 09, 12, 14, 15, 16 | Fixed |
-| DEF-06 | Partly: finished is written last, no single transaction |
-| DEF-08 | Fixed: 60 s refresh while visible, dead toggles removed, stale Withdraw reported |
-| DEF-10 | Fixed: track-based readiness and lead skill |
-| DEF-11 | **Not done.** Needs your rules: grace period and what an expired college loses |
-| DEF-13 | Partly: all lists paged; the student list still loads everything for each admin |
-| REL-01 | Fixed in the repo. Blocks only after branch protection is on |
-| REL-02 | Fixed: replay on empty and on old-style data in CI. Applying is still manual |
-| REL-03 | Partly: `VITE_SUPABASE_DIRECT` added. No staging project exists |
-| REL-04 | Fixed |
-| REL-05 | Partly: health checks the database. No external error reporting, which needs an account |
-| REL-06, 07, 08 | Fixed |
-| ACC-01, 02, 03 | Fixed in code; Shell skip link and reduced motion not runtime-tested |
-| SEO-01 | Fixed: public pages prerendered |
-| SEO-02 | Partly: robots, sitemap, noindex and a not-found page are in. Unknown URLs still return HTTP 200 |
-| PERF-01 | Fixed: entry JS 399 kB to 178 kB raw |
-| PERF-02 | **Not done:** still 23 requests per load |
-| UX-01 | Partly: sign-out on the password screen added |
-
-## Found during remediation
-
-- The migration, as first written, aborted on realistic data. Found by the independent verifier; `legacy_data.sql` now tests it.
-- A typed project with `source: "github"` reached rankings. Fixed.
-- Expiry timestamps were local time labelled UTC. Found by the new legacy test. Fixed.
-- Kept on purpose: `/api/password` still honours the old `user_metadata` flag, so accounts flagged before the migration can finish. It gives nobody more than `updateUser` already does. Remove it once the migration has run.
-- Not fixed, out of scope: company statistics such as "Applicants last drive" are generated by formula, and mock interview slots are hard-coded.
-- The research paper no longer matches the product (test counts, recruiter and platform counts, equations 6 and 7). It was not edited.
-- Audit correction: there are 50 core recruiters, not 53.
+## Status of earlier findings (by code review)
+Closed: SEC-06, SEC-07 (new DB), SEC-10 (DB part), SEC-11, SEC-12 (tables), SEC-16, SEC-19, NV-05, NV-06, NV-07, DEF-03, DEF-05 (DB), DEF-07 (outcomes), REL-08 (main path), PERF-01 (code), SEO-01 (source).
+Partly: SEC-01 (needs sign-up off), SEC-02, SEC-03 (needs migration), SEC-04, SEC-08, SEC-09, SEC-13, SEC-14, SEC-15, SEC-17, SEC-18, SEC-20, NV-01, NV-02, NV-04, DEF-01, DEF-02, DEF-04, DEF-06, DEF-09, DEF-13, DEF-16, REL-01, REL-03, REL-04, REL-05, REL-06, REL-07, ACC-01, ACC-02, ACC-03, SEO-02, UX-01.
+Open: NV-11, DEF-11, PERF-02, REL-02 (manual applying).

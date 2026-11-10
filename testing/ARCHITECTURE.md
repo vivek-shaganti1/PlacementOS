@@ -1,11 +1,10 @@
-# Architecture (from source)
+# Architecture (rebuilt from code, e1ee372)
 
-Browser SPA (Vite 5, React 18, TypeScript, Tailwind 3, router 6). Scoring runs client-side (eligibility.ts, predict.ts, verify.ts).
-Vercel edge functions in api/: admin, chat, connect, health, resume, signup.
-Supabase Postgres (31 public tables, all RLS on), Auth, Storage, reached via same-origin rewrite /supabase/* in production; direct on localhost.
-Integrations: Groq; GitHub, LeetCode, Codeforces, CodeChef, Credly, Hugging Face, CTFtime; archive.nptel.ac.in.
-Auth flow: Supabase session in localStorage; bearer token to PostgREST and api/; no local JWT verification, every path sends the token to PostgREST first.
-Authorization: user_roles (super_admin, org_admin, recruiter); students via org_students and profiles.org_id; UI gates are convenience.
-Trust boundaries: browser to Vercel; browser to Supabase (RLS is the boundary); edge functions hold the secret key; third-party fetches; LLM output.
-Sensitive data: resumes, academics, contact details, coding profiles; resume text is sent to Groq.
-Risks: no background workers or queues; no IaC; no CI; manual migrations; single production environment. Not verified at runtime.
+- Frontend: Vite 5.4.21, React 18.3.1, TypeScript 5.9.3, Tailwind 3, react-router-dom 6.30.6; lazy routes; signed-in Shell with 25 pages; scoring in the browser (src/lib).
+- API: 8 Vercel edge functions (account, admin, chat, connect, health, password, resume, signup) + api/_lib.ts. Caller's token forwarded to PostgREST (RLS applies). Secret key used by insertVerified, saveServerField, rosterName, refundAi, admin, account, password, signup.
+- Supabase: Postgres with RLS on every public table, Auth (password, reset, invite links), Storage (resumes private, avatars public). Browser reaches it via same-origin /supabase rewrite to the production project. No Realtime.
+- External: Groq; GitHub API and raw content; LeetCode; Codeforces; CodeChef; Credly; Hugging Face; CTFtime; NPTEL; Google Fonts.
+- Build: tsc, vite build, scripts/prerender.mjs (no network; backend stubbed) producing index, privacy, terms, security, app.html, 404.html.
+- Deploy: Vercel with pinned build command; strict CSP; noindex on app routes; migrations pasted by hand.
+
+Trust boundaries: browser/CDN; browser to Vercel to Supabase proxy; browser to /api; edge functions with the secret key; edge to Groq; edge to third-party evidence sites; Auth email links; operator to production database; CI to GitHub; developer machine (.env with keys).

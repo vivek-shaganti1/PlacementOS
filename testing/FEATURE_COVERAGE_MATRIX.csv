@@ -1,17 +1,34 @@
 Feature_ID,Feature,Frontend,Backend,Database,Role_Coverage,Security_Coverage,Functional_Coverage,Test_Coverage,Status,Blockers
-FEAT-001,Roster,AdminOrg,api/admin,org_students,org_admin (source),"SEC-02,SEC-16","DEF-02,DEF-04",none automated except partial rls_tests.sql/evaluate.ts,PARTIAL,runtime tests blocked
-FEAT-002,Signup,Login,api/signup,signup_attempts,student (source),"SEC-01,SEC-18",NV-04,none automated except partial rls_tests.sql/evaluate.ts,PARTIAL,runtime tests blocked
-FEAT-003,Onboarding,Onboarding,"RPC, api/connect",profiles + collections,student (source),none found in source,"DEF-01,DEF-06",none automated except partial rls_tests.sql/evaluate.ts,PARTIAL,runtime tests blocked
-FEAT-004,Academics lock,Profile,pin_roster_fields,profiles,"student, org_admin (source)",none found in source,"DEF-01,DEF-04",none automated except partial rls_tests.sql/evaluate.ts,PARTIAL,runtime tests blocked
-FEAT-005,Resume,ResumeAnalyzer,api/resume,resume_analyses,student (source),SEC-10,DEF-09,none automated except partial rls_tests.sql/evaluate.ts,PARTIAL,runtime tests blocked
-FEAT-006,Connect accounts,ProfileExtras,api/connect,"coding_profiles, github_repos, credentials",student (source),"SEC-04,SEC-08,SEC-09",REL-07,none automated except partial rls_tests.sql/evaluate.ts,PARTIAL,runtime tests blocked
-FEAT-007,Eligibility and What-If,"EligibilityStacks, WhatIf",client lib,none,student (source),SEC-05,"DEF-10,DEF-14",none automated except partial rls_tests.sql/evaluate.ts,PARTIAL,runtime tests blocked
-FEAT-008,Drives,Admin,RLS,job_postings,"org_admin, recruiter (source)",none found in source,DEF-07,none automated except partial rls_tests.sql/evaluate.ts,PARTIAL,runtime tests blocked
-FEAT-009,Apply and status,"Jobs, Admin",RLS,job_applications,all (source),"SEC-11,SEC-19",DEF-05,none automated except partial rls_tests.sql/evaluate.ts,PARTIAL,runtime tests blocked
-FEAT-010,Rankings and CSV,Admin,RLS,student tables,"org_admin, recruiter (source)","SEC-05,SEC-12",DEF-13,none automated except partial rls_tests.sql/evaluate.ts,PARTIAL,runtime tests blocked
-FEAT-011,Notifications,Topbar,triggers,notifications,student (source),none found in source,DEF-08,none automated except partial rls_tests.sql/evaluate.ts,PARTIAL,runtime tests blocked
-FEAT-012,AI assistant and quota,Drawer,"api/chat, consume_ai",ai_usage,student (source),SEC-14,REL-06,none automated except partial rls_tests.sql/evaluate.ts,PARTIAL,runtime tests blocked
-FEAT-013,Plans and orgs,AdminOrg,RLS,organizations,super_admin (source),SEC-06,DEF-11,none automated except partial rls_tests.sql/evaluate.ts,PARTIAL,runtime tests blocked
-FEAT-014,Snapshots and analytics,Analytics,upsert,progress_snapshots,student (source),none found in source,NV-07,none automated except partial rls_tests.sql/evaluate.ts,PARTIAL,runtime tests blocked
-FEAT-015,Alumni,AlumniNetwork,none,static data,student (source),none found in source,DEF-03,none automated except partial rls_tests.sql/evaluate.ts,PARTIAL,runtime tests blocked
-FEAT-016,Certifications catalogue,"Certifications, SuperCertifications",RLS,certification tables,"student, super_admin (source)",none found in source,none found in source,none automated except partial rls_tests.sql/evaluate.ts,PARTIAL,runtime tests blocked
+F01,Sign-up,Login,api/signup,"signup_attempts, org_students",source review,source review,source review,existing suites not re-run this audit,PARTIAL,runtime tests BLOCKED
+F02,"Sign-in, reset, temporary password","Login, App",api/password,auth.users,source review,source review,source review,existing suites not re-run this audit,PARTIAL,runtime tests BLOCKED
+F03,Roster gate,App.tsx,attach_user_to_org,"profiles, org_students",source review,source review,source review,existing suites not re-run this audit,PARTIAL,runtime tests BLOCKED
+F04,Onboarding,Onboarding,"api/connect, api/resume",profiles,source review,source review,source review,existing suites not re-run this audit,PARTIAL,"W4-1, W5-1, W5-3"
+F05,Profile and academics lock,Profile,pin_roster_fields,profiles,source review,source review,source review,existing suites not re-run this audit,PARTIAL,runtime tests BLOCKED
+F06,Resume upload and analysis,ResumeAnalyzer,api/resume,"resume_analyses, storage",source review,source review,source review,existing suites not re-run this audit,PARTIAL,runtime tests BLOCKED
+F07,JD match,"ResumeAnalyzer, Jobs",api/resume,"jd_matches, job_applications",source review,source review,source review,existing suites not re-run this audit,PARTIAL,runtime tests BLOCKED
+F08,Connect accounts and proof,ProfileExtras,api/connect,"coding_profiles, github_repos",source review,source review,source review,existing suites not re-run this audit,PARTIAL,W3-1
+F09,NPTEL and GATE credentials,"ProfileExtras, Admin","api/connect, review_credential","credentials, storage",source review,source review,source review,existing suites not re-run this audit,PARTIAL,"W3-2, W3-7, W2-6"
+F10,Eligibility and company insights,"EligibilityStacks, Drives",client lib,static data,source review,source review,source review,existing suites not re-run this audit,PARTIAL,W5-11
+F11,"Skill gap, What-If, predictions","SkillGap, WhatIf",predict.ts,none,source review,source review,source review,existing suites not re-run this audit,PARTIAL,runtime tests BLOCKED
+F12,Roadmap,Roadmap,store,roadmap_progress,source review,source review,source review,existing suites not re-run this audit,PARTIAL,runtime tests BLOCKED
+F13,Practice,Practice,store,practice_attempts,source review,source review,source review,existing suites not re-run this audit,PARTIAL,runtime tests BLOCKED
+F14,Mock interviews,MockInterviews,replace_rows,"mock_bookings, mock_feedback",source review,source review,source review,existing suites not re-run this audit,PARTIAL,W5-11
+F15,Campus jobs apply/withdraw,Jobs,RLS meets_job_minimums,"job_postings, job_applications",source review,source review,source review,existing suites not re-run this audit,PARTIAL,runtime tests BLOCKED
+F16,Applications tracker,Applications,store,applications,source review,source review,source review,existing suites not re-run this audit,PARTIAL,runtime tests BLOCKED
+F17,Notifications,Topbar,triggers,notifications,source review,source review,source review,existing suites not re-run this audit,PARTIAL,runtime tests BLOCKED
+F18,AI assistant and quota,AssistantDrawer,api/chat,ai_usage,source review,source review,source review,existing suites not re-run this audit,PARTIAL,runtime tests BLOCKED
+F19,Analytics,Analytics,upsert,progress_snapshots,source review,source review,source review,existing suites not re-run this audit,PARTIAL,runtime tests BLOCKED
+F20,Settings and account deletion,Settings,api/account,all,source review,source review,source review,existing suites not re-run this audit,PARTIAL,"W5-8, W1-12"
+F21,Admin rankings,Admin,"useStudents, trust.ts",13 tables,source review,source review,source review,existing suites not re-run this audit,PARTIAL,W5-24
+F22,Roster import and correction,AdminRoster,"api/admin, correct_academics",org_students,source review,source review,source review,existing suites not re-run this audit,PARTIAL,"W5-4, W5-5"
+F23,Classes,AdminClasses,none,org_students,source review,source review,source review,existing suites not re-run this audit,PARTIAL,W5-14
+F24,Drives and pipeline,AdminJobs,"RLS, triggers","job_postings, job_applications, audit_log",source review,source review,source review,existing suites not re-run this audit,PARTIAL,"W5-6, W5-7"
+F25,Admins and recruiters,AdminTeam,"api/admin, RPCs","organizations, org_recruiters, user_roles",source review,source review,source review,existing suites not re-run this audit,PARTIAL,"W1-1, W1-3"
+F26,Recruiter drives,AdminJobs,RLS,job_postings,source review,source review,source review,existing suites not re-run this audit,PARTIAL,runtime tests BLOCKED
+F27,Organizations and plans,SuperOrgs,RLS,organizations,source review,source review,source review,existing suites not re-run this audit,PARTIAL,runtime tests BLOCKED
+F28,Platform admins,SuperAdmins,add_platform_admin,platform_admin_emails,source review,source review,source review,existing suites not re-run this audit,PARTIAL,runtime tests BLOCKED
+F29,Certification catalogue,Certifications,RLS,cert_*,source review,source review,source review,existing suites not re-run this audit,PARTIAL,runtime tests BLOCKED
+F30,Health,none,api/health,health_probe,source review,source review,source review,existing suites not re-run this audit,PARTIAL,runtime tests BLOCKED
+F31,Audit log,none,triggers,audit_log,source review,source review,source review,existing suites not re-run this audit,PARTIAL,runtime tests BLOCKED
+F32,Feedback,Feedback,RLS,recommendation_feedback,source review,source review,source review,existing suites not re-run this audit,PARTIAL,runtime tests BLOCKED
+F33,Alumni (empty),AlumniNetwork,none,none,source review,source review,source review,existing suites not re-run this audit,PARTIAL,runtime tests BLOCKED

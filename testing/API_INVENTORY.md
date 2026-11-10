@@ -1,13 +1,12 @@
 # API inventory
 
-| Action | Authn/authz | Limits | DB | External | Throttle |
+| Endpoint | Auth | Authorization | External | Rate limit | Findings |
 |---|---|---|---|---|---|
-| chat | Bearer; RLS | 10 messages, 1500 chars | user token | Groq | consume_ai |
-| resume analyze | Bearer | 40k stored, 14k sent | secret key + user token | Groq | consume_ai |
-| resume match | Bearer; job read under RLS | 8k sent, 20k stored | secret key | Groq | consume_ai |
-| connect (7 platforms) | Bearer | handle regex, encoded | secret key + user token | each site | 5 min, avoidable |
-| connect nptel | Bearer | anchored ID regex | secret key | archive.nptel.ac.in | 20 s |
-| connect gate | Bearer; cell review | field checks | secret key, pending | none | 20 s |
-| admin invite | Bearer; super_admin or org_admin of org | 50 people | user token + secret key | Supabase Auth | none |
-| signup | None; roster + roll | clipped, 8-72 password | secret key | Supabase Auth | 5/email, 20/IP per hour |
-| health GET | Optional bearer + super_admin | none | user token | Groq /models | none |
+| /api/chat | bearer | own, college required | Groq | consume_ai | W3-3, W3-9, W5-17 |
+| /api/resume (analyze, match, clear) | bearer | own; job under RLS | Groq | consume_ai | W3-13, W5-9 |
+| /api/connect (platforms, nptel, gate) | bearer | own, college required | 9 public services, Storage | connect_attempt | W3-1, 2, 4, 5, 6, 7, 8, 16, 17, 19 |
+| /api/admin invite | bearer | super or org admin | Auth | none | W1-1, W3-11, W3-12, W5-4 |
+| /api/signup | none | roster and roll | Auth invite | signup_attempt | W3-10, W1-8 |
+| /api/password | bearer, verified | flag set | Auth admin | none | W1-7 |
+| /api/account | bearer, verified | no roles | Storage, Auth admin | none | W1-12, W3-20, W5-8 |
+| /api/health | optional | super for details | health_probe, Groq | none | W5-21 |

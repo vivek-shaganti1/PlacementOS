@@ -1,12 +1,10 @@
-# Integrations
+# Integration inventory
 
-| Provider | Auth | Timeout | Retry | Failure | Personal data |
-|---|---|---|---|---|---|
-| Groq | secret key | 20 s | 3 models, one 429 wait | 502/500, no refund | resume text, name, marks |
-| GitHub | optional shared token | 8 s | none | 404/429/502 | handle |
-| LeetCode, Codeforces, CodeChef, Hugging Face, CTFtime, Credly | none | 8 s | none | 404/422/502 | handle |
-| NPTEL | none | 10 s | none | 502; unknown pages pass | certificate ID |
-| Supabase | user token or secret key | 10 s | none | mapped errors | all app data |
-| Google Fonts, pravatar | none | n/a | n/a | n/a | viewer IP |
-
-No webhooks, queues, payments, SMS or analytics found.
+| Service | Credential | Data sent | Timeout | Failure |
+|---|---|---|---|---|
+| Supabase REST/RPC | user JWT; secret key for server writes | app data | 10 s | mapped errors |
+| Supabase Auth | secret key | email, name, password, app_metadata | 10 s | mapped; raw text to admins (W3-12) |
+| Supabase Storage | secret key | paths | 10 s | fail closed |
+| Groq | GROQ_API_KEY | resume, JD, profile | 14 s per call, 24 s total | 502/504 then refund |
+| GitHub | optional GITHUB_TOKEN | handle | 8 s | 404/429/502 |
+| LeetCode, Codeforces, CodeChef, Credly, Hugging Face, CTFtime, NPTEL | none | handle or id | 8-10 s | 404/422/502 |

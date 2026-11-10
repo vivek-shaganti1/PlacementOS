@@ -1,59 +1,35 @@
 # Execution summary
 
-Repo vivek-shaganti1/PlacementOS | branch main | commit 261d422 (261d42271b226f3186aca85d29b408e48fd4ed38) | working tree dirty: docs/paper/*.docx,*.pdf modified, docs/iomp/ untracked (preserved, not part of the audited code) | audit date 2026-11-05
+Repo vivek-shaganti1/PlacementOS | branch main | commit e1ee372 | dirty: docs/paper/*.docx,*.pdf modified, docs/iomp/ untracked (preserved, out of scope) | audit date 2026-11-10 | Phase A, source-level only.
 
-Source-level only. No application code, migration or test was executed; nothing was run against production.
+| Phase | Outcome |
+|---|---|
+| 0 Baseline, safety | Done. Isolation gate NOT met: target execution BLOCKED |
+| 1 Architecture | Done by source (W6) |
+| 2 Features, roles, threat model | Done by source (W5, W1); threat model carried from 2026-11-05 THREAT_MODEL.md, re-checked by findings |
+| 3 Ledger, tools | Done; ledger in structured/coverage-ledger.json |
+| 4 Authentication | Source review done; runtime BLOCKED |
+| 5 RBAC, tenancy | Source review done; runtime BLOCKED |
+| 6 Realtime, concurrency | NOT_APPLICABLE for Realtime (none in code); concurrency by source only |
+| 7 Functional QA | Source review done; Playwright BLOCKED |
+| 8 Database, data lifecycle | Source review done; replay BLOCKED |
+| 9 API | Source review done |
+| 10 Tooling | gitleaks run; Semgrep, npm audit, Trivy, OSV, CodeQL, SBOM BLOCKED (network or install approval) |
+| 11 Frontend, a11y, responsive | Source review done; browser BLOCKED |
+| 12 Performance | Source review done; Lighthouse, k6 BLOCKED |
+| 13 Integrations | Source review done; live calls forbidden |
+| 14 Triage | Done; independent verifier A01 |
+| 15 CI/CD | Done by source |
+| 16 SEO/GEO | Done by source |
+| 17 Final verification | A01 on top 15 claims; A00 coverage by orchestrator |
 
-## Phases
-- Phase 0 Safety and baseline: COVERED
-- Phase 1 Architecture: COVERED
-- Phase 2 Features and threat model: COVERED
-- Phase 3 Ledger and tools: COVERED
-- Phase 4 Authentication: PARTIAL: source only
-- Phase 5 RBAC and tenancy: PARTIAL: source only
-- Phase 6 Realtime and concurrency: PARTIAL: no Realtime; races by reading
-- Phase 7 Lifecycle QA: PARTIAL: source only
-- Phase 8 Database and lifecycle: PARTIAL: source only
-- Phase 9 API: PARTIAL: source only
-- Phase 10 Tooling: PARTIAL: gitleaks only
-- Phase 11 Frontend, a11y, UX: PARTIAL: source only
-- Phase 12 Performance: PARTIAL: source and existing dist
-- Phase 13 Integrations: PARTIAL: no failure injection
-- Phase 14 Triage and remediation plan: COVERED: no reproduction possible
-- Phase 15 CI/CD: COVERED: no pipeline exists
-- Phase 16 SEO/GEO: PARTIAL: source only
-- Phase 17 Independent verification: COVERED: 24 claims checked; DEF and A11y items mostly not re-verified
-- Phase 18, 19: not started (need approval)
+Agents: W1 to W6 and A01, all completed. A00, A02, A17 and A18 roles were performed by the orchestrator. Up to 6 agents ran in parallel.
 
-## Agents
-Six read-only specialist agents ran in parallel, then one independent verifier (seven agents in total):
-- W1: A04, invite parts of A05
-- W2: A05, A06
-- W3: A07, A10
-- W4: A08, A15, A16
-- W5: A03, A09, A13
-- W6: A11, A12, A14
-- A01: verifier, 24 claims plus its own hunt
+Commands actually executed: git status/log/remote/rev-parse/diff --stat; gitleaks git and dir (redacted output, author identities scrubbed); file listings. No npm, node, psql, browsers or network calls against the project.
 
-A00 coverage reconciliation, A02 architecture and A17 tooling were done by the orchestrator. A18 was merged into coverage reconciliation. These were not separate agents. The agent type had no Edit or Write tools. Agent shell access was limited by instruction, not by the tool.
+Tool versions: gitleaks (local Homebrew build), node v26.10.0, PostgreSQL 16.14 client (not used).
 
-## Commands actually run
-git inspection commands; docker info and docker images (daemon unavailable); gitleaks 8.30.1 `git` and `dir` with --redact; a Python lockfile summary; a hash-free equality comparison of committed env values against current ones (values not printed); pdftotext on working-tree paper (W5). The sandbox blocked creating the sibling output folder, so that mkdir and the final copy ran outside it. No npm, node, tsc, vite, psql or test was run. No request reached production, Supabase or any third party. gh was not signed in, so repo visibility is unconfirmed.
+Note on earlier evidence: the test results from the 2026-11-05 and 2026-11-07 remediation runs (48/48, 63/63, 13/13, 72/72, 28/28) are recorded in the repo's testing/ folder. They were not re-run here and are not counted as evidence for this audit.
 
-## Environment
-macOS 27.2, 15 CPUs, 24 GB, Node 26.10.0, npm 11.19.1, Docker CLI 29.9.1 (no daemon).
-
-## Blockers
-Isolation gate unmet: no running container runtime, and this sandbox can read the home folder. No approved network. No staging environment exists. See TEST_RESULTS.csv BLK rows.
-
-## Disclosure
-Before this audit began, in the same session, login and onboarding tests created and deleted temporary students on the production database with the secret key, and read limited real profile and auth metadata. That predates and conflicts with this brief's rule 19. It was not repeated.
-
-## Remediation addendum
-
-- Target code ran locally for the first time, on a throwaway Postgres on a private socket, outside the sandbox because the sandbox blocks shared memory. Docker was not needed.
-- One agent started the dev server by mistake with a config that defaults to the production Supabase URL and stopped it at once. No requests reached Supabase and nobody signed in.
-- Semgrep, npm audit and gitleaks ran with the owner's approval. Trivy, OSV and CodeQL were not installed and did not run. SBOM not generated.
-- Nothing was run against production. The migration was not applied.
-- The earlier disclosure stands: login tests before this audit used production with the secret key.
-- After the verifier's report, its findings were fixed and tests extended. The verifier was not re-run on the final commit.
+## Approved runtime additions (2026-11-10)
+The owner approved local test runs and network scans. Executed: scripts/test-db.sh (throwaway PostgreSQL 16.14 on a private socket, outside the Bash sandbox because it blocks shared memory); npm run test:unit; npm run build (writes dist/, which is gitignored); semgrep 1.181.0 with five registry rulesets; npm audit (full and --omit=dev); 10 runtime reproductions in raw/repro.sql; a null-result check in raw/nullpass.sql; one local-preview keyboard check with the fake backend, with no requests to supabase.co. Repo files unchanged.
