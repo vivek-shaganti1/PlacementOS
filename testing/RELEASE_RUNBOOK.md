@@ -30,6 +30,7 @@ What it changes in existing data:
 | Secure password change | On | Stops a stolen session changing the password through the API. |
 | Leaked password protection, minimum length 10 | On | Matches the app. |
 | Backups | Confirm, and do one restore drill | No backup claim is verified. |
+| Auth, URL configuration, Redirect URLs | Include `https://<your site>/reset-password` | Otherwise invited users are signed in without ever choosing a password (seen in local full-stack testing). |
 
 Optional, for networks that block `*.supabase.co`: change the invite email template to link to `{{ .SiteURL }}/reset-password?token_hash={{ .TokenHash }}&type=invite`.
 

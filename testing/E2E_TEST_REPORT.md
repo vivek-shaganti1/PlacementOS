@@ -50,6 +50,33 @@ Steps were scripted in the page and run in the built-in browser. Several first a
 - Roster paste with an impossible CGPA, and adding a recruiter: the fake backend does not run `/api/admin`. Both are covered by the API tests (W5-4) and database journeys (J3).
 - Dashboard "Close a gap" button: not shown for the sample student. Not investigated further.
 
+## Full stack: real Supabase, locally (approved 2026-11-10)
+
+Supabase CLI 3.1.0 (official release, checksum verified) on a local Docker runtime: real Postgres, Auth (GoTrue), PostgREST, Storage and the Mailpit mail catcher. Public sign-up switched off, as the runbook asks for production. The app ran from a clean copy of the repo with no `.env` files and only the local keys; Groq and GitHub keys were left empty so nothing paid or live was called. A probe confirmed every request went to the local stack and none to `supabase.co`.
+
+All 20 migrations applied on real Supabase, in order, without errors.
+
+| Journey | Real result |
+|---|---|
+| Platform admin: dashboard-style invite, email, link, set password in the app, platform console with role | Pass |
+| College created in the app; admin invite email; admin accepts and lands in the placement console | Pass |
+| Roster: invite by email; saved without email; login with a random password shown once, CSV offered | Pass; rows, links and flags correct in the database |
+| Temporary password: sign in, forced screen; real JWT carries the flag; own profile only; writes refused; AI refused | Pass |
+| Change it through `/api/password`: new session, flag cleared, writes allowed, old password refused | Pass |
+| Self-registration on the sign-up page: wrong roll refused; right roll emails a link; password set; onboarding with roster details and official academics marked college-verified | Pass |
+| Resume upload to real Storage: too little text is refused and the file is removed; AI unavailable is reported, the quota action refunded and the file removed | Pass |
+| Recruiter invited by the college through `/api/admin`; accepts; sees "Corp drives" | Pass |
+| Drive pipeline: college posts with the recruiter; student sees it and is notified; applies (match not client-set); recruiter sees only that applicant and profile, not the roster or other students; shortlists; cannot move back; student notified; cannot withdraw after shortlist | 13 of 13 checks pass |
+| Second college: its admin sees none of the first college's students, roster, applications, drives or audit rows; cannot claim its addresses (W1-1 refused); roster refusal is the neutral domain message; cannot edit its roster | 9 of 9 pass |
+| Forgot password: reset email, link, new password set in the app, old one refused | Pass |
+| Account deletion through `/api/account`: wrong email refused; then the login, profile, roster row and an uploaded file are all gone | Pass |
+
+Findings from the full-stack run:
+- In local development the invite link's return address loses the port, because the dev server builds request URLs without it. Vercel passes the real URL, so production is not affected; the test used the correct local address.
+- If Supabase's redirect allowlist does not include `/reset-password`, Auth falls back to the site URL and an invited user is signed in without ever choosing a password. Added to the release runbook.
+- With the browser pane hidden, the onboarding step animation never completes, so the card stays on the previous step although the step itself has advanced. With the pane visible (preview run) the same steps switch normally. Treated as a test-environment effect, not confirmed on a real device.
+- Onboarding past the resume step needs the AI; with no Groq key locally it was marked complete in the local database to continue the journeys.
+
 ## Not covered at all
-- Real Supabase Auth (GoTrue) emails, links and token refresh, real Storage, PostgREST itself, and live outside services. Covering these needs a local Supabase stack (Docker and the Supabase CLI, not approved) or a staging project.
+- Live outside services (Groq, GitHub and the other evidence sites), production Supabase settings, and Vercel itself.
 - Load, screen readers, and other browsers than the built-in one.
