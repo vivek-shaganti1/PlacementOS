@@ -49,12 +49,18 @@ export default handle(async (req) => {
   const removeRoster = () => rest(`org_students?id=in.(${rows.map((r) => r.id).join(',')})`, { method: 'DELETE' })
   const deleteLogin = () => fetch(`${SUPABASE_URL}/auth/v1/admin/users/${user.id}`, { signal: timeout(10_000), method: 'DELETE', headers: admin })
   let gone = await deleteLogin()
-  // A database without migration 20261110 refuses to delete a login while a roster row links to it: fall back to the
-  // old order there.
-  if (!gone.ok && rows.length && (await removeRoster()).ok) gone = await deleteLogin()
+  // A database without migration 20261110 refuses to delete a login while a roster row links to it, and Auth reports it
+  // as a database error: only then fall back to the old order. An outage or timeout leaves the roster alone, so the
+  // student can retry from Settings.
+  const refusedByDatabase = !gone.ok && /database error/i.test(await gone.clone().text().catch(() => ''))
+  let rosterRemoved = false
+  if (refusedByDatabase && rows.length && (await removeRoster()).ok) {
+    rosterRemoved = true
+    gone = await deleteLogin()
+  }
   if (!gone.ok) throw new HttpError(502, 'Could not delete your account. Try again.')
   // The login is gone, so the student cannot retry; a leftover roster row is the college's to remove and holds no account.
-  if (rows.length) {
+  if (rows.length && !rosterRemoved) {
     const roster = await removeRoster()
     if (!roster.ok) console.error('account: roster rows left after deletion', roster.status)
   }

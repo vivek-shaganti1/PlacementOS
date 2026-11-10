@@ -256,7 +256,7 @@ export default function Onboarding() {
                   <label className={`flex cursor-pointer focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[oklch(0.6_0.22_285)] flex-col items-center justify-center gap-2 rounded-[20px] border-2 border-dashed border-[oklch(0.8_0.08_285)] bg-white/50 px-6 py-8 text-center transition hover:bg-white/80 ${busy ? 'pointer-events-none opacity-70' : ''}`}>
                     <span className="text-[14px] font-semibold text-brand-dark">{p.resume_path ? 'Replace resume' : 'Choose your resume'}</span>
                     <span className="text-[12px] text-ink-faint">PDF or DOCX, up to 5 MB{p.resume_name ? ` · current: ${p.resume_name}` : ''}</span>
-                    <input type="file" className="sr-only" accept=".pdf,.docx" onChange={(e) => { uploadResume(e.target.files?.[0]); e.target.value = '' }} />
+                    <input type="file" className="sr-only" accept=".pdf,.docx" disabled={!!busy} onChange={(e) => { uploadResume(e.target.files?.[0]); e.target.value = '' }} />
                   </label>
                   {a && (
                     <div className="flex flex-col items-center gap-4 rounded-[18px] border border-white/80 bg-white/70 p-4 sm:flex-row sm:gap-5">

@@ -231,6 +231,16 @@ test('W5-4 a re-import sends only the cells that were filled in', async () => {
   assert.ok(!('program' in b) && !('backlogs' in b))
   for (const batch of rosterCalls()) assert.equal(new Set(batch.map((r) => Object.keys(r).sort().join())).size, 1, 'each request has one column set')
 })
+test('F7 a group the database refuses is reported row by row; other groups are saved', async () => {
+  reply = (c) => (c.url.includes('org_students?on_conflict') && (c.body as any[]).some((r) => 'cgpa' in r) ? ok({ message: 'ROSTER_DOMAIN: This email cannot be added here.' }, 400) : adminReply(c))
+  const res = await admin(post({ action: 'invite', org_id: org, role: 'student', send: false, people: [{ email: 'a@x.test' }, { email: 'b@x.test', cgpa: 'NA' }, { email: 'c@x.test', cgpa: 7 }] }, jwt({ sub: uid })))
+  assert.equal(res.status, 200)
+  const { results } = (await res.json()) as { results: { email: string; status: string; detail?: string }[] }
+  assert.equal(results.find((r) => r.email === 'c@x.test')?.status, 'failed')
+  assert.match(results.find((r) => r.email === 'c@x.test')?.detail ?? '', /cannot be added/)
+  assert.equal(results.find((r) => r.email === 'a@x.test')?.status, 'saved')
+  assert.equal(results.find((r) => r.email === 'b@x.test')?.status, 'saved', '"NA" counts as blank')
+})
 test('W5-4 an impossible academic value is reported and that row is not saved', async () => {
   reply = adminReply
   const res = await admin(post({ action: 'invite', org_id: org, role: 'student', send: false, people: [{ email: 'a@x.test', cgpa: 42 }, { email: 'b@x.test' }] }, jwt({ sub: uid })))
@@ -264,12 +274,24 @@ test('W5-8 the login is deleted before the roster row, so a failure leaves the s
     if (c.url.includes('user_roles')) return ok([])
     if (c.url.includes('object/list/')) return ok([])
     if (c.url.includes('org_students?user_id')) return ok([{ id: 7 }])
-    if (c.url.includes('/auth/v1/admin/users/')) return ok({ msg: 'down' }, 500)
+    if (c.url.includes('/auth/v1/admin/users/')) return ok({ msg: 'upstream timeout' }, 504)
     return undefined
   }
   assert.equal((await account(post({ action: 'delete', confirm_email: 'me@x.test' }, jwt({ sub: uid })))).status, 502)
-  const order = calls.filter((c) => c.method === 'DELETE').map((c) => (c.url.includes('/auth/') ? 'login' : c.url.includes('org_students') ? 'roster' : 'file'))
-  assert.deepEqual(order, ['login', 'roster', 'login'], 'login first; the roster row is removed only to retry on an older database')
+  const kind = (c: Call) => (c.url.includes('/auth/') ? 'login' : c.url.includes('org_students') ? 'roster' : 'file')
+  assert.deepEqual(calls.filter((c) => c.method === 'DELETE').map(kind), ['login'], 'an outage leaves the roster alone, so the student can retry')
+  calls = []
+  let first = true
+  reply = (c) => {
+    if (c.url.endsWith('/auth/v1/user')) return ok({ id: uid, email: 'me@x.test' })
+    if (c.url.includes('user_roles')) return ok([])
+    if (c.url.includes('object/list/')) return ok([])
+    if (c.url.includes('org_students?user_id')) return ok([{ id: 7 }])
+    if (c.url.includes('/auth/v1/admin/users/') && first) { first = false; return ok({ msg: 'Database error deleting user' }, 500) }
+    return undefined
+  }
+  assert.equal((await account(post({ action: 'delete', confirm_email: 'me@x.test' }, jwt({ sub: uid })))).status, 200)
+  assert.deepEqual(calls.filter((c) => c.method === 'DELETE').map(kind), ['login', 'roster', 'login'], 'an older database refusing the delete falls back to the old order: ' + JSON.stringify(calls.filter((c) => c.method === 'DELETE').map(kind)))
   calls = []
   reply = (c) => {
     if (c.url.endsWith('/auth/v1/user')) return ok({ id: uid, email: 'me@x.test' })

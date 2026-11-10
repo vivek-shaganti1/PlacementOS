@@ -12,8 +12,10 @@ type Result = { email: string; status: 'invited' | 'created' | 'existing' | 'fai
 
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 const clip = (v: unknown, n: number) => String(v ?? '').trim().slice(0, n)
+// What people type in a spreadsheet for "no value". Treated as blank, never as an error.
+const BLANK = /^(|-|—|na|n\/a|nil|none|null)$/i
 const academic = (v: unknown, lo: number, hi: number, whole = false) => {
-  if (v === null || v === undefined || v === '') return undefined
+  if (v === null || v === undefined || BLANK.test(String(v).trim())) return undefined
   const n = Number(v)
   return Number.isFinite(n) && n >= lo && n <= hi && (!whole || Number.isInteger(n)) ? n : undefined
 }
@@ -136,7 +138,7 @@ export default handle(async (req) => {
     class_xii: academic(p.class_xii, 0, 100),
     invalid: (
       [['CGPA', p.cgpa, academic(p.cgpa, 0, 10)], ['backlogs', p.backlogs, academic(p.backlogs, 0, 100, true)], ['Class X', p.class_x, academic(p.class_x, 0, 100)], ['Class XII', p.class_xii, academic(p.class_xii, 0, 100)]] as const
-    ).filter(([, raw, v]) => raw !== null && raw !== undefined && String(raw).trim() !== '' && v === undefined).map(([name]) => name),
+    ).filter(([, raw, v]) => raw !== null && raw !== undefined && !BLANK.test(String(raw).trim()) && v === undefined).map(([name]) => name),
   }))
   if (!people.length) throw new HttpError(400, 'Add at least one person.')
   const bad = people.filter((p) => !EMAIL.test(p.email)).map((p) => p.email || '(blank)')
@@ -180,14 +182,25 @@ export default handle(async (req) => {
       const key = Object.keys(row).sort().join(',')
       groups.set(key, [...(groups.get(key) ?? []), row])
     }
-    // Upsert roster rows as the caller; RLS confirms they administer this organization.
-    for (const rows of groups.values())
-      await rest(token, 'org_students?on_conflict=org_id,email', {
-        method: 'POST',
-        body: JSON.stringify(rows),
-        headers: { prefer: 'return=minimal,resolution=merge-duplicates' },
-      })
-    for (const p of accepted) {
+    // Upsert roster rows as the caller; RLS confirms they administer this organization. A group the database refuses is
+    // reported row by row; the groups already saved stay saved and go on to their invites.
+    const unsaved = new Set<string>()
+    for (const rows of groups.values()) {
+      try {
+        await rest(token, 'org_students?on_conflict=org_id,email', {
+          method: 'POST',
+          body: JSON.stringify(rows),
+          headers: { prefer: 'return=minimal,resolution=merge-duplicates' },
+        })
+      } catch (e) {
+        const detail = e instanceof HttpError ? e.message : 'Could not save.'
+        for (const r of rows) {
+          unsaved.add(String(r.email))
+          results.push({ email: String(r.email), status: 'failed', detail: `Not saved: ${detail}` })
+        }
+      }
+    }
+    for (const p of accepted.filter((x) => !unsaved.has(x.email))) {
       const r: Result = body.send === false ? { email: p.email, status: 'saved' } : await provision(p)
       results.push(r)
       if (r.status === 'invited' || r.status === 'created')

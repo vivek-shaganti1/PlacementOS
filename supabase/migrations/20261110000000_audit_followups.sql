@@ -97,7 +97,8 @@ begin
        exists (select 1 from public.user_roles r where r.user_id = uid and r.role <> 'recruiter')
        or exists (select 1 from public.profiles p where p.id = uid and p.org_id is not null and p.org_id <> new.org_id))) then
     if linking then
-      new.user_id := null;
+      -- An edit of another field keeps what was there; a new link attempt (an invite being accepted) is not made.
+      if new.user_id is distinct from old.user_id then new.user_id := old.user_id; end if;
       return new;
     end if;
     raise exception 'ROSTER_DOMAIN: This email cannot be added here.' using errcode = '23514';
@@ -135,6 +136,8 @@ begin
     return new;
   end if;
   if tg_op = 'UPDATE' and new.email is not distinct from old.email and old.user_id is not null and new.user_id is null then
+    -- An unlink is a real removal: the account loses the college it got from this row.
+    update public.profiles set org_id = null where id = old.user_id and org_id = old.org_id;
     return new;
   end if;
   new.user_id := null;

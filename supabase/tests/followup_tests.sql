@@ -46,12 +46,16 @@ do $$ begin
   perform pg_temp.ok('W1-3 confirming the invite succeeds', true);
 exception when others then perform pg_temp.ok('W1-3 confirming the invite succeeds', false);
 end $$;
+update public.org_recruiters set company = 'Acme Ltd' where email = 'hr@acme.example';
+select pg_temp.ok('F3 editing a recruiter row keeps its existing link', (select user_id is null from public.org_recruiters where email = 'hr2@acme.example') and (select company = 'Acme Ltd' from public.org_recruiters where email = 'hr@acme.example'));
 select pg_temp.ok('W1-3 and the disputed recruiter role is not granted', not exists (select 1 from public.user_roles where user_id = 'c3000000-0000-4000-8000-0000000000c3' and role = 'recruiter'));
 
 -- W1-4 and W2-1
 insert into public.org_students (org_id, email, roll_number) values ('0a000000-0000-4000-8000-00000000000a', 's2@alpha.example', 'R2');
 insert into auth.users (id, email, instance_id, aud, role, invited_at, email_confirmed_at) values ('c2000000-0000-4000-8000-0000000000c2', 's2@alpha.example', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', now(), now());
-update public.org_students set full_name = 'Re-import' where email = 's2@alpha.example';
+-- A re-import is the upsert PostgREST sends, which sets the email and so fires the link trigger.
+insert into public.org_students (org_id, email, full_name) values ('0a000000-0000-4000-8000-00000000000a', 's2@alpha.example', 'Re-import')
+  on conflict (org_id, email) do update set email = excluded.email, full_name = excluded.full_name;
 select pg_temp.ok('W2-1 a re-import keeps the link', (select user_id = 'c2000000-0000-4000-8000-0000000000c2' from public.org_students where email = 's2@alpha.example'));
 do $$ begin
   delete from auth.users where id = 'c2000000-0000-4000-8000-0000000000c2';
@@ -61,9 +65,14 @@ end $$;
 select pg_temp.ok('W1-4 and its roster row is unlinked, not removed', (select user_id is null from public.org_students where email = 's2@alpha.example'));
 insert into public.org_students (org_id, email) values ('0a000000-0000-4000-8000-00000000000a', 'late@alpha.example');
 insert into auth.users (id, email, instance_id, aud, role, invited_at, email_confirmed_at) values ('c4000000-0000-4000-8000-0000000000c4', 'late@alpha.example', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', now(), now());
-update public.org_students set user_id = null where email = 'late@alpha.example' and user_id is not null;
-update public.org_students set full_name = 'Imported again' where email = 'late@alpha.example';
-select pg_temp.ok('W2-1 an explicit unlink holds through a later re-import', (select user_id is null from public.org_students where email = 'late@alpha.example'));
+select pg_temp.as_user('aa000000-0000-4000-8000-0000000000aa'); set local role authenticated;
+update public.org_students set user_id = null where email = 'late@alpha.example';
+reset role; select pg_temp.owner();
+select pg_temp.ok('W2-1 an admin unlink clears the roster link', (select user_id is null from public.org_students where email = 'late@alpha.example'));
+select pg_temp.ok('W2-1 and the account loses the college with it (F2)', (select org_id is null from public.profiles where id = 'c4000000-0000-4000-8000-0000000000c4'));
+insert into public.org_students (org_id, email, full_name) values ('0a000000-0000-4000-8000-00000000000a', 'late@alpha.example', 'Imported again')
+  on conflict (org_id, email) do update set email = excluded.email, full_name = excluded.full_name;
+select pg_temp.ok('W2-1 a later re-import links the confirmed account again', (select user_id = 'c4000000-0000-4000-8000-0000000000c4' from public.org_students where email = 'late@alpha.example'));
 insert into public.org_students (org_id, email) values ('0a000000-0000-4000-8000-00000000000a', 'fresh@alpha.example');
 insert into auth.users (id, email, instance_id, aud, role, invited_at, email_confirmed_at) values ('c5000000-0000-4000-8000-0000000000c5', 'fresh@alpha.example', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', now(), now());
 select pg_temp.ok('W2-1 a roster row still links when its account arrives', (select user_id = 'c5000000-0000-4000-8000-0000000000c5' from public.org_students where email = 'fresh@alpha.example'));

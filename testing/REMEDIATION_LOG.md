@@ -21,3 +21,38 @@ Regression plan: a test for every confirmed item that fails on the old behaviour
 Closed: SEC-06, SEC-07 (new DB), SEC-10 (DB part), SEC-11, SEC-12 (tables), SEC-16, SEC-19, NV-05, NV-06, NV-07, DEF-03, DEF-05 (DB), DEF-07 (outcomes), REL-08 (main path), PERF-01 (code), SEO-01 (source).
 Partly: SEC-01 (needs sign-up off), SEC-02, SEC-03 (needs migration), SEC-04, SEC-08, SEC-09, SEC-13, SEC-14, SEC-15, SEC-17, SEC-18, SEC-20, NV-01, NV-02, NV-04, DEF-01, DEF-02, DEF-04, DEF-06, DEF-09, DEF-13, DEF-16, REL-01, REL-03, REL-04, REL-05, REL-06, REL-07, ACC-01, ACC-02, ACC-03, SEO-02, UX-01.
 Open: NV-11, DEF-11, PERF-02, REL-02 (manual applying).
+
+
+## Remediation of batches 1 to 4 (approved 2026-11-10)
+
+Approved by the owner in chat: "approve batches 1 to 4 and copy reports to testing and I want all the functionalities to be tested end to end". Not approved and not done: applying migrations to production, deploying, pushing, a local Supabase stack (Docker, Supabase CLI).
+
+| Item | Change | Files | Tests | Result |
+|---|---|---|---|---|
+| W1-1 | Another college's email domain counts as "belongs elsewhere" | migration 20261110000000 | followup W1-1 x3; e2e J11 | Fixed |
+| W1-2 | One neutral refusal message from roster and recruiter checks | migration; api/admin.ts | followup W1-2 | Fixed |
+| W1-3 | Accepting an invite never raises; a disputed recruiter row is left unlinked and no role is granted | migration (sync_recruiter_role, attach_user_to_org) | followup W1-3 x2, F3 | Fixed |
+| W1-4, W2-1 | A roster link can be cleared (deleted login, unconfirmed account, admin unlink, which also removes college access) and re-links on re-import | migration (link_roster_entry) | followup W1-4 x2, W2-1 x4; e2e J12 | Fixed |
+| W3-7 | Several pending claims allowed; only one confirmed per certificate | migration (index, review_credential) | followup W3-7 x3; remediation SEC-08 | Fixed |
+| W3-1 | Credly ownership needs the exact full roster name | api/connect.ts | api W3-1 | Fixed |
+| W4-1 | File uploads reachable by keyboard with visible focus; onboarding upload disabled while busy | Onboarding, ResumeAnalyzer, Profile, ProfileExtras | browser checks | Fixed |
+| W4-2 | Visible focus on every control (not on programmatic page containers) | index.css | browser check | Fixed |
+| W4-3 | Names for unlabelled fields | AdminOrg, ProfileExtras, MockInterviews, Drives, SkillGap, Admin, Feedback | code review | Fixed |
+| W4-4 | Small green text darkened to 5.7:1 | 17 files | code review | Fixed |
+| W4-5 | Assistant replies in an announced log | AssistantDrawer | browser check | Fixed |
+| W4-9 | Main landmarks on Login and Onboarding; one h1 per onboarding step; loading status | Login, Onboarding, App, Shell | browser check | Fixed |
+| W4-10 | Menus return focus on Escape and close when focus leaves | Topbar | code review | Fixed |
+| W5-4, W2-8 | Re-import writes only filled cells; impossible values reported per row; "NA" and dashes count as blank; a refused group is reported row by row | api/admin.ts | api W5-4 x2, F7 | Fixed |
+| W5-8 | Login deleted before the roster row; old order only when the database refuses | api/account.ts | api W5-8 | Fixed |
+| W5-9 | Server records the resume file with its text and analysis; path checked; removal clears references before the file | api/resume.ts, resumeFlow.ts, ResumeAnalyzer.tsx | api W5-9 x2; browser onboarding upload | Fixed |
+| W5-18 | GitHub repos saved before stale ones are removed | api/connect.ts | api W5-18 | Fixed |
+| W6-2, W6-4 | Runner fails on empty results, totals that do not add up and a non-re-runnable migration; legacy data now precedes the security migrations | scripts/test-db.sh | null-result check: exit 1 | Fixed |
+| W6-3 | Each negative RLS test expects its exact refusal code | docs/evaluation/rls_tests.sql | 48/48 | Fixed |
+| W6-5 | Entry check follows the real entry's static imports | scripts/check-entry.mjs, ci.yml | fails on a planted static import, passes on lazy | Fixed |
+| W6-6, W6-7 | Actions pinned to commit SHAs; gitleaks permissions and comments; timeouts; weekly schedule; dev audit reported | ci.yml | not run in GitHub | Fixed in repo |
+| W6-10 | esbuild declared | package.json | test:unit | Fixed |
+| W1-T | Mislabelled tests now test their claim (SEC-16 email edit, NV-07 behaviour, SEC-02 messages, T27 role check, DEF-01 both results) | test files | suites | Fixed |
+
+Regression evidence: the follow-up suite fails 10 of 15 checks on the schema before 20261110; the six Batch 3 API tests fail on the code before Batch 3. Independent review found no new vulnerability and eight issues in the first version of these changes (F1 to F8); all eight were fixed and re-tested.
+
+Rollback: code by redeploying the previous build; the migration has no down script, and the functions it replaces are in 20261105000000.
