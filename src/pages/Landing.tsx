@@ -494,7 +494,7 @@ function Roles() {
         <div className="glass-strong hairline-grid relative overflow-hidden rounded-[22px] p-5">
           <div className="mb-3 flex items-center justify-between">
             <span className="font-mono text-[10.5px] uppercase tracking-[0.14em] text-ink-faint">placementiq · {role.label.toLowerCase()}</span>
-            <span className="flex items-center gap-1.5 font-mono text-[10.5px] text-[#12b76a]"><span className="h-1.5 w-1.5 rounded-full bg-[#12b76a]" /> live</span>
+            <span className="flex items-center gap-1.5 font-mono text-[10.5px] text-[#067647]"><span className="h-1.5 w-1.5 rounded-full bg-[#12b76a]" /> live</span>
           </div>
           <AnimatePresence mode="popLayout" initial={false}>
             <motion.div key={role.key} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }} className="space-y-2.5">

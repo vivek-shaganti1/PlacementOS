@@ -45,7 +45,7 @@ export function FeedbackPrompt({ target, label = 'Was this recommendation useful
             }}
             className="mt-2 flex gap-2 overflow-hidden"
           >
-            <input value={comment} onChange={(e) => setComment(e.target.value)} placeholder="What would make it better? (optional)" className="field h-[34px] text-[12.5px]" />
+            <input value={comment} onChange={(e) => setComment(e.target.value)} placeholder="What would make it better? (optional)" aria-label="Feedback comment" className="field h-[34px] text-[12.5px]" />
             <button disabled={busy} className="btn-primary h-[34px] shrink-0 text-[12px]">Send</button>
           </motion.form>
         )}

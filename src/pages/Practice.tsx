@@ -94,7 +94,7 @@ export default function Practice() {
     <Page title="Practice Arena" subtitle="Targeted problem sets based on the rounds your companies actually run.">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Problems solved" value={`${solvedIds.size}`} sub={`of ${allQs.length} in the bank`} />
-        <Stat label="Current streak" value={`${streak} day${streak === 1 ? '' : 's'}`} sub="Practice daily to grow it" tone="text-[#0d9a5b]" />
+        <Stat label="Current streak" value={`${streak} day${streak === 1 ? '' : 's'}`} sub="Practice daily to grow it" tone="text-[#067647]" />
         <Stat label="Attempts" value={`${attempts.length}`} sub="All time" />
         <Stat label="Accuracy" value={`${accuracy}%`} sub="Correct / attempts" tone="text-brand-dark" />
       </div>
@@ -128,7 +128,7 @@ export default function Practice() {
           <p className="text-[12.5px] text-ink-soft">{current.q}</p>
           <div className="mt-3 space-y-2">
             {current.options.map((o, i) => {
-              const state = picked === null ? '' : i === current.answer ? 'border-[#c9f0d9] bg-[#ecfdf3] text-[#0d9a5b]' : picked === i ? 'border-[#fbd5d1] bg-[#fef3f2] text-[#d92d20]' : ''
+              const state = picked === null ? '' : i === current.answer ? 'border-[#c9f0d9] bg-[#ecfdf3] text-[#067647]' : picked === i ? 'border-[#fbd5d1] bg-[#fef3f2] text-[#d92d20]' : ''
               return (
                 <button key={o} onClick={() => pick(i)} className={`block w-full rounded-[9px] border px-3 py-2 text-left text-[12.5px] transition ${state || 'border-line text-ink-soft hover:bg-[#f7f8fa]'}`}>
                   {o}

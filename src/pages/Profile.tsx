@@ -123,9 +123,9 @@ export default function Profile() {
         <div className="flex flex-wrap items-center gap-4">
           <div className="flex flex-col items-center gap-1.5">
             <Avatar src={p.avatar_url ?? undefined} name={p.full_name || p.email} size={64} />
-            <label className="cursor-pointer text-[11px] font-medium text-brand-dark hover:underline">
+            <label className="cursor-pointer focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[oklch(0.6_0.22_285)] text-[11px] font-medium text-brand-dark hover:underline">
               {uploading ? 'Uploading…' : 'Change photo'}
-              <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" disabled={uploading} onChange={(e) => uploadAvatar(e.target.files?.[0])} />
+              <input type="file" accept="image/png,image/jpeg,image/webp" className="sr-only" disabled={uploading} onChange={(e) => uploadAvatar(e.target.files?.[0])} />
             </label>
           </div>
           <div className="min-w-[180px] flex-1">

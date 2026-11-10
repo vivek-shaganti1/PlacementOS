@@ -13,7 +13,7 @@ type Tab = (typeof TABS)[number]
 const pill = (c: Company) => {
   switch (c.bucket) {
     case 'eligible':
-      return { text: `Eligible (${c.match}% Match)`, cls: 'bg-[#ecfdf3] text-[#0d9a5b] border-[#c9f0d9]' }
+      return { text: `Eligible (${c.match}% Match)`, cls: 'bg-[#ecfdf3] text-[#067647] border-[#c9f0d9]' }
     case 'nearly':
       return { text: `Nearly Eligible (${c.match}% Match)`, cls: 'bg-[#fff8ec] text-[#d97706] border-[#fbe3bd]' }
     case 'canBecome':
@@ -93,7 +93,7 @@ export default function CompanyPanel({ company, onClose, overlay }: { company: C
               disabled={isApplied}
               className={`flex-1 rounded-[9px] border py-[7px] text-[12.5px] font-semibold transition sm:w-[124px] sm:flex-none ${
                 isApplied
-                  ? 'border-[#c9f0d9] bg-[#ecfdf3] text-[#0d9a5b]'
+                  ? 'border-[#c9f0d9] bg-[#ecfdf3] text-[#067647]'
                   : 'border-[#d5cbff] bg-white text-brand-dark hover:bg-[#faf8ff]'
               }`}
             >
@@ -199,7 +199,7 @@ export default function CompanyPanel({ company, onClose, overlay }: { company: C
                 <span className="text-ink-soft">{c.yours}</span>
                 <span
                   className={`rounded-md border px-2 py-[3px] text-[11px] font-semibold ${
-                    c.met ? 'border-[#c9f0d9] bg-[#ecfdf3] text-[#0d9a5b]' : 'border-[#fbd5d1] bg-[#fef3f2] text-[#d92d20]'
+                    c.met ? 'border-[#c9f0d9] bg-[#ecfdf3] text-[#067647]' : 'border-[#fbd5d1] bg-[#fef3f2] text-[#d92d20]'
                   }`}
                 >
                   {c.met ? 'Met' : 'Gap'}

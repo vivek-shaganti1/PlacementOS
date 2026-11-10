@@ -30,9 +30,12 @@ export default function Topbar({ onToggleSidebar, sidebarOpen }: { onToggleSideb
         search.current?.focus()
       }
       if (e.key === 'Escape') {
+        // Focus goes back to the button that opened the menu, not to the top of the page (WCAG 2.4.3).
+        const opener = wrap.current?.querySelector<HTMLElement>('[aria-haspopup][aria-expanded="true"], #bell-btn[aria-expanded="true"], #menu-btn[aria-expanded="true"]')
         setQ('')
         setOpenBell(false)
         setOpenMenu(false)
+        opener?.focus()
       }
     }
     window.addEventListener('keydown', onKey)
@@ -62,7 +65,16 @@ export default function Topbar({ onToggleSidebar, sidebarOpen }: { onToggleSideb
   }
 
   return (
-    <header ref={wrap} className="glass relative z-30 mx-2 mt-2 flex h-[58px] shrink-0 items-center gap-2 rounded-[18px] px-2.5 sm:mx-3 sm:mt-3 sm:h-[62px] sm:gap-4 sm:rounded-[20px] sm:px-4">
+    <header
+      ref={wrap}
+      // Tabbing out of an open menu closes it, so it never sits open behind the page.
+      onBlur={(e) => {
+        if (!wrap.current?.contains(e.relatedTarget as Node | null)) {
+          setOpenBell(false)
+          setOpenMenu(false)
+        }
+      }}
+      className="glass relative z-30 mx-2 mt-2 flex h-[58px] shrink-0 items-center gap-2 rounded-[18px] px-2.5 sm:mx-3 sm:mt-3 sm:h-[62px] sm:gap-4 sm:rounded-[20px] sm:px-4">
       <button onClick={() => navigate(HOME[role])} className="shrink-0 text-left lg:w-[206px]" aria-label="PlacementIQ home">
         <span className="sm:hidden"><LogoMark size={34} /></span>
         <span className="hidden sm:block"><Logo size={34} /></span>
@@ -136,6 +148,7 @@ export default function Topbar({ onToggleSidebar, sidebarOpen }: { onToggleSideb
 
       <div className={`relative ${isStudent ? '' : 'hidden'}`}>
         <button
+          id="bell-btn"
           onClick={() => { setOpenBell((v) => !v); setOpenMenu(false) }}
           aria-label={unread ? `Notifications, ${unread} unread` : 'Notifications'}
           aria-haspopup="true"
@@ -190,6 +203,7 @@ export default function Topbar({ onToggleSidebar, sidebarOpen }: { onToggleSideb
 
       <div className="relative">
         <button
+          id="menu-btn"
           onClick={() => { setOpenMenu((v) => !v); setOpenBell(false) }}
           aria-label="Account menu"
           aria-haspopup="true"

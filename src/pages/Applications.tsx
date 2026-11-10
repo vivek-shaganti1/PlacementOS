@@ -34,7 +34,7 @@ export default function Applications() {
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Applied" value={`${rows.length + myDrives.length}`} sub={`${myDrives.length} campus drives · ${rows.length} tracked`} />
         <Stat label="In progress" value={`${rows.length - offers + driveActive}`} tone="text-[#d97706]" />
-        <Stat label="Offers" value={`${offers + driveOffers}`} tone="text-[#0d9a5b]" />
+        <Stat label="Offers" value={`${offers + driveOffers}`} tone="text-[#067647]" />
         <Stat label="Shortlisted" value={`${savedRows.length}`} tone="text-brand-dark" />
       </div>
 

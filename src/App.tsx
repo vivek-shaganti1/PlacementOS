@@ -30,7 +30,7 @@ function Centered({ children }: { children: ReactNode }) {
 function Splash() {
   return (
     <Centered>
-      <motion.div animate={{ scale: [1, 1.06, 1] }} transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}>
+      <motion.div role="status" aria-label="Loading" animate={{ scale: [1, 1.06, 1] }} transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}>
         <LogoMark size={56} animate />
       </motion.div>
     </Centered>

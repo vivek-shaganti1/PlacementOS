@@ -143,7 +143,7 @@ function JdViz() {
           <motion.span
             key={t}
             variants={{ hidden: { opacity: 0, scale: 0.8 }, show: { opacity: 1, scale: 1, transition: { delay: 0.2 + i * 0.06, type: 'spring', stiffness: 380, damping: 22 } } }}
-            className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${ok ? 'border-[#c9f0d9] bg-[#ecfdf3] text-[#0d9a5b]' : 'border-[#fbd5d1] bg-[#fef3f2] text-[#d92d20]'}`}
+            className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${ok ? 'border-[#c9f0d9] bg-[#ecfdf3] text-[#067647]' : 'border-[#fbd5d1] bg-[#fef3f2] text-[#d92d20]'}`}
           >
             {ok ? '✓' : '+'} {t}
           </motion.span>
@@ -216,7 +216,7 @@ function AnalyticsViz() {
       <div className="absolute inset-x-0 bottom-0 flex justify-between font-mono text-[9.5px] text-ink-faint">
         {['W1', 'W2', 'W3', 'W4', 'W5', 'W6', 'W7', 'W8'].map((w) => <span key={w}>{w}</span>)}
       </div>
-      <span className="absolute left-0 top-0 rounded-full bg-white/85 px-2 py-0.5 font-mono text-[10.5px] text-ink-soft ring-1 ring-line">readiness <b className="text-[#0d9a5b]">+34</b></span>
+      <span className="absolute left-0 top-0 rounded-full bg-white/85 px-2 py-0.5 font-mono text-[10.5px] text-ink-soft ring-1 ring-line">readiness <b className="text-[#067647]">+34</b></span>
     </div>
   )
 }

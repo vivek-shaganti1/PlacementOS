@@ -252,12 +252,12 @@ export function AdminRoster() {
             submit([{ ...single, email: single.email.trim().toLowerCase() }], true)
           }}
         >
-          <input required type="email" value={single.email} onChange={(e) => setSingle({ ...single, email: e.target.value })} placeholder={`student@${org?.email_domains[0] ?? 'college.edu'}`} className="field" />
-          <input value={single.full_name} onChange={(e) => setSingle({ ...single, full_name: e.target.value })} placeholder="Full name" className="field" />
-          <input required value={single.roll_number} onChange={(e) => setSingle({ ...single, roll_number: e.target.value })} placeholder="Roll number" className="field" />
-          <input value={single.branch} onChange={(e) => setSingle({ ...single, branch: e.target.value })} placeholder="Branch" className="field" />
-          <input value={single.batch} onChange={(e) => setSingle({ ...single, batch: e.target.value })} placeholder="Grad. year" inputMode="numeric" className="field" />
-          <input value={single.section} onChange={(e) => setSingle({ ...single, section: e.target.value.toUpperCase() })} placeholder="Section" className="field" />
+          <input required type="email" value={single.email} onChange={(e) => setSingle({ ...single, email: e.target.value })} aria-label="Student email" placeholder={`student@${org?.email_domains[0] ?? 'college.edu'}`} className="field" />
+          <input value={single.full_name} onChange={(e) => setSingle({ ...single, full_name: e.target.value })} placeholder="Full name" aria-label="Full name" className="field" />
+          <input required value={single.roll_number} onChange={(e) => setSingle({ ...single, roll_number: e.target.value })} placeholder="Roll number" aria-label="Roll number" className="field" />
+          <input value={single.branch} onChange={(e) => setSingle({ ...single, branch: e.target.value })} placeholder="Branch" aria-label="Branch" className="field" />
+          <input value={single.batch} onChange={(e) => setSingle({ ...single, batch: e.target.value })} placeholder="Grad. year" aria-label="Graduation year" inputMode="numeric" className="field" />
+          <input value={single.section} onChange={(e) => setSingle({ ...single, section: e.target.value.toUpperCase() })} placeholder="Section" aria-label="Section" className="field" />
           <button disabled={busy || !orgId} className="btn-primary">{logins ? 'Save and create login' : 'Save and invite'}</button>
         </form>
       </Card>
@@ -293,7 +293,7 @@ export function AdminRoster() {
               <option value="all">All sections</option>
               {rosterSections.map((x) => <option key={x} value={x}>{sectionLabel(x)}</option>)}
             </select>
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search" className="field h-[32px] w-[180px]" />
+            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search" aria-label="Search the roster" className="field h-[32px] w-[180px]" />
           </div>
         }
       >
@@ -402,9 +402,9 @@ function RecruitersCard({ orgId }: { orgId: string }) {
         Recruiters post drives for their own company at your college and see the full profiles of students who apply to those drives. They never see your roster or other students.
       </p>
       <form onSubmit={add} className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-[1.3fr_1fr_1fr_auto]">
-        <input type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} placeholder="hr@company.com" className="field" />
-        <input value={f.company} onChange={(e) => setF({ ...f, company: e.target.value })} placeholder="Company" className="field" />
-        <input value={f.full_name} onChange={(e) => setF({ ...f, full_name: e.target.value })} placeholder="Name (optional)" className="field" />
+        <input type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} placeholder="hr@company.com" aria-label="Recruiter email" className="field" />
+        <input value={f.company} onChange={(e) => setF({ ...f, company: e.target.value })} placeholder="Company" aria-label="Company" className="field" />
+        <input value={f.full_name} onChange={(e) => setF({ ...f, full_name: e.target.value })} placeholder="Name (optional)" aria-label="Recruiter name (optional)" className="field" />
         <button disabled={busy || !orgId} className="btn-primary">{logins ? 'Add and create login' : 'Add and invite'}</button>
       </form>
       <div className="mt-3"><LoginMethod logins={logins} setLogins={setLogins} /></div>
@@ -480,7 +480,7 @@ export function AdminTeam() {
     <Page title="Placement cell admins" subtitle={`People who can see every ${org?.name ?? 'college'} student, post drives and manage the roster.`} actions={picker}>
       <Card title="Add an admin">
         <form onSubmit={add} className="flex flex-col gap-2 sm:flex-row">
-          <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder={`placement@${org?.email_domains[0] ?? 'college.edu'}`} className="field" />
+          <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" aria-label="Admin email" placeholder={`placement@${org?.email_domains[0] ?? 'college.edu'}`} className="field" />
           <button disabled={busy || !orgId} className="btn-primary shrink-0">Add and invite</button>
         </form>
         <div className="mt-3"><LoginMethod logins={logins} setLogins={setLogins} /></div>
@@ -932,7 +932,7 @@ export function SuperAdmins() {
     <Page title="Platform admins" subtitle="Accounts that run PlacementIQ itself: create colleges, manage their placement cells and see every college's students.">
       <Card title="Add a platform admin">
         <form onSubmit={add} className="flex flex-col gap-2 sm:flex-row">
-          <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="owner@yourcompany.com" className="field" />
+          <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="owner@yourcompany.com" aria-label="Platform admin email" className="field" />
           <button disabled={busy} className="btn-primary shrink-0">Add and invite</button>
         </form>
         

@@ -58,7 +58,7 @@ export function AdminOverview() {
         <Stat label="Avg. readiness" value={`${avg((r) => r.readiness)}`} sub="Product-track companies" tone="text-brand-dark" />
         <Stat label="Avg. resume score" value={`${avg((r) => r.resume ?? 0)}`} sub="Across analyzed resumes" />
         <Stat label="Open drives" value={`${jobs.filter(isOpen).length}`} sub={`${jobs.length} posted in total`} />
-        <Stat label="Offers" value={`${applications.filter((a) => a.status === 'offer').length}`} sub={plural(applications.length, 'application')} tone="text-[#0d9a5b]" />
+        <Stat label="Offers" value={`${applications.filter((a) => a.status === 'offer').length}`} sub={plural(applications.length, 'application')} tone="text-[#067647]" />
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
@@ -473,7 +473,7 @@ export function AdminStudents() {
     <Page title="Students" subtitle="Ranked by a composite placement score: 50% readiness for their tracks, 30% lead skill, 20% CGPA. Only proven evidence and academics count." wide actions={<button onClick={exportCsv} className="btn-glass">Export CSV</button>}>
       <Card>
         <div className="flex flex-wrap gap-2">
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, email, roll number" className="field w-full sm:w-[260px]" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, email, roll number" aria-label="Search students" className="field w-full sm:w-[260px]" />
           {orgs.length > 1 && (
             <select value={org} onChange={(e) => setOrg(e.target.value)} className="field w-full sm:w-auto" aria-label="College">
               <option value="all">All colleges</option>
@@ -859,7 +859,7 @@ export function AdminJobs() {
                     <p className="text-[13px] font-semibold text-ink">{j.company}</p>
                     <p className="text-[11.5px] text-ink-mute">{j.role}</p>
                     <p className="mt-1.5 flex gap-1.5 text-[10.5px]">
-                      <span className={`rounded-md px-1.5 py-0.5 font-semibold ${j.status === 'open' ? 'bg-[#ecfdf3] text-[#0d9a5b]' : j.status === 'draft' ? 'bg-white text-ink-mute' : 'bg-[#fef3f2] text-[#d92d20]'}`}>{j.status}</span>
+                      <span className={`rounded-md px-1.5 py-0.5 font-semibold ${j.status === 'open' ? 'bg-[#ecfdf3] text-[#067647]' : j.status === 'draft' ? 'bg-white text-ink-mute' : 'bg-[#fef3f2] text-[#d92d20]'}`}>{j.status}</span>
                       <span className="rounded-md bg-white px-1.5 py-0.5 text-ink-soft">{n} applicant{n === 1 ? '' : 's'}</span>
                     </p>
                   </button>
@@ -890,7 +890,7 @@ export function AdminJobs() {
                   ) : (
                     <Stat label="Eligible, not applied" value={`${eligibleNotApplied}`} tone="text-[#b45309]" />
                   )}
-                  <Stat label="Offers" value={`${applicants.filter((x) => x.a.status === 'offer').length}`} tone="text-[#0d9a5b]" />
+                  <Stat label="Offers" value={`${applicants.filter((x) => x.a.status === 'offer').length}`} tone="text-[#067647]" />
                 </div>
               </div>
 

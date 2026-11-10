@@ -90,7 +90,7 @@ export default function AssistantDrawer() {
               </button>
             </div>
 
-            <div ref={list} className="scroll-thin flex-1 space-y-3 overflow-y-auto overscroll-contain px-4 py-4">
+            <div ref={list} role="log" aria-live="polite" aria-label="Conversation" className="scroll-thin flex-1 space-y-3 overflow-y-auto overscroll-contain px-4 py-4">
               {chat.map((m, i) => (
                 <motion.div
                   key={i}
@@ -112,7 +112,7 @@ export default function AssistantDrawer() {
               ))}
               {thinking && (
                 <div className="flex justify-start">
-                  <span className="flex gap-1 rounded-[16px] rounded-bl-[5px] border border-white/80 bg-white/90 px-3.5 py-3" aria-label="Assistant is typing">
+                  <span className="flex gap-1 rounded-[16px] rounded-bl-[5px] border border-white/80 bg-white/90 px-3.5 py-3" role="status" aria-label="Assistant is typing">
                     {[0, 1, 2].map((d) => (
                       <motion.span key={d} className="h-1.5 w-1.5 rounded-full bg-brand" animate={{ y: [0, -4, 0], opacity: [0.4, 1, 0.4] }} transition={{ duration: 0.9, repeat: Infinity, delay: d * 0.15 }} />
                     ))}

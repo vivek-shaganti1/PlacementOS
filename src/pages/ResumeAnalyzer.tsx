@@ -121,12 +121,12 @@ export default function ResumeAnalyzer() {
     <Page title="Resume Analyzer" subtitle="Your resume is parsed, measured against ATS checks, reviewed by AI and matched to job descriptions.">
       <Card>
         <div className="flex flex-wrap items-center gap-4">
-          <label className={`cursor-pointer rounded-[9px] border border-[#d5cbff] bg-white px-4 py-2 text-[12.5px] font-semibold text-brand-dark hover:bg-[#faf8ff] ${busy ? 'pointer-events-none opacity-60' : ''}`}>
+          <label className={`cursor-pointer focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[oklch(0.6_0.22_285)] rounded-[9px] border border-[#d5cbff] bg-white px-4 py-2 text-[12.5px] font-semibold text-brand-dark hover:bg-[#faf8ff] ${busy ? 'pointer-events-none opacity-60' : ''}`}>
             {p.resume_path ? 'Replace resume' : 'Upload resume (PDF / DOCX)'}
             <input
               type="file"
               accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-              className="hidden"
+              className="sr-only"
               disabled={busy}
               onChange={(e) => { upload(e.target.files?.[0]); e.target.value = '' }}
             />
@@ -200,7 +200,7 @@ export default function ResumeAnalyzer() {
                 {a.rewrites.map((r) => (
                   <div key={r.before} className="rounded-[11px] border border-line bg-[#fafbfc] p-3">
                     <p className="text-[11.5px] text-[#d92d20] line-through">{r.before}</p>
-                    <p className="mt-1.5 text-[12px] font-medium text-[#0d9a5b]">{r.after}</p>
+                    <p className="mt-1.5 text-[12px] font-medium text-[#067647]">{r.after}</p>
                   </div>
                 ))}
               </div>
@@ -272,8 +272,8 @@ export default function ResumeAnalyzer() {
             </div>
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <p className="text-[11.5px] font-semibold text-[#0d9a5b]">Matched ({jm.matched_skills.length})</p>
-                <div className="mt-1.5 flex flex-wrap gap-1.5">{jm.matched_skills.map((s) => <span key={s} className={`${chip} border-[#c9f0d9] bg-[#ecfdf3] text-[#0d9a5b]`}>{s}</span>)}</div>
+                <p className="text-[11.5px] font-semibold text-[#067647]">Matched ({jm.matched_skills.length})</p>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">{jm.matched_skills.map((s) => <span key={s} className={`${chip} border-[#c9f0d9] bg-[#ecfdf3] text-[#067647]`}>{s}</span>)}</div>
               </div>
               <div>
                 <p className="text-[11.5px] font-semibold text-[#d92d20]">Missing ({jm.missing_skills.length})</p>
@@ -287,7 +287,7 @@ export default function ResumeAnalyzer() {
               <ul className="space-y-1">{jm.suggestions.map((s) => <li key={s} className="text-[12px] text-ink-soft">→ {s}</li>)}</ul>
             )}
             {jm.tailored_bullets.map((b) => (
-              <p key={b} className="rounded-[9px] border border-line bg-[#fafbfc] px-3 py-2 text-[12px] font-medium text-[#0d9a5b]">{b}</p>
+              <p key={b} className="rounded-[9px] border border-line bg-[#fafbfc] px-3 py-2 text-[12px] font-medium text-[#067647]">{b}</p>
             ))}
           </div>
         )}

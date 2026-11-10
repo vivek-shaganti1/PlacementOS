@@ -43,7 +43,7 @@ const ResumeAnalyzer = lazy(() => import('../pages/ResumeAnalyzer'))
 
 function Loader() {
   return (
-    <div className="grid flex-1 place-items-center">
+    <div role="status" aria-label="Loading" className="grid flex-1 place-items-center">
       <motion.div animate={{ scale: [1, 1.06, 1] }} transition={{ duration: 1.4, repeat: Infinity, ease: 'easeInOut' }}>
         <LogoMark size={44} />
       </motion.div>

@@ -40,7 +40,7 @@ export default function MockInterviews() {
     <Page title="Mock Interviews" subtitle="Rehearse before the real loop and log how each session went.">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Stat label="Interviews completed" value={`${past.length}`} sub={`${last30} in the last 30 days`} />
-        <Stat label="Average score" value={avg === null ? '—' : `${avg.toFixed(1)} / 10`} sub="From your logged feedback" tone="text-[#0d9a5b]" />
+        <Stat label="Average score" value={avg === null ? '—' : `${avg.toFixed(1)} / 10`} sub="From your logged feedback" tone="text-[#067647]" />
         <Stat label="Upcoming" value={`${booked.length}`} sub="Booked sessions" tone="text-brand-dark" />
       </div>
 
@@ -58,7 +58,7 @@ export default function MockInterviews() {
               <button
                 onClick={() => toggleBooking(s.id)}
                 className={`w-[92px] rounded-[9px] border py-[7px] text-[12px] font-semibold ${
-                  booked.includes(s.id) ? 'border-[#c9f0d9] bg-[#ecfdf3] text-[#0d9a5b]' : 'border-[#d5cbff] text-brand-dark hover:bg-[#faf8ff]'
+                  booked.includes(s.id) ? 'border-[#c9f0d9] bg-[#ecfdf3] text-[#067647]' : 'border-[#d5cbff] text-brand-dark hover:bg-[#faf8ff]'
                 }`}
               >
                 {booked.includes(s.id) ? 'Booked ✓' : 'Book slot'}
@@ -70,11 +70,11 @@ export default function MockInterviews() {
 
       <Card title="Your feedback log">
         <div className="flex flex-wrap gap-2">
-          <select value={d.type} onChange={(e) => setD({ ...d, type: e.target.value })} className={input}>
+          <select value={d.type} onChange={(e) => setD({ ...d, type: e.target.value })} aria-label="Interview type" className={input}>
             {types.map((t) => <option key={t}>{t}</option>)}
           </select>
           <input type="number" min={0} max={10} step={0.5} value={d.score} onChange={(e) => setD({ ...d, score: e.target.value })} className={`${input} w-[80px]`} aria-label="Score out of 10" />
-          <input value={d.note} onChange={(e) => setD({ ...d, note: e.target.value })} placeholder="What went well / what to fix" className={`${input} w-full min-w-0 sm:w-auto sm:min-w-[240px] sm:flex-1`} />
+          <input value={d.note} onChange={(e) => setD({ ...d, note: e.target.value })} placeholder="What went well / what to fix" aria-label="Interview notes" className={`${input} w-full min-w-0 sm:w-auto sm:min-w-[240px] sm:flex-1`} />
           <button onClick={log} className="rounded-[9px] bg-brand px-4 text-[12.5px] font-semibold text-white hover:bg-brand-dark">Log</button>
         </div>
         <div className="mt-2 divide-y divide-line">
@@ -83,7 +83,7 @@ export default function MockInterviews() {
               <span className="min-w-0 flex-1 text-[12.5px] font-semibold text-ink sm:w-[150px] sm:flex-none">{x.type}</span>
               <span className="w-[70px] text-[11.5px] text-ink-faint">{new Date(x.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</span>
               <span className="order-last w-full text-[11.5px] text-ink-mute sm:order-none sm:w-auto sm:flex-1">{x.note}</span>
-              <span className={`text-[13px] font-bold ${x.score >= 7.5 ? 'text-[#0d9a5b]' : 'text-[#d97706]'}`}>{x.score.toFixed(1)}</span>
+              <span className={`text-[13px] font-bold ${x.score >= 7.5 ? 'text-[#067647]' : 'text-[#d97706]'}`}>{x.score.toFixed(1)}</span>
             </div>
           ))}
           {past.length === 0 && <p className="py-4 text-center text-[12px] text-ink-faint">After each mock interview, log your score and notes here to track progress.</p>}

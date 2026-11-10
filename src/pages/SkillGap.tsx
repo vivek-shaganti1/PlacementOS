@@ -31,7 +31,7 @@ export default function SkillGap() {
       <Card>
         <div className="flex flex-wrap items-center gap-3">
           <span className="text-[12.5px] font-medium text-ink-soft">Target company</span>
-          <select value={target.id} onChange={(e) => setTargetId(e.target.value)} className="h-[36px] rounded-[9px] border border-line bg-white px-3 text-[12.5px] outline-none">
+          <select value={target.id} onChange={(e) => setTargetId(e.target.value)} aria-label="Target company" className="h-[36px] rounded-[9px] border border-line bg-white px-3 text-[12.5px] outline-none">
             {sorted.map((c) => (
               <option key={c.id} value={c.id}>{c.name}</option>
             ))}
@@ -96,7 +96,7 @@ export default function SkillGap() {
       >
         <div className="divide-y divide-line">
           {target.gaps.length === 0 && (
-            <p className="py-5 text-center text-[12.5px] text-[#0d9a5b]">No skill gaps — you meet every skill bar for {target.name}.</p>
+            <p className="py-5 text-center text-[12.5px] text-[#067647]">No skill gaps — you meet every skill bar for {target.name}.</p>
           )}
           {target.gaps.map((g) => (
             <div key={g.skill} className="flex items-center gap-3 py-2.5">

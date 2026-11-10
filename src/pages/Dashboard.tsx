@@ -104,9 +104,9 @@ export default function Dashboard() {
         </motion.section>
 
         <div className="grid grid-cols-2 gap-3">
-          <Stat label="Eligible companies" value={`${counts[0].n}`} sub={`of ${companies.length} tracked`} tone="text-[#0d9a5b]" trend={snapshots.map((x) => x.eligible)} trendColor="#12b76a" delta={snapshots.length > 1 ? counts[0].n - snapshots[snapshots.length - 2].eligible : null} onOpen={() => navigate('/eligibility')} />
+          <Stat label="Eligible companies" value={`${counts[0].n}`} sub={`of ${companies.length} tracked`} tone="text-[#067647]" trend={snapshots.map((x) => x.eligible)} trendColor="#12b76a" delta={snapshots.length > 1 ? counts[0].n - snapshots[snapshots.length - 2].eligible : null} onOpen={() => navigate('/eligibility')} />
           <Stat label="Applications" value={`${applications.filter((a) => a.user_id === student.id).length + applied.length}`} sub={`Campus drives + tracked · ${saved.length} shortlisted`} onOpen={() => navigate('/applications')} />
-          <Stat label="Expected CTC" value={salary.expected ? `₹${salary.expected.toFixed(1)} LPA` : 'n/a'} sub={salary.expected ? `Likely ₹${salary.low}–${salary.high} LPA · best ₹${salary.bestRealistic} LPA` : 'Complete your profile'} tone="text-[#0d9a5b]" onOpen={() => navigate('/what-if')} openLabel="Try a what-if on your expected CTC" />
+          <Stat label="Expected CTC" value={salary.expected ? `₹${salary.expected.toFixed(1)} LPA` : 'n/a'} sub={salary.expected ? `Likely ₹${salary.low}–${salary.high} LPA · best ₹${salary.bestRealistic} LPA` : 'Complete your profile'} tone="text-[#067647]" onOpen={() => navigate('/what-if')} openLabel="Try a what-if on your expected CTC" />
           <Stat label="Interview readiness" value={`${interview.score}`} sub={`Work on ${interview.weakest.join(' and ')}`} tone="text-brand-dark" onOpen={() => navigate('/mock-interviews')} />
           <Stat label="Profile strength" value={`${strength}%`} sub="Completeness & verification" tone="text-brand-dark" trend={snapshots.map((x) => x.avg_skill)} onOpen={() => navigate('/profile')} />
           <Stat label="Roadmap tasks" value={`${roadmapDone.length}`} sub="completed so far" onOpen={() => navigate('/roadmap')} />
@@ -151,7 +151,7 @@ export default function Dashboard() {
                   {app ? (
                     <span className={`rounded-md border px-1.5 py-0.5 text-[10.5px] font-semibold ${STATUS_META[app.status].cls}`}>{STATUS_META[app.status].label}</span>
                   ) : (
-                    <span className={`text-[11px] font-medium ${ev.eligibleToApply ? 'text-[#0d9a5b]' : 'text-[#d92d20]'}`}>{ev.eligibleToApply ? 'You can apply' : 'Not eligible'}</span>
+                    <span className={`text-[11px] font-medium ${ev.eligibleToApply ? 'text-[#067647]' : 'text-[#d92d20]'}`}>{ev.eligibleToApply ? 'You can apply' : 'Not eligible'}</span>
                   )}
                 </p>
               </button>

@@ -58,7 +58,7 @@ export function Completeness({ p }: { p: Profile }) {
           ))}
         </div>
       ) : (
-        <p className="mt-2 text-[12px] font-medium text-[#0d9a5b]">Everything recruiters look for is on your profile.</p>
+        <p className="mt-2 text-[12px] font-medium text-[#067647]">Everything recruiters look for is on your profile.</p>
       )}
     </Card>
   )
@@ -196,7 +196,7 @@ export function ConnectedAccounts({ p }: { p: Profile }) {
                       if (draft[key]?.trim()) sync(key, draft[key].trim())
                     }}
                   >
-                    <input value={draft[key] ?? ''} onChange={(e) => setDraft({ ...draft, [key]: e.target.value })} placeholder={placeholder} className={input} />
+                    <input value={draft[key] ?? ''} onChange={(e) => setDraft({ ...draft, [key]: e.target.value })} placeholder={placeholder} aria-label={placeholder} className={input} />
                     <button disabled={!!busy || !draft[key]?.trim()} className="rounded-md bg-brand px-3 py-1.5 text-[11.5px] font-semibold text-white hover:bg-brand-dark disabled:opacity-50">
                       {busy === key ? 'Connecting…' : 'Connect'}
                     </button>
@@ -257,7 +257,7 @@ export function VerifiedSkills({ p }: { p: Profile }) {
             <div key={n} className="grid grid-cols-[1.4fr_60px_60px] items-center gap-2 py-2 text-[12px] sm:grid-cols-[1.4fr_70px_70px_2fr]">
               <span className="font-medium text-ink">{n}</span>
               <span className="text-ink-mute">{cur}%</span>
-              <span className={`font-semibold ${v.level >= cur ? 'text-[#0d9a5b]' : 'text-[#d97706]'}`}>{v.level}%</span>
+              <span className={`font-semibold ${v.level >= cur ? 'text-[#067647]' : 'text-[#d97706]'}`}>{v.level}%</span>
               <span className="col-span-3 truncate text-[11px] text-ink-faint sm:col-span-1" title={v.sources.join(' · ')}>{v.sources.join(' · ')}</span>
             </div>
           )
@@ -341,9 +341,9 @@ export function Achievements({ p }: { p: Profile }) {
           if (await save([...p.achievements, { title: d.title.trim(), detail: d.detail.trim(), date: d.date.trim() }], 'Achievement added.')) setD({ title: '', detail: '', date: '' })
         }}
       >
-        <input value={d.title} onChange={(e) => setD({ ...d, title: e.target.value })} placeholder="e.g. Smart India Hackathon finalist" className={input} />
-        <input value={d.detail} onChange={(e) => setD({ ...d, detail: e.target.value })} placeholder="Details" className={input} />
-        <input value={d.date} onChange={(e) => setD({ ...d, date: e.target.value })} placeholder="2025" className={input} />
+        <input value={d.title} onChange={(e) => setD({ ...d, title: e.target.value })} placeholder="e.g. Smart India Hackathon finalist" aria-label="Achievement" className={input} />
+        <input value={d.detail} onChange={(e) => setD({ ...d, detail: e.target.value })} placeholder="Details" aria-label="Achievement details" className={input} />
+        <input value={d.date} onChange={(e) => setD({ ...d, date: e.target.value })} placeholder="2025" aria-label="Year" className={input} />
         <button className={btnGhost}>Add</button>
       </form>
     </Card>
@@ -485,10 +485,10 @@ export function Credentials({ p }: { p: Profile }) {
         </form>
       )}
       {gateRelevant && (
-        <label className="mt-3 flex cursor-pointer flex-wrap items-center gap-2 text-[12px] text-ink-soft">
+        <label className="mt-3 flex cursor-pointer focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[oklch(0.6_0.22_285)] flex-wrap items-center gap-2 text-[12px] text-ink-soft">
           <span className="rounded-md border border-line bg-white px-3 py-1.5 text-[11.5px] font-medium hover:bg-[#f7f8fa]">{busy === 'gate' ? 'Reading scorecard…' : 'Upload GATE scorecard (PDF)'}</span>
           <span className="text-[11px] text-ink-faint">Papers: {Object.keys(GATE_PAPERS).slice(0, 8).join(', ')}…</span>
-          <input type="file" accept="application/pdf" className="hidden" disabled={!!busy} onChange={(e) => addGate(e.target.files?.[0])} />
+          <input type="file" accept="application/pdf" className="sr-only" disabled={!!busy} onChange={(e) => addGate(e.target.files?.[0])} />
         </label>
       )}
     </Card>

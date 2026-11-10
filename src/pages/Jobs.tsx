@@ -94,9 +94,9 @@ export default function Jobs() {
     <Page title="Campus Jobs" subtitle="Drives posted by your placement cell, scored against your profile. Apply in one click — the cell sees your verified profile." wide>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Open drives" value={`${scored.filter(({ job }) => isOpen(job)).length}`} />
-        <Stat label="You can apply to" value={`${eligibleCount}`} tone="text-[#0d9a5b]" />
+        <Stat label="You can apply to" value={`${eligibleCount}`} tone="text-[#067647]" />
         <Stat label="Applications" value={`${mine.size}`} tone="text-brand-dark" />
-        <Stat label="Offers" value={`${offers}`} tone="text-[#0d9a5b]" />
+        <Stat label="Offers" value={`${offers}`} tone="text-[#067647]" />
       </div>
 
       {!loading && scored.length === 0 ? (
@@ -195,7 +195,7 @@ export default function Jobs() {
                     <div className="mt-4 rounded-[14px] border border-white/80 bg-white/70 p-3.5 text-[12px]">
                       <p className="text-ink-soft">{fit.verdict}</p>
                       <div className="mt-2 flex flex-wrap gap-1.5">
-                        {fit.matched_skills.slice(0, 8).map((s) => <span key={s} className="rounded-full border border-[#c9f0d9] bg-[#ecfdf3] px-2 py-0.5 text-[11px] font-semibold text-[#0d9a5b]">✓ {s}</span>)}
+                        {fit.matched_skills.slice(0, 8).map((s) => <span key={s} className="rounded-full border border-[#c9f0d9] bg-[#ecfdf3] px-2 py-0.5 text-[11px] font-semibold text-[#067647]">✓ {s}</span>)}
                         {fit.missing_skills.slice(0, 8).map((s) => <span key={s} className="rounded-full border border-[#fbd5d1] bg-[#fef3f2] px-2 py-0.5 text-[11px] font-semibold text-[#d92d20]">+ {s}</span>)}
                       </div>
                       {fit.suggestions.length > 0 && <ul className="mt-2 space-y-1 text-ink-mute">{fit.suggestions.slice(0, 3).map((s) => <li key={s}>→ {s}</li>)}</ul>}

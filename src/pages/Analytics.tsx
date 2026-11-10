@@ -51,7 +51,7 @@ export default function Analytics() {
     <Page title="Analytics" subtitle="Everything below is computed from your own data. Daily snapshots build your history as you use PlacementIQ." wide>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Readiness (product track)" value={`${readinessOf(companies)}`} sub="Avg. match across target tiers" tone="text-brand-dark" />
-        <Stat label="Eligible today" value={`${byBucket('eligible').length}`} sub={`${byBucket('nearly').length} more nearly eligible`} tone="text-[#0d9a5b]" />
+        <Stat label="Eligible today" value={`${byBucket('eligible').length}`} sub={`${byBucket('nearly').length} more nearly eligible`} tone="text-[#067647]" />
         <Stat
           label="Best eligible package"
           value={eligibleCtc.length ? `₹${Math.max(...eligibleCtc.map((c) => c.ctcAvg)).toFixed(1)} LPA` : '—'}

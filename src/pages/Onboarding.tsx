@@ -163,7 +163,7 @@ export default function Onboarding() {
   return (
     <div className="relative min-h-[calc(100svh/var(--z))] overflow-y-auto">
       <Aurora />
-      <div className="relative z-10 mx-auto max-w-[820px] px-3 py-6 sm:px-6 sm:py-10">
+      <main id="main" className="relative z-10 mx-auto max-w-[820px] px-3 py-6 sm:px-6 sm:py-10">
         <div className="flex flex-wrap items-center gap-3">
           <LogoMark size={40} />
           <div className="min-w-[200px] flex-1">
@@ -194,7 +194,7 @@ export default function Onboarding() {
             <motion.div key={step} initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }} transition={{ duration: 0.3, ease }}>
               {step === 0 && (
                 <div className="space-y-4">
-                  <h2 className="text-[22px] font-semibold tracking-[-0.03em]">Tell us about you</h2>
+                  <h1 className="text-[22px] font-semibold tracking-[-0.03em]">Tell us about you</h1>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <Field label="Full name"><input className="field" value={about.full_name} onChange={(e) => setAbout({ ...about, full_name: e.target.value })} /></Field>
                     <Field label="Phone"><input className="field" value={about.phone} onChange={(e) => setAbout({ ...about, phone: e.target.value })} placeholder="+91 …" /></Field>
@@ -238,7 +238,7 @@ export default function Onboarding() {
 
               {step === 1 && (
                 <div className="space-y-4">
-                  <h2 className="text-[22px] font-semibold tracking-[-0.03em]">Your academics</h2>
+                  <h1 className="text-[22px] font-semibold tracking-[-0.03em]">Your academics</h1>
                   <p className="text-[12.5px] text-ink-mute">Recruiters filter on these first. Use the values on your latest marksheet.</p>
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                     <Field label="CGPA (out of 10)"><input className="field" inputMode="decimal" value={acad.cgpa} onChange={(e) => setAcad({ ...acad, cgpa: e.target.value })} /></Field>
@@ -251,12 +251,12 @@ export default function Onboarding() {
 
               {step === 2 && (
                 <div className="space-y-4">
-                  <h2 className="text-[22px] font-semibold tracking-[-0.03em]">Upload your resume</h2>
+                  <h1 className="text-[22px] font-semibold tracking-[-0.03em]">Upload your resume</h1>
                   <p className="text-[12.5px] text-ink-mute">We read it in your browser, score it against ATS checks and pull out your projects, experience and skills.</p>
-                  <label className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-[20px] border-2 border-dashed border-[oklch(0.8_0.08_285)] bg-white/50 px-6 py-8 text-center transition hover:bg-white/80 ${busy ? 'pointer-events-none opacity-70' : ''}`}>
+                  <label className={`flex cursor-pointer focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-[oklch(0.6_0.22_285)] flex-col items-center justify-center gap-2 rounded-[20px] border-2 border-dashed border-[oklch(0.8_0.08_285)] bg-white/50 px-6 py-8 text-center transition hover:bg-white/80 ${busy ? 'pointer-events-none opacity-70' : ''}`}>
                     <span className="text-[14px] font-semibold text-brand-dark">{p.resume_path ? 'Replace resume' : 'Choose your resume'}</span>
                     <span className="text-[12px] text-ink-faint">PDF or DOCX, up to 5 MB{p.resume_name ? ` · current: ${p.resume_name}` : ''}</span>
-                    <input type="file" className="hidden" accept=".pdf,.docx" onChange={(e) => { uploadResume(e.target.files?.[0]); e.target.value = '' }} />
+                    <input type="file" className="sr-only" accept=".pdf,.docx" onChange={(e) => { uploadResume(e.target.files?.[0]); e.target.value = '' }} />
                   </label>
                   {a && (
                     <div className="flex flex-col items-center gap-4 rounded-[18px] border border-white/80 bg-white/70 p-4 sm:flex-row sm:gap-5">
@@ -277,7 +277,7 @@ export default function Onboarding() {
 
               {step === 3 && (
                 <div className="space-y-4">
-                  <h2 className="text-[22px] font-semibold tracking-[-0.03em]">Connect your accounts</h2>
+                  <h1 className="text-[22px] font-semibold tracking-[-0.03em]">Connect your accounts</h1>
                   <p className="text-[12.5px] text-ink-mute">
                     {computing
                       ? 'GitHub gives us your real projects and tech stack; coding platforms give us your DSA level. Public data only.'
@@ -299,7 +299,7 @@ export default function Onboarding() {
 
               {step === 4 && (
                 <div className="space-y-4">
-                  <h2 className="text-[22px] font-semibold tracking-[-0.03em]">Confirm your skill levels</h2>
+                  <h1 className="text-[22px] font-semibold tracking-[-0.03em]">Confirm your skill levels</h1>
                   <p className="text-[12.5px] text-ink-mute">
                     Pre-filled wherever we found evidence (design files, badges, certificates, coding stats, your resume). Adjust anything that looks off — be honest, recruiters test these.
                   </p>
@@ -332,7 +332,7 @@ export default function Onboarding() {
             </button>
           </div>
         </div>
-      </div>
+      </main>
     </div>
   )
 }

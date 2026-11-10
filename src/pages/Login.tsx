@@ -108,7 +108,7 @@ export default function Login({ initialMode = 'signin' }: { initialMode?: Mode }
   return (
     <div className="relative min-h-[calc(100svh/var(--z))] overflow-hidden">
       <Aurora />
-      <div className="relative z-10 mx-auto grid min-h-[calc(100svh/var(--z))] max-w-[1120px] grid-cols-1 items-center gap-10 px-6 py-10 lg:grid-cols-[1.05fr_1fr]">
+      <main id="main" className="relative z-10 mx-auto grid min-h-[calc(100svh/var(--z))] max-w-[1120px] grid-cols-1 items-center gap-10 px-6 py-10 lg:grid-cols-[1.05fr_1fr]">
         <motion.div
           initial={{ opacity: 0, x: -24 }}
           animate={{ opacity: 1, x: 0 }}
@@ -200,7 +200,7 @@ export default function Login({ initialMode = 'signin' }: { initialMode?: Mode }
                 </motion.p>
               )}
               {info && (
-                <motion.p role="status" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="rounded-[11px] border border-[#c9f0d9] bg-[#ecfdf3]/90 px-3 py-2 text-[12px] text-[#0d9a5b]">
+                <motion.p role="status" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="rounded-[11px] border border-[#c9f0d9] bg-[#ecfdf3]/90 px-3 py-2 text-[12px] text-[#067647]">
                   {info}
                 </motion.p>
               )}
@@ -237,7 +237,7 @@ export default function Login({ initialMode = 'signin' }: { initialMode?: Mode }
             <Link to="/" className="hover:underline">← Back to the PlacementIQ homepage</Link>
           </p>
         </motion.div>
-      </div>
+      </main>
     </div>
   )
 }

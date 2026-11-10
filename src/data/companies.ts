@@ -144,7 +144,7 @@ export const bucketMeta: Record<
     hint: 'You meet all requirements',
     head: 'bg-[#ecfdf3] border-[#c9f0d9]',
     ring: 'ring-[#12b76a]',
-    text: 'text-[#0d9a5b]',
+    text: 'text-[#067647]',
     dot: 'bg-[#12b76a]',
     more: 'text-ink-mute',
   },
