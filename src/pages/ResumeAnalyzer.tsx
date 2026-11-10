@@ -78,10 +78,12 @@ export default function ResumeAnalyzer() {
     if (!p.resume_path) return
     setStep('Deleting…')
     try {
-      const { error } = await supabase.storage.from('resumes').remove([p.resume_path])
-      if (error) throw error
+      // References first, file last: a failure part-way leaves a file nobody points at, never a profile pointing at nothing.
+      const path = p.resume_path
       await callApi('resume', { action: 'clear' })
-      await updateProfile({ resume_path: null, resume_name: null, resume_uploaded_at: null, resume_analysis: null, jd_match: null })
+      await updateProfile({ resume_analysis: null, jd_match: null })
+      const { error } = await supabase.storage.from('resumes').remove([path])
+      if (error) console.error('resume file left in storage', error)
       showToast('Resume deleted.')
     } catch (e) {
       showToast(`Could not delete: ${errMsg(e)}`)

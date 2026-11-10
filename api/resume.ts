@@ -211,7 +211,7 @@ ${resume.slice(0, 12000)}
 export default handle(async (req) => {
   if (req.method !== 'POST') throw new HttpError(405, 'Method not allowed')
   const token = bearer(req)
-  const body = (await req.json().catch(() => ({}))) as { action?: string; text?: string; file_name?: string; jd?: string; job_id?: string }
+  const body = (await req.json().catch(() => ({}))) as { action?: string; text?: string; file_name?: string; path?: string; jd?: string; job_id?: string }
   const profile = await loadProfile(token)
 
   if (body.action === 'analyze') {
@@ -225,15 +225,22 @@ export default handle(async (req) => {
     })
     const { analyzed_at, ...row } = analysis
     void analyzed_at
+    // The new file, its text and its analysis are recorded together here, so the profile never points at one file while
+    // describing another. Older clients send no path and record the file themselves.
+    const path = typeof body.path === 'string' ? body.path : ''
+    if (path && !new RegExp(`^${profile.id}/(?!\\.+$)[\\w.-]+$`).test(path)) throw new HttpError(422, 'Upload the resume to your own folder.')
     await insertVerified(token, profile.id, 'resume_analyses', row)
+    await saveServerField(token, profile.id, {
+      resume_text: text,
+      ...(path ? { resume_path: path, resume_name: row.file_name, resume_uploaded_at: new Date().toISOString() } : {}),
+    })
     await deleteRows(token, 'jd_matches', `user_id=eq.${profile.id}`)
-    await saveServerField(token, profile.id, { resume_text: text })
     return json({ analysis })
   }
 
-  // The resume text is server-owned, so removing a resume clears it here.
+  // The resume text is server-owned, so removing a resume clears it here, together with the file reference.
   if (body.action === 'clear') {
-    await saveServerField(token, profile.id, { resume_text: null })
+    await saveServerField(token, profile.id, { resume_text: null, resume_path: null, resume_name: null, resume_uploaded_at: null })
     return json({ ok: true })
   }
 

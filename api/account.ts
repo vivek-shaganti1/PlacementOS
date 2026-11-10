@@ -41,9 +41,22 @@ export default handle(async (req) => {
       if (!del.ok) throw new HttpError(502, 'Could not remove your files. Try again.')
     }
   }
-  const roster = await rest(`org_students?user_id=eq.${user.id}`, { method: 'DELETE' })
-  if (!roster.ok) throw new HttpError(502, 'Could not remove your college record. Try again.')
-  const gone = await fetch(`${SUPABASE_URL}/auth/v1/admin/users/${user.id}`, { signal: timeout(10_000), method: 'DELETE', headers: admin })
+  // The login goes before the roster row: if this step fails the student is still on the roster, still signed in and can
+  // try again from Settings. Removing the roster row first would strand them on the "waiting for your college" screen.
+  const linked = await rest(`org_students?user_id=eq.${user.id}&select=id`)
+  const rows = linked.ok ? ((await linked.json().catch(() => null)) as { id: number }[] | null) : null
+  if (!Array.isArray(rows)) throw new HttpError(502, 'Could not read your college record. Try again.')
+  const removeRoster = () => rest(`org_students?id=in.(${rows.map((r) => r.id).join(',')})`, { method: 'DELETE' })
+  const deleteLogin = () => fetch(`${SUPABASE_URL}/auth/v1/admin/users/${user.id}`, { signal: timeout(10_000), method: 'DELETE', headers: admin })
+  let gone = await deleteLogin()
+  // A database without migration 20261110 refuses to delete a login while a roster row links to it: fall back to the
+  // old order there.
+  if (!gone.ok && rows.length && (await removeRoster()).ok) gone = await deleteLogin()
   if (!gone.ok) throw new HttpError(502, 'Could not delete your account. Try again.')
+  // The login is gone, so the student cannot retry; a leftover roster row is the college's to remove and holds no account.
+  if (rows.length) {
+    const roster = await removeRoster()
+    if (!roster.ok) console.error('account: roster rows left after deletion', roster.status)
+  }
   return json({ ok: true })
 })

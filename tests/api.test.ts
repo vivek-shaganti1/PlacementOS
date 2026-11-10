@@ -30,6 +30,7 @@ const { default: signup } = await import('../api/signup')
 const { default: admin } = await import('../api/admin')
 const { default: password } = await import('../api/password')
 const { default: account } = await import('../api/account')
+const { default: resume } = await import('../api/resume')
 const { default: connect, sameName, sameFullName } = await import('../api/connect')
 const { trustedProfile, provenIntegrations } = await import('../src/lib/trust')
 const { evaluateAll } = await import('../src/lib/eligibility')
@@ -212,12 +213,41 @@ test('sameName matches initials and rejects other people', () => {
   assert.ok(!sameName('Someone Else', 'Bobbala Asha Reddy'))
 })
 
+// ------------------------------------------------------------------ W5-4, W2-8
+const rosterCalls = () => calls.filter((c) => c.url.includes('org_students?on_conflict')).map((c) => c.body as Record<string, unknown>[])
+test('W5-4 a re-import sends only the cells that were filled in', async () => {
+  reply = adminReply
+  await admin(post({ action: 'invite', org_id: org, role: 'student', send: false, people: [
+    { email: 'a@x.test' },
+    { email: 'b@x.test', full_name: 'B', section: 'c', cgpa: 8.2 },
+  ] }, jwt({ sub: uid })))
+  const rows = rosterCalls().flat()
+  const a = rows.find((r) => r.email === 'a@x.test')!
+  const b = rows.find((r) => r.email === 'b@x.test')!
+  assert.deepEqual(Object.keys(a).sort(), ['email', 'org_id'], 'nothing blank, no forced programme, no null academics')
+  assert.equal(b.full_name, 'B')
+  assert.equal(b.section, 'C')
+  assert.equal(b.cgpa, 8.2)
+  assert.ok(!('program' in b) && !('backlogs' in b))
+  for (const batch of rosterCalls()) assert.equal(new Set(batch.map((r) => Object.keys(r).sort().join())).size, 1, 'each request has one column set')
+})
+test('W5-4 an impossible academic value is reported and that row is not saved', async () => {
+  reply = adminReply
+  const res = await admin(post({ action: 'invite', org_id: org, role: 'student', send: false, people: [{ email: 'a@x.test', cgpa: 42 }, { email: 'b@x.test' }] }, jwt({ sub: uid })))
+  const { results } = (await res.json()) as { results: { email: string; status: string; detail?: string }[] }
+  assert.equal(results.find((r) => r.email === 'a@x.test')?.status, 'failed')
+  assert.match(results.find((r) => r.email === 'a@x.test')?.detail ?? '', /CGPA/)
+  assert.ok(!rosterCalls().flat().some((r) => r.email === 'a@x.test'))
+  assert.ok(rosterCalls().flat().some((r) => r.email === 'b@x.test'))
+})
+
 // ------------------------------------------------------------------ REL-08
 test('REL-08 deletion needs the typed email and removes files, roster row and login', async () => {
   reply = (c) => {
     if (c.url.endsWith('/auth/v1/user')) return ok({ id: uid, email: 'me@x.test' })
     if (c.url.includes('user_roles')) return ok([])
     if (c.url.includes('object/list/')) return ok([{ name: 'r.pdf' }])
+    if (c.url.includes('org_students?user_id')) return ok([{ id: 3 }])
     return undefined
   }
   assert.equal((await account(post({ action: 'delete', confirm_email: 'other@x.test' }, jwt({ sub: uid })))).status, 422)
@@ -227,7 +257,30 @@ test('REL-08 deletion needs the typed email and removes files, roster row and lo
   const deletes = calls.filter((c) => c.method === 'DELETE').map((c) => c.url)
   assert.ok(deletes.some((u) => u.includes('storage/v1/object/resumes')))
   assert.ok(deletes.some((u) => u.includes('org_students')))
-  assert.ok(deletes[deletes.length - 1].includes(`/auth/v1/admin/users/${uid}`))
+})
+test('W5-8 the login is deleted before the roster row, so a failure leaves the student able to retry', async () => {
+  reply = (c) => {
+    if (c.url.endsWith('/auth/v1/user')) return ok({ id: uid, email: 'me@x.test' })
+    if (c.url.includes('user_roles')) return ok([])
+    if (c.url.includes('object/list/')) return ok([])
+    if (c.url.includes('org_students?user_id')) return ok([{ id: 7 }])
+    if (c.url.includes('/auth/v1/admin/users/')) return ok({ msg: 'down' }, 500)
+    return undefined
+  }
+  assert.equal((await account(post({ action: 'delete', confirm_email: 'me@x.test' }, jwt({ sub: uid })))).status, 502)
+  const order = calls.filter((c) => c.method === 'DELETE').map((c) => (c.url.includes('/auth/') ? 'login' : c.url.includes('org_students') ? 'roster' : 'file'))
+  assert.deepEqual(order, ['login', 'roster', 'login'], 'login first; the roster row is removed only to retry on an older database')
+  calls = []
+  reply = (c) => {
+    if (c.url.endsWith('/auth/v1/user')) return ok({ id: uid, email: 'me@x.test' })
+    if (c.url.includes('user_roles')) return ok([])
+    if (c.url.includes('object/list/')) return ok([])
+    if (c.url.includes('org_students?user_id')) return ok([{ id: 7 }])
+    return undefined
+  }
+  assert.equal((await account(post({ action: 'delete', confirm_email: 'me@x.test' }, jwt({ sub: uid })))).status, 200)
+  const happy = calls.filter((c) => c.method === 'DELETE').map((c) => (c.url.includes('/auth/') ? 'login' : 'roster'))
+  assert.deepEqual(happy, ['login', 'roster'])
 })
 test('REL-08 a temporary password cannot delete the account', async () => {
   reply = (c) => (c.url.endsWith('/auth/v1/user') ? ok({ id: uid, email: 'me@x.test', app_metadata: { must_change_password: true } }) : undefined)
@@ -242,6 +295,46 @@ test('REL-08 a failed role check stops the deletion', async () => {
 test('REL-08 admin accounts cannot delete themselves', async () => {
   reply = (c) => (c.url.endsWith('/auth/v1/user') ? ok({ id: uid, email: 'me@x.test' }) : c.url.includes('user_roles') ? ok([{ role: 'org_admin' }]) : undefined)
   assert.equal((await account(post({ action: 'delete', confirm_email: 'me@x.test' }, jwt({ sub: uid })))).status, 403)
+})
+
+// ------------------------------------------------------------------ W5-9, W5-18
+test('W5-9 the server records the new resume file together with its text and analysis', async () => {
+  reply = (c) => {
+    if (c.url.includes('rest/v1/profiles?') && c.method === 'GET') return ok([student])
+    if (c.url.includes('consume_ai')) return ok(5)
+    if (c.url.includes('api.groq.com')) return ok({ choices: [{ message: { content: JSON.stringify({ content_quality: 60, summary: 's', tips: {}, extracted: {}, skill_levels: {} }) } }] })
+    return undefined
+  }
+  const text = 'Built a service. '.repeat(30)
+  assert.equal((await resume(post({ action: 'analyze', text, file_name: 'cv.pdf', path: `${uid}/1-cv.pdf` }, jwt({ sub: uid })))).status, 200)
+  const patch = calls.find((c) => c.url.includes(`profiles?id=eq.${uid}`) && c.method === 'PATCH')!.body
+  assert.equal(patch.resume_path, `${uid}/1-cv.pdf`)
+  assert.equal(patch.resume_text, text.trim())
+  const order = calls.filter((c) => c.method !== 'GET').map((c) => (c.url.includes('resume_analyses') ? 'analysis' : c.url.includes('profiles?') ? 'profile' : c.url.includes('jd_matches') ? 'jd' : 'other')).filter((x) => x !== 'other')
+  assert.deepEqual(order, ['analysis', 'profile', 'jd'])
+})
+test('W5-9 a path outside the student\'s folder is refused', async () => {
+  for (const path of [`${uid}/../x/cv.pdf`, 'someone-else/cv.pdf', `${uid}/..`]) {
+    calls = []
+    reply = (c) => (c.url.includes('rest/v1/profiles?') ? ok([student]) : c.url.includes('consume_ai') ? ok(5) : c.url.includes('api.groq.com') ? ok({ choices: [{ message: { content: '{}' } }] }) : undefined)
+    assert.equal((await resume(post({ action: 'analyze', text: 'x'.repeat(300), file_name: 'cv.pdf', path }, jwt({ sub: uid })))).status, 422, path)
+  }
+})
+test('W5-18 a GitHub sync never deletes all repositories before saving the new ones', async () => {
+  reply = (c) => {
+    if (c.url.includes('rest/v1/profiles?')) return ok([student])
+    if (c.url.includes('connect_attempt')) return ok(true)
+    if (c.url.includes('rest/v1/coding_profiles?user_id')) return ok([])
+    if (c.url.startsWith('https://api.github.com/users/') && c.url.includes('/repos')) return ok([{ name: 'alpha', fork: false, archived: false, stargazers_count: 1, html_url: 'https://github.com/o/alpha', pushed_at: '2026-01-01', owner: { login: 'octo' } }])
+    if (c.url.startsWith('https://api.github.com/users/')) return ok({ login: 'octo', bio: '' })
+    return undefined
+  }
+  await connect(post({ platform: 'github', username: 'octo' }, jwt({ sub: uid })))
+  const repoCalls = calls.filter((c) => c.url.includes('github_repos'))
+  assert.equal(repoCalls[0].method, 'POST', 'save first')
+  assert.match(repoCalls[0].url, /on_conflict=user_id,name/)
+  assert.equal(repoCalls[1].method, 'DELETE')
+  assert.match(decodeURIComponent(repoCalls[1].url), /name=not\.in\.\("alpha"\)/)
 })
 
 // ------------------------------------------------------------------ SEC-05

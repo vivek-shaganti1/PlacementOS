@@ -443,8 +443,11 @@ export default handle(async (req) => {
     'user_id,platform',
   )
   if (p === 'github') {
-    await deleteRows(token, 'github_repos', `user_id=eq.${profile.id}`)
-    if (all_repos?.length) await insertVerified(token, profile.id, 'github_repos', all_repos as Record<string, unknown>[])
+    // Upsert first, then remove only the repositories that are gone, so a failure part-way never leaves the student with none.
+    const repos = (all_repos ?? []) as { name: string }[]
+    if (repos.length) await insertVerified(token, profile.id, 'github_repos', repos, 'user_id,name')
+    const keep = repos.map((r) => `"${String(r.name).replace(/["\\]/g, '')}"`).join(',')
+    await deleteRows(token, 'github_repos', `user_id=eq.${profile.id}${keep ? `&name=not.in.(${encodeURIComponent(keep)})` : ''}`)
   }
   if (PROFILE_COLUMN.has(p)) await saveProfile(token, profile.id, { [`${p}_username`]: s.username })
   return json({ ok: true, stats, proven, ...(proven || !code ? {} : { code, where: PROOF_WHERE[p] }) })

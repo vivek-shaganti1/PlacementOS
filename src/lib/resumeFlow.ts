@@ -21,13 +21,15 @@ export async function uploadAndAnalyzeResume(
   if (error) throw error
   try {
     onStep('Analyzing with AI…')
-    await callApi('resume', { action: 'analyze', text, file_name: file.name })
+    // The server records the new file, its text and its analysis in one step.
+    await callApi('resume', { action: 'analyze', text, file_name: file.name, path })
   } catch (e) {
     await supabase.storage.from('resumes').remove([path])
     throw e
   }
+  void updateProfile
+  // The old file goes last, once nothing points at it.
   const old = profile.resume_path
-  await updateProfile({ resume_path: path, resume_name: file.name, resume_uploaded_at: new Date().toISOString() })
   if (old && old !== path) await supabase.storage.from('resumes').remove([old])
 }
 

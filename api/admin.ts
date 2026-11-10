@@ -127,12 +127,16 @@ export default handle(async (req) => {
     branch: clip(p.branch, 120),
     batch: clip(p.batch, 10),
     section: clip(p.section, 20).toUpperCase(),
-    program: clip(p.program, 40) || 'B.Tech',
-    // Official academics from the college (optional). Out-of-range or non-numeric values are dropped, not guessed.
+    // Blank means "not in this paste": new rows get the column default (B.Tech), existing rows keep their value.
+    program: clip(p.program, 40),
+    // Official academics from the college (optional). Out-of-range or non-numeric values are reported, not guessed.
     cgpa: academic(p.cgpa, 0, 10),
     backlogs: academic(p.backlogs, 0, 100, true),
     class_x: academic(p.class_x, 0, 100),
     class_xii: academic(p.class_xii, 0, 100),
+    invalid: (
+      [['CGPA', p.cgpa, academic(p.cgpa, 0, 10)], ['backlogs', p.backlogs, academic(p.backlogs, 0, 100, true)], ['Class X', p.class_x, academic(p.class_x, 0, 100)], ['Class XII', p.class_xii, academic(p.class_xii, 0, 100)]] as const
+    ).filter(([, raw, v]) => raw !== null && raw !== undefined && String(raw).trim() !== '' && v === undefined).map(([name]) => name),
   }))
   if (!people.length) throw new HttpError(400, 'Add at least one person.')
   const bad = people.filter((p) => !EMAIL.test(p.email)).map((p) => p.email || '(blank)')
@@ -158,21 +162,32 @@ export default handle(async (req) => {
   const results: Result[] = []
 
   if (role === 'student') {
-    const withAcademics = people.some((p) => p.cgpa != null || p.backlogs != null || p.class_x != null || p.class_xii != null)
+    // A row with an impossible value is reported and left out, rather than half-saved.
+    const rejected = people.filter((p) => p.invalid.length)
+    for (const p of rejected) results.push({ email: p.email, status: 'failed', detail: `Not saved: ${p.invalid.join(', ')} out of range or not a number.` })
+    const accepted = people.filter((p) => !p.invalid.length)
+    // Only the cells that were filled in are written, so re-importing a shorter list never blanks what the roster already
+    // holds. A bulk upsert needs the same columns on every row, so rows are grouped by which cells they have.
+    // Only roster columns: `company` belongs to recruiters and does not exist on org_students.
+    const filled = (p: (typeof accepted)[number]) => {
+      const row: Record<string, unknown> = { org_id: orgId, email: p.email }
+      for (const k of ['full_name', 'roll_number', 'branch', 'batch', 'section', 'program'] as const) if (p[k]) row[k] = p[k]
+      for (const k of ['cgpa', 'backlogs', 'class_x', 'class_xii'] as const) if (p[k] !== undefined) row[k] = p[k]
+      return row
+    }
+    const groups = new Map<string, Record<string, unknown>[]>()
+    for (const row of accepted.map(filled)) {
+      const key = Object.keys(row).sort().join(',')
+      groups.set(key, [...(groups.get(key) ?? []), row])
+    }
     // Upsert roster rows as the caller; RLS confirms they administer this organization.
-    await rest(token, 'org_students?on_conflict=org_id,email', {
-      method: 'POST',
-      // Only roster columns: `company` belongs to recruiters and does not exist on org_students.
-      body: JSON.stringify(
-        people.map((p) => ({
-          org_id: orgId, email: p.email, full_name: p.full_name, roll_number: p.roll_number, branch: p.branch, batch: p.batch, section: p.section, program: p.program,
-          // Academic columns are sent only when the paste has them (a bulk upsert needs the same keys on every row).
-          ...(withAcademics ? { cgpa: p.cgpa ?? null, backlogs: p.backlogs ?? null, class_x: p.class_x ?? null, class_xii: p.class_xii ?? null } : {}),
-        })),
-      ),
-      headers: { prefer: 'return=minimal,resolution=merge-duplicates' },
-    })
-    for (const p of people) {
+    for (const rows of groups.values())
+      await rest(token, 'org_students?on_conflict=org_id,email', {
+        method: 'POST',
+        body: JSON.stringify(rows),
+        headers: { prefer: 'return=minimal,resolution=merge-duplicates' },
+      })
+    for (const p of accepted) {
       const r: Result = body.send === false ? { email: p.email, status: 'saved' } : await provision(p)
       results.push(r)
       if (r.status === 'invited' || r.status === 'created')
