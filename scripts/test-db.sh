@@ -40,7 +40,7 @@ judge() {
   fi
   echo "$name: $summary"
 }
-suites=("$@"); [ ${#suites[@]} -gt 0 ] || suites=("$root/docs/evaluation/rls_tests.sql" "$root/supabase/tests/remediation_tests.sql" "$root/supabase/tests/followup_tests.sql")
+suites=("$@"); [ ${#suites[@]} -gt 0 ] || suites=("$root/docs/evaluation/rls_tests.sql" "$root/supabase/tests/remediation_tests.sql" "$root/supabase/tests/followup_tests.sql" "$root/supabase/tests/e2e_lifecycle.sql")
 for suite in "${suites[@]}"; do
   out="$(psql -d "$db" ${SKIP_FROM:+-v ON_ERROR_ROLLBACK=on} -At -F ' | ' -f "$suite" 2>&1 | grep -vE '^(BEGIN|ROLLBACK|CREATE TABLE|GRANT|INSERT|UPDATE|DELETE|SET|RESET|DO|SELECT [0-9]|\{"sub"|$)' || true)"
   judge "$(basename "$suite")" "$out"
