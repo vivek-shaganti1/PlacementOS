@@ -150,7 +150,7 @@ export default handle(async (req) => {
     role === 'platform_admin' || ((await (await rest(token, 'rpc/can_provision', { method: 'POST', body: JSON.stringify({ target_org: orgId, target_email: email }) })).json()) as boolean)
   const provision = async (p: { email: string; full_name: string }): Promise<Result> => {
     if (!logins) return sendInvite(p.email, p.full_name, redirectTo)
-    if (!(await mayProvision(p.email))) return { email: p.email, status: 'failed', detail: 'This email is already registered elsewhere on PlacementIQ. Send an email invite instead.' }
+    if (!(await mayProvision(p.email))) return { email: p.email, status: 'failed', detail: 'A login cannot be created for this email here. Send an email invite instead.' }
     if (!(await domainAllowed(p.email, orgId, role)))
       return { email: p.email, status: 'failed', detail: 'This email is outside your college\'s domains. Send an email invite instead, so only the owner of the mailbox can sign in.' }
     return createLogin(p.email, p.full_name, orgId)

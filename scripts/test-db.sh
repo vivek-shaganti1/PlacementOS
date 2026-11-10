@@ -23,34 +23,53 @@ for f in "$root"/supabase/migrations/*.sql; do
 done
 echo "migrations replayed: $(ls "$root"/supabase/migrations/*.sql | wc -l | tr -d ' ')"
 # Twice is the point: every migration here must be safe to run again, because production ones are pasted by hand.
-if [ "${REPLAY_LAST:-1}" = 1 ]; then run "$(ls "$root"/supabase/migrations/*.sql | tail -1)" && echo "latest migration is re-runnable"; fi
+if [ "${REPLAY_LAST:-1}" = 1 ]; then
+  run "$(ls "$root"/supabase/migrations/*.sql | tail -1)" || { echo "LATEST MIGRATION IS NOT RE-RUNNABLE"; exit 1; }
+  echo "latest migration is re-runnable"
+fi
 status=0
-suites=("$@"); [ ${#suites[@]} -gt 0 ] || suites=("$root/docs/evaluation/rls_tests.sql" "$root/supabase/tests/remediation_tests.sql")
+# A suite passes only if every result is true and the summary adds up: a missing fixture gives an empty value, which is a
+# failure, not a pass.
+judge() {
+  local name="$1" out="$2" summary p t
+  if echo "$out" | grep -E '\| (f)?$|ERROR'; then status=1; fi
+  summary="$(echo "$out" | tail -1)"
+  p="${summary%% |*}"; t="${summary##*| }"
+  if ! [[ "$p" =~ ^[0-9]+$ && "$t" =~ ^[0-9]+$ ]] || [ "$p" != "$t" ] || [ "$t" = 0 ]; then
+    echo "$name: RESULTS DO NOT ADD UP ($summary)"; status=1
+  fi
+  echo "$name: $summary"
+}
+suites=("$@"); [ ${#suites[@]} -gt 0 ] || suites=("$root/docs/evaluation/rls_tests.sql" "$root/supabase/tests/remediation_tests.sql" "$root/supabase/tests/followup_tests.sql")
 for suite in "${suites[@]}"; do
   out="$(psql -d "$db" ${SKIP_FROM:+-v ON_ERROR_ROLLBACK=on} -At -F ' | ' -f "$suite" 2>&1 | grep -vE '^(BEGIN|ROLLBACK|CREATE TABLE|GRANT|INSERT|UPDATE|DELETE|SET|RESET|DO|SELECT [0-9]|\{"sub"|$)' || true)"
-  echo "$out" | grep -E '\| f$|ERROR' && status=1 || true
-  echo "$(basename "$suite"): $(echo "$out" | tail -1)"
+  judge "$(basename "$suite")" "$out"
 done
 # The migration again, on a database that already holds data like production's: backfills only run for real here.
 if [ -z "${SKIP_FROM:-}" ] && [ -f "$root/supabase/tests/legacy_data.sql" ]; then
   legacy=placementiq_legacy
-  latest="$(ls "$root"/supabase/migrations/*.sql | tail -1)"
+  # Old-style data goes in before the security migrations (LEGACY_FROM onwards), which then run on it twice.
+  from="${LEGACY_FROM:-20261105}"
   psql -q -d postgres -v ON_ERROR_STOP=1 -c "drop database if exists $legacy" -c "create database $legacy"
   psql -q -d "$legacy" -v ON_ERROR_STOP=1 -f "$root/supabase/tests/supabase_shim.sql" >/dev/null
-  for f in "$root"/supabase/migrations/*.sql; do [ "$f" = "$latest" ] || psql -q -d "$legacy" -v ON_ERROR_STOP=1 -f "$f" >/dev/null; done
+  newer=()
+  for f in "$root"/supabase/migrations/*.sql; do
+    if [ "$(basename "$f" | cut -c1-8)" -ge "$from" ]; then newer+=("$f"); else psql -q -d "$legacy" -v ON_ERROR_STOP=1 -f "$f" >/dev/null; fi
+  done
   psql -q -d "$legacy" -v ON_ERROR_STOP=1 -f "$root/supabase/tests/legacy_data.sql" >/dev/null
-  psql -q -d "$legacy" -v ON_ERROR_STOP=1 -f "$latest" >/dev/null || { echo "MIGRATION FAILED ON EXISTING DATA"; status=1; }
-  psql -q -d "$legacy" -v ON_ERROR_STOP=1 -f "$latest" >/dev/null || { echo "MIGRATION NOT RE-RUNNABLE ON EXISTING DATA"; status=1; }
+  for pass in "ON EXISTING DATA" "AGAIN ON EXISTING DATA"; do
+    for f in "${newer[@]}"; do
+      psql -q -d "$legacy" -v ON_ERROR_STOP=1 -f "$f" >/dev/null || { echo "MIGRATION FAILED $pass: $(basename "$f")"; status=1; }
+    done
+  done
   out="$(psql -d "$legacy" -At -F ' | ' -f "$root/supabase/tests/legacy_tests.sql" 2>&1 | grep -vE '^(CREATE TABLE|INSERT|$)' || true)"
-  echo "$out" | grep -E '\| f$|ERROR' && status=1 || true
-  echo "legacy_tests.sql: $(echo "$out" | tail -1)"
+  judge legacy_tests.sql "$out"
 fi
 if [ -z "${SKIP_FROM:-}" ]; then
   parity="$(mktemp "${TEST_TMP:-${TMPDIR:-/tmp}}/parity.XXXXXX")"
   node "$root/scripts/branch-parity.mjs" > "$parity"
   out="$(psql -d "$db" -At -F ' | ' -f "$parity" 2>&1 | grep -vE '^(CREATE TABLE|INSERT|$)' || true)"
   rm -f "$parity"
-  echo "$out" | grep -E '\| f$|ERROR' && status=1 || true
-  echo "branch parity: $(echo "$out" | tail -1)"
+  judge "branch parity" "$out"
 fi
 exit $status

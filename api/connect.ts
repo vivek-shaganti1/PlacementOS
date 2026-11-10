@@ -135,13 +135,23 @@ export function sameName(a: string, b: string) {
   return x.every((w) => y.some((v) => v === w || (w.length === 1 && v.startsWith(w)) || (v.length === 1 && w.startsWith(v))))
 }
 
+/**
+ * Ownership by name, for Credly, which has no profile field the student can put a code in. Stricter than sameName: the
+ * same full name, word for word, with at least two words of two or more letters. Initials or a shorter name do not count.
+ */
+export function sameFullName(a: string, b: string) {
+  const words = (s: string) => s.toLowerCase().normalize('NFKD').replace(/[^a-z\s]/g, ' ').split(/\s+/).filter(Boolean).sort()
+  const [x, y] = [words(a), words(b)]
+  return x.length >= 2 && x.every((w) => w.length >= 2) && x.length === y.length && x.every((w, i) => w === y[i])
+}
+
 // Verified badges (Cisco, IBM, AWS, Autodesk, NI, Ansys, ...). Only badges issued to this student's name count.
 export async function credly(username: string, collegeName: string) {
   if (!collegeName) throw new HttpError(422, 'Your college has no name on record for you yet. Ask your placement cell to add it, then connect Credly.')
   const { res, body } = await getJson(`https://www.credly.com/users/${encodeURIComponent(username)}/badges.json`)
   if (res.status === 404 || !body) throw new HttpError(404, `Credly profile "${username}" not found, or it is private.`)
   const all = ((body.data ?? []) as any[]).filter((b) => b.state === 'accepted' && b.public !== false)
-  const mine = all.filter((b) => sameName(String(b.issued_to ?? ''), collegeName))
+  const mine = all.filter((b) => sameFullName(String(b.issued_to ?? ''), collegeName))
   if (all.length && !mine.length) throw new HttpError(422, `These badges are issued to "${all[0].issued_to}", not to the name your college has for you.`)
   return {
     username,

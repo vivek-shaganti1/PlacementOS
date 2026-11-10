@@ -49,7 +49,7 @@ export async function rest(token: string, path: string, init: RequestInit = {}, 
   if (!res.ok) {
     const text = await res.text()
     // Turn the common database refusals into messages an admin can act on.
-    const known = text.match(/(ROSTER_DOMAIN|APPLICATION_STEP|DRIVE_HAS_OUTCOMES): ([^"]{1,200})/)
+    const known = text.match(/(ROSTER_DOMAIN|APPLICATION_STEP|DRIVE_HAS_OUTCOMES|CREDENTIAL_TAKEN): ([^"]{1,200})/)
     if (known) throw new HttpError(422, known[2])
     if (/coding_profiles_one_owner/.test(text)) throw new HttpError(409, 'Another student has already proven this account is theirs. If it is yours, ask your placement cell.')
     if (/credentials_one_owner/.test(text)) throw new HttpError(409, 'This certificate is already on another student\'s profile.')

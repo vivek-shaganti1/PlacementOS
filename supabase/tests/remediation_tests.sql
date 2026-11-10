@@ -60,12 +60,12 @@ set local role authenticated;
 do $$ begin
   insert into public.org_students (org_id, email) values ('0a000000-0000-4000-8000-00000000000a', 'victim@beta.example');
   perform pg_temp.ok('SEC-02 roster refuses another college''s domain', false);
-exception when check_violation then perform pg_temp.ok('SEC-02 roster refuses another college''s domain', true);
+exception when check_violation then perform pg_temp.ok('SEC-02 roster refuses another college''s domain', sqlerrm like 'ROSTER_DOMAIN:%');
 end $$;
 do $$ begin
   insert into public.org_students (org_id, email) values ('0a000000-0000-4000-8000-00000000000a', 'someone@gmail.example');
   perform pg_temp.ok('SEC-02 roster refuses an email outside the college''s own domains', false);
-exception when check_violation then perform pg_temp.ok('SEC-02 roster refuses an email outside the college''s own domains', true);
+exception when check_violation then perform pg_temp.ok('SEC-02 roster refuses an email outside the college''s own domains', sqlerrm like 'ROSTER_DOMAIN:%');
 end $$;
 select pg_temp.ok('SEC-13 a college cannot make another college''s student its admin', public.add_org_admin('0a000000-0000-4000-8000-00000000000a', 'stu.b@beta.example') = 'refused');
 select pg_temp.ok('SEC-13 a refused email is not added to the admin list', not exists (select 1 from public.org_admins('0a000000-0000-4000-8000-00000000000a') a where a.email = 'stu.b@beta.example'));
@@ -188,12 +188,20 @@ select public.remove_org_admin('0a000000-0000-4000-8000-00000000000a', 'tpo2@alp
 reset role; select set_config('request.jwt.claims', '', true);
 select pg_temp.ok('SEC-07 removal works after an email change', not exists (select 1 from public.user_roles where user_id = 'a2000000-0000-4000-8000-0000000000a2' and role = 'org_admin'));
 
--- SEC-16: the seat limit holds; an edited email is a new person.
+-- SEC-16: rotating one roster row through several emails must not let several accounts use one seat.
+insert into public.org_students (org_id, email) values ('0a000000-0000-4000-8000-00000000000a', 'rot1@alpha.example');
+insert into auth.users (id, email, instance_id, aud, role, invited_at, email_confirmed_at) values
+  ('f1000000-0000-4000-8000-0000000000f1', 'rot1@alpha.example', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', now(), now());
+update public.org_students set email = 'rot2@alpha.example' where email = 'rot1@alpha.example';
+insert into auth.users (id, email, instance_id, aud, role, invited_at, email_confirmed_at) values
+  ('f2000000-0000-4000-8000-0000000000f2', 'rot2@alpha.example', '00000000-0000-0000-0000-000000000000', 'authenticated', 'authenticated', now(), now());
+select pg_temp.ok('SEC-16 after an email edit only the new person has the seat', (select org_id is null from public.profiles where id = 'f1000000-0000-4000-8000-0000000000f1')
+  and (select user_id = 'f2000000-0000-4000-8000-0000000000f2' from public.org_students where email = 'rot2@alpha.example'));
 update public.organizations set seat_limit = (select count(*) from public.org_students where org_id = '0a000000-0000-4000-8000-00000000000a') where id = '0a000000-0000-4000-8000-00000000000a';
 do $$ begin
   insert into public.org_students (org_id, email) values ('0a000000-0000-4000-8000-00000000000a', 'over@alpha.example');
   perform pg_temp.ok('SEC-16 the seat limit holds', false);
-exception when check_violation then perform pg_temp.ok('SEC-16 the seat limit holds', true);
+exception when check_violation then perform pg_temp.ok('SEC-16 the seat limit holds', sqlerrm like 'Seat limit%');
 end $$;
 update public.organizations set seat_limit = null where id = '0a000000-0000-4000-8000-00000000000a';
 
@@ -203,8 +211,10 @@ select pg_temp.ok('SEC-18 the same email from elsewhere is not locked out', publ
 
 -- ---------------------------------------------------------------- SEC-08
 insert into public.credentials (user_id, kind, ref, status) values ('a1000000-0000-4000-8000-0000000000a1', 'nptel', 'NPTEL24EE42S11111111', 'pending');
+-- Since 20261110 several students may submit the same ID; only one can hold it confirmed (W3-7).
+insert into public.credentials (user_id, kind, ref, status, verified_by) values ('b1000000-0000-4000-8000-0000000000b1', 'nptel', 'NPTEL24EE42S22222222', 'verified', 'college');
 do $$ begin
-  insert into public.credentials (user_id, kind, ref, status) values ('b1000000-0000-4000-8000-0000000000b1', 'nptel', 'NPTEL24EE42S11111111', 'pending');
+  insert into public.credentials (user_id, kind, ref, status, verified_by) values ('a1000000-0000-4000-8000-0000000000a1', 'nptel', 'NPTEL24EE42S22222222', 'verified', 'college');
   perform pg_temp.ok('SEC-08 one certificate belongs to one student', false);
 exception when unique_violation then perform pg_temp.ok('SEC-08 one certificate belongs to one student', true);
 end $$;
@@ -244,8 +254,23 @@ reset role; select set_config('request.jwt.claims', '', true);
 select pg_temp.ok('SEC-19 a forged match is not stored', (select match is null from public.job_applications where job_id = 'd1000000-0000-4000-8000-0000000000d1'));
 
 -- ---------------------------------------------------------------- NV-07
-select pg_temp.ok('NV-07 the deadline policy uses India time', exists (
-  select 1 from pg_policy p where p.polrelid = 'public.job_applications'::regclass and p.polname = 'students apply' and pg_get_expr(p.polwithcheck, p.polrelid) like '%Asia/Kolkata%'));
+-- A drive whose deadline is today in India is still open now, and one that ended yesterday in India is closed.
+insert into public.job_postings (id, org_id, company, role, location, job_type, description, min_cgpa, max_backlogs, min_class_x, min_class_xii, min_internships, min_projects, branches, batches, skill_requirements, status, deadline) values
+  ('d7000000-0000-4000-8000-0000000000d7', '0a000000-0000-4000-8000-00000000000a', 'TodayIST', 'SDE', 'x', 'Full Time', 'x', 0, 9, 0, 0, 0, 0, '{}', '{}', '{}', 'open', (now() at time zone 'Asia/Kolkata')::date),
+  ('d8000000-0000-4000-8000-0000000000d8', '0a000000-0000-4000-8000-00000000000a', 'YesterdayIST', 'SDE', 'x', 'Full Time', 'x', 0, 9, 0, 0, 0, 0, '{}', '{}', '{}', 'open', (now() at time zone 'Asia/Kolkata')::date - 1);
+select pg_temp.as_user('a1000000-0000-4000-8000-0000000000a1');
+set local role authenticated;
+do $$ begin
+  insert into public.job_applications (job_id, user_id, status) values ('d7000000-0000-4000-8000-0000000000d7', 'a1000000-0000-4000-8000-0000000000a1', 'applied');
+  perform pg_temp.ok('NV-07 a drive closing today in India accepts applications', true);
+exception when others then perform pg_temp.ok('NV-07 a drive closing today in India accepts applications', false);
+end $$;
+do $$ begin
+  insert into public.job_applications (job_id, user_id, status) values ('d8000000-0000-4000-8000-0000000000d8', 'a1000000-0000-4000-8000-0000000000a1', 'applied');
+  perform pg_temp.ok('NV-07 a drive that closed yesterday in India refuses', false);
+exception when insufficient_privilege then perform pg_temp.ok('NV-07 a drive that closed yesterday in India refuses', true);
+end $$;
+reset role; select set_config('request.jwt.claims', '', true);
 
 -- ---------------------------------------------------------------- SEC-12
 insert into public.jd_matches (user_id, score, verdict, jd_title, jd_text) values ('a1000000-0000-4000-8000-0000000000a1', 50, 'x', 'Other drive', 'secret text');
@@ -310,7 +335,9 @@ do $$ begin
   update public.profiles set cgpa = 9.9, backlogs = 0, class_x = 90, class_xii = 90 where id = 'a9000000-0000-4000-8000-0000000000a9';
   perform pg_temp.ok('DEF-01 the student can complete the missing fields', (select class_x = 90 from public.profiles where id = 'a9000000-0000-4000-8000-0000000000a9'));
   perform pg_temp.ok('DEF-01 the college''s value still wins', (select cgpa = 8.1 from public.profiles where id = 'a9000000-0000-4000-8000-0000000000a9'));
-exception when others then perform pg_temp.ok('DEF-01 the student can complete the missing fields', false);
+exception when others then
+  perform pg_temp.ok('DEF-01 the student can complete the missing fields', false);
+  perform pg_temp.ok('DEF-01 the college''s value still wins', false);
 end $$;
 reset role; select set_config('request.jwt.claims', '', true);
 select pg_temp.as_user('aa000000-0000-4000-8000-0000000000aa');

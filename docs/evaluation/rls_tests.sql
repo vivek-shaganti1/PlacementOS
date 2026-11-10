@@ -9,7 +9,7 @@ grant insert, select on t_results to authenticated;
 -- ---------------------------------------------------------------- fixtures (as postgres)
 insert into public.organizations (id, name, admin_emails, email_domains, plan)
 values ('0b000000-0000-4000-8000-00000000000b', 'Beta Institute', array['tpo@beta.example'], array['beta.example'], 'basic');
-update public.organizations set admin_emails = array_append(admin_emails, 'tpo@anurag.example'), email_domains = array_append(email_domains, 'anurag.example') where name = 'Anurag University';
+update public.organizations set admin_emails = array_append(admin_emails, 'tpo@anurag.example'), email_domains = '{}' where name = 'Anurag University'; -- no domain rule, so T27 exercises the role check itself
 insert into public.org_students (org_id, email, full_name, roll_number) values
   ((select id from public.organizations where name = 'Anurag University'), 's.a@anurag.example', 'Student A', 'A1'),
   ('0b000000-0000-4000-8000-00000000000b', 's.b@beta.example', 'Student B', 'B1');
@@ -53,12 +53,12 @@ insert into t_results values ('T08 student cannot read the roster', (select coun
 do $$ begin
   update public.profiles set org_id = '0b000000-0000-4000-8000-00000000000b' where id = 'a1000000-0000-4000-8000-0000000000a1';
   insert into t_results values ('T09 student cannot change own college', false);
-exception when others then insert into t_results values ('T09 student cannot change own college', true);
+exception when others then insert into t_results values ('T09 student cannot change own college', sqlstate in ('42501', '23514', '23505', '22023', 'P0001', '23503'));
 end $$;
 do $$ begin
   perform public.platform_admins();
   insert into t_results values ('T10 student cannot list platform admins', false);
-exception when others then insert into t_results values ('T10 student cannot list platform admins', true);
+exception when others then insert into t_results values ('T10 student cannot list platform admins', sqlstate in ('42501', '23514', '23505', '22023', 'P0001', '23503'));
 end $$;
 do $$ declare ok boolean := false; begin
   perform public.consume_ai('chat'); perform public.consume_ai('chat');
@@ -77,12 +77,12 @@ do $$ begin
   insert into public.job_postings (org_id, company, role, location, job_type, description, min_cgpa, max_backlogs, min_class_x, min_class_xii, min_internships, min_projects, branches, batches, skill_requirements, status)
   values ('0b000000-0000-4000-8000-00000000000b', 'X', 'Y', 'Z', 'Full Time', 'x', 6, 1, 50, 50, 0, 0, '{}', '{}', '{}', 'open');
   insert into t_results values ('T14 placement cell cannot post for another college', false);
-exception when others then insert into t_results values ('T14 placement cell cannot post for another college', true);
+exception when others then insert into t_results values ('T14 placement cell cannot post for another college', sqlstate in ('42501', '23514', '23505', '22023', 'P0001', '23503'));
 end $$;
 do $$ begin
   perform public.add_org_admin('0b000000-0000-4000-8000-00000000000b', 'evil@x.example');
   insert into t_results values ('T15 placement cell cannot add admins to another college', false);
-exception when others then insert into t_results values ('T15 placement cell cannot add admins to another college', true);
+exception when others then insert into t_results values ('T15 placement cell cannot add admins to another college', sqlstate in ('42501', '23514', '23505', '22023', 'P0001', '23503'));
 end $$;
 reset role;
 
@@ -97,7 +97,7 @@ do $$ begin
   insert into public.job_postings (org_id, company, role, location, job_type, description, min_cgpa, max_backlogs, min_class_x, min_class_xii, min_internships, min_projects, branches, batches, skill_requirements, status, recruiter_id)
   values ((select org_id from public.org_recruiters limit 1), 'OtherCo', 'SDE', 'x', 'Full Time', 'x', 6, 1, 50, 50, 0, 0, '{}', '{}', '{}', 'open', 'cc000000-0000-4000-8000-0000000000cc');
   insert into t_results values ('T19 recruiter cannot post under another company', false);
-exception when others then insert into t_results values ('T19 recruiter cannot post under another company', true);
+exception when others then insert into t_results values ('T19 recruiter cannot post under another company', sqlstate in ('42501', '23514', '23505', '22023', 'P0001', '23503'));
 end $$;
 reset role;
 
@@ -110,7 +110,7 @@ set local role authenticated;
 do $$ begin
   update public.job_applications set user_id = 'b1000000-0000-4000-8000-0000000000b1' where job_id = 'd1000000-0000-4000-8000-0000000000d1';
   insert into t_results values ('T20 recruiter cannot rewrite an application to another student', false);
-exception when others then insert into t_results values ('T20 recruiter cannot rewrite an application to another student', true);
+exception when others then insert into t_results values ('T20 recruiter cannot rewrite an application to another student', sqlstate in ('42501', '23514', '23505', '22023', 'P0001', '23503'));
 end $$;
 insert into t_results values ('T21 recruiter cannot see a student of another college', (select count(*) = 0 from public.profiles where id = 'b1000000-0000-4000-8000-0000000000b1'));
 reset role;
@@ -121,21 +121,18 @@ set local role authenticated;
 do $$ begin
   update public.job_postings set recruiter_id = 'ad000000-0000-4000-8000-0000000000ad' where id = 'd1000000-0000-4000-8000-0000000000d1';
   insert into t_results values ('T22 placement cell cannot make itself a drive recruiter', (select recruiter_id = 'cc000000-0000-4000-8000-0000000000cc' from public.job_postings where id = 'd1000000-0000-4000-8000-0000000000d1'));
-exception when others then insert into t_results values ('T22 placement cell cannot make itself a drive recruiter', true);
+exception when others then insert into t_results values ('T22 placement cell cannot make itself a drive recruiter', sqlstate in ('42501', '23514', '23505', '22023', 'P0001', '23503'));
 end $$;
 do $$ begin
   update public.job_applications set user_id = 'b1000000-0000-4000-8000-0000000000b1' where job_id = 'd1000000-0000-4000-8000-0000000000d1';
   insert into t_results values ('T23 placement cell cannot move an application to another student', false);
-exception when others then insert into t_results values ('T23 placement cell cannot move an application to another student', true);
+exception when others then insert into t_results values ('T23 placement cell cannot move an application to another student', sqlstate in ('42501', '23514', '23505', '22023', 'P0001', '23503'));
 end $$;
 insert into t_results values ('T24 can_provision refuses a pending admin email of another college', (select not public.can_provision((select id from public.organizations where name = 'Anurag University'), 'tpo@beta.example')));
 insert into t_results values ('T25 can_provision refuses a platform admin email', (select not public.can_provision((select id from public.organizations where name = 'Anurag University'), 'pending.boss@platform.example')));
 insert into t_results values ('T26 can_provision allows a brand-new email for own college', (select public.can_provision((select id from public.organizations where name = 'Anurag University'), 'fresh.student@anurag.example')));
 -- rostering the recruiter's email as a "student" must not pull that account into the college
-do $$ begin
-  insert into public.org_students (org_id, email, full_name) values ((select id from public.organizations where name = 'Anurag University'), 'hr@acme.example', 'Not a student');
-exception when check_violation then null; -- since 20261105 an outside domain is refused outright, which also satisfies T27
-end $$;
+insert into public.org_students (org_id, email, full_name) values ((select id from public.organizations where name = 'Anurag University'), 'hr@acme.example', 'Not a student');
 reset role;
 insert into t_results values ('T27 roster entry never moves an account that holds a role', (select org_id is null from public.profiles where id = 'cc000000-0000-4000-8000-0000000000cc'));
 
@@ -150,7 +147,7 @@ set local role authenticated;
 do $$ begin
   update public.job_applications set ai_fit = 100 where user_id = 'a1000000-0000-4000-8000-0000000000a1';
   insert into t_results values ('T28 student cannot set their own AI fit', (select coalesce(ai_fit, 0) <> 100 from public.job_applications where user_id = 'a1000000-0000-4000-8000-0000000000a1' limit 1));
-exception when others then insert into t_results values ('T28 student cannot set their own AI fit', true);
+exception when others then insert into t_results values ('T28 student cannot set their own AI fit', sqlstate in ('42501', '23514', '23505', '22023', 'P0001', '23503'));
 end $$;
 do $$ begin
   insert into public.job_applications (job_id, user_id, status) values ('d3000000-0000-4000-8000-0000000000d3', 'a1000000-0000-4000-8000-0000000000a1', 'applied');
@@ -160,7 +157,7 @@ end $$;
 do $$ begin
   update public.profiles set linkedin_url = 'javascript:alert(1)' where id = 'a1000000-0000-4000-8000-0000000000a1';
   insert into t_results values ('T30 javascript: links are rejected', false);
-exception when others then insert into t_results values ('T30 javascript: links are rejected', true);
+exception when others then insert into t_results values ('T30 javascript: links are rejected', sqlstate in ('42501', '23514', '23505', '22023', 'P0001', '23503'));
 end $$;
 update public.profiles set roll_number = 'HACKED' where id = 'a1000000-0000-4000-8000-0000000000a1';
 insert into t_results values ('T31 student cannot change their roster roll number', (select roll_number <> 'HACKED' from public.profiles where id = 'a1000000-0000-4000-8000-0000000000a1'));
@@ -175,12 +172,12 @@ set local role authenticated;
 do $$ begin
   perform public.consume_ai('chat');
   insert into t_results values ('T34 suspended college cannot spend AI actions', false);
-exception when others then insert into t_results values ('T34 suspended college cannot spend AI actions', true);
+exception when others then insert into t_results values ('T34 suspended college cannot spend AI actions', sqlstate in ('42501', '23514', '23505', '22023', 'P0001', '23503'));
 end $$;
 do $$ begin
   perform public.signup_attempt('x@y.example', '1.2.3.4');
   insert into t_results values ('T35 signed-in users cannot call the sign-up limiter', false);
-exception when others then insert into t_results values ('T35 signed-in users cannot call the sign-up limiter', true);
+exception when others then insert into t_results values ('T35 signed-in users cannot call the sign-up limiter', sqlstate in ('42501', '23514', '23505', '22023', 'P0001', '23503'));
 end $$;
 reset role;
 update public.organizations set status = 'active' where name = 'Anurag University';
@@ -225,17 +222,17 @@ set local role authenticated;
 do $$ begin
   update public.profiles set cgpa = 10 where id = 'a1000000-0000-4000-8000-0000000000a1';
   insert into t_results values ('T40 student cannot raise locked academics', (select cgpa = 7.2 from public.profiles where id = 'a1000000-0000-4000-8000-0000000000a1'));
-exception when others then insert into t_results values ('T40 student cannot raise locked academics', true);
+exception when others then insert into t_results values ('T40 student cannot raise locked academics', sqlstate in ('42501', '23514', '23505', '22023', 'P0001', '23503'));
 end $$;
 do $$ begin
   insert into public.coding_profiles (user_id, platform, username, solved, rating) values ('a1000000-0000-4000-8000-0000000000a1', 'codeforces', 'fake', 900, 2400);
   insert into t_results values ('T41 student cannot write their own coding stats', false);
-exception when others then insert into t_results values ('T41 student cannot write their own coding stats', true);
+exception when others then insert into t_results values ('T41 student cannot write their own coding stats', sqlstate in ('42501', '23514', '23505', '22023', 'P0001', '23503'));
 end $$;
 do $$ begin
   insert into public.resume_analyses (user_id, overall) values ('a1000000-0000-4000-8000-0000000000a1', 100);
   insert into t_results values ('T42 student cannot write their own resume score', false);
-exception when others then insert into t_results values ('T42 student cannot write their own resume score', true);
+exception when others then insert into t_results values ('T42 student cannot write their own resume score', sqlstate in ('42501', '23514', '23505', '22023', 'P0001', '23503'));
 end $$;
 do $$ begin
   insert into public.job_applications (job_id, user_id, status) values ('d4000000-0000-4000-8000-0000000000d4', 'a1000000-0000-4000-8000-0000000000a1', 'applied');
@@ -255,7 +252,7 @@ set local role authenticated;
 do $$ begin
   insert into public.job_applications (job_id, user_id, status) values ('d4000000-0000-4000-8000-0000000000d4', 'a1000000-0000-4000-8000-0000000000a1', 'applied');
   insert into t_results values ('T45 no applying on placeholder academics', false);
-exception when others then insert into t_results values ('T45 no applying on placeholder academics', true);
+exception when others then insert into t_results values ('T45 no applying on placeholder academics', sqlstate in ('42501', '23514', '23505', '22023', 'P0001', '23503'));
 end $$;
 reset role;
 
@@ -267,12 +264,12 @@ set local role authenticated;
 do $$ begin
   insert into public.credentials (user_id, kind, ref, status, verified_by) values ('a1000000-0000-4000-8000-0000000000a1', 'nptel', 'NPTEL24EE42S99999999', 'verified', 'platform');
   insert into t_results values ('T46 student cannot insert a verified certificate', false);
-exception when others then insert into t_results values ('T46 student cannot insert a verified certificate', true);
+exception when others then insert into t_results values ('T46 student cannot insert a verified certificate', sqlstate in ('42501', '23514', '23505', '22023', 'P0001', '23503'));
 end $$;
 do $$ begin
   perform public.review_credential('ce000000-0000-4000-8000-0000000000ce', true);
   insert into t_results values ('T47 student cannot confirm their own GATE score', false);
-exception when others then insert into t_results values ('T47 student cannot confirm their own GATE score', true);
+exception when others then insert into t_results values ('T47 student cannot confirm their own GATE score', sqlstate in ('42501', '23514', '23505', '22023', 'P0001', '23503'));
 end $$;
 reset role;
 select set_config('request.jwt.claims', '{"sub":"ad000000-0000-4000-8000-0000000000ad","role":"authenticated"}', true);

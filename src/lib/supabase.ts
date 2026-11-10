@@ -185,7 +185,7 @@ const BY_CODE: Record<string, string> = {
 
 export const errMsg = (e: unknown) => {
   const raw = e && typeof e === 'object' && 'message' in e ? String((e as { message: unknown }).message) : 'Something went wrong.'
-  const rule = /^(?:ROSTER_DOMAIN|APPLICATION_STEP|DRIVE_HAS_OUTCOMES): (.+)$/.exec(raw)
+  const rule = /^(?:ROSTER_DOMAIN|APPLICATION_STEP|DRIVE_HAS_OUTCOMES|CREDENTIAL_TAKEN): (.+)$/.exec(raw)
   if (rule) return rule[1]
   const friendly = FRIENDLY.find(([re]) => re.test(raw))?.[1]
   if (friendly) return friendly

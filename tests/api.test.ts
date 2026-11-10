@@ -30,7 +30,7 @@ const { default: signup } = await import('../api/signup')
 const { default: admin } = await import('../api/admin')
 const { default: password } = await import('../api/password')
 const { default: account } = await import('../api/account')
-const { default: connect, sameName } = await import('../api/connect')
+const { default: connect, sameName, sameFullName } = await import('../api/connect')
 const { trustedProfile, provenIntegrations } = await import('../src/lib/trust')
 const { evaluateAll } = await import('../src/lib/eligibility')
 
@@ -180,6 +180,16 @@ test('SEC-09 Credly compares the roster name, not the editable profile name', as
   calls = []
   reply = credlyReply('Real Student', 'Real Student')
   assert.equal(((await (await connect(post({ platform: 'credly', username: 'c' }, jwt({ sub: uid })))).json()) as any).proven, true)
+})
+test('W3-1 a partial or initial-based name does not prove a Credly account', async () => {
+  for (const [holder, roster] of [['Rahul', 'Rahul Kumar'], ['Rahul Kumar Sharma', 'Rahul Kumar'], ['Rahul Kumar', 'R Kumar'], ['A Kumar', 'Arjun Kumar']]) {
+    calls = []
+    reply = credlyReply(roster, holder)
+    const res = await connect(post({ platform: 'credly', username: 'c' }, jwt({ sub: uid })))
+    assert.equal(res.status, 422, `${holder} vs ${roster}`)
+  }
+  assert.ok(sameFullName('Kumar Rahul', 'rahul kumar'))
+  assert.ok(!sameFullName('R Kumar', 'R Kumar'))
 })
 test('SEC-09 a missing roster name fails closed', async () => {
   reply = credlyReply(null, 'Anyone')

@@ -3,6 +3,13 @@ on:
   push:
     branches: [main]
   pull_request:
+  schedule:
+    # Weekly, so a new advisory is seen even when nothing is pushed.
+    - cron: '0 3 * * 1'
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -10,9 +17,10 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
           cache: npm
@@ -20,17 +28,18 @@ jobs:
       - name: Typecheck and build
         run: npm run build
       - name: Entry chunk stays free of three and GSAP
-        run: |
-          if grep -lE 'from "\./(three|gsap)|"\./(three|gsap)[^"]*\.js"' dist/assets/index-*.js; then
-            echo "Entry chunk imports three or GSAP"; exit 1
-          fi
+        run: node scripts/check-entry.mjs
       - name: API and ranking tests
         run: npm run test:unit
       - name: Dependency advisories (production, high and above)
         run: npm audit --omit=dev --audit-level=high
+      - name: Development tool advisories (reported, not blocking)
+        run: npm audit --audit-level=high || echo "::warning::Development dependencies have high advisories"
+        continue-on-error: true
 
   database:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     services:
       postgres:
         image: postgres:16
@@ -43,8 +52,8 @@ jobs:
       PGHOST: localhost
       PGUSER: postgres
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
       - name: Replay migrations and run access tests
@@ -52,10 +61,15 @@ jobs:
 
   secrets:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           fetch-depth: 0
-      - uses: gitleaks/gitleaks-action@v2
+      - uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7 # v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_COMMENTS: false
