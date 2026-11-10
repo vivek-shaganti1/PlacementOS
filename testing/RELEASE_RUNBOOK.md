@@ -29,7 +29,7 @@ What it changes in existing data:
 | Custom SMTP | **On** | Every self-registration is now an email. The built-in sender allows only a few per hour, so registration fails without this. |
 | Secure password change | On | Stops a stolen session changing the password through the API. |
 | Leaked password protection, minimum length 10 | On | Matches the app. |
-| Backups | Confirm, and do one restore drill | No backup claim is verified. |
+| Backups | Add the two secrets in `testing/BACKUPS.md` and run *Database backup* once | Free plan has no restorable backups; the nightly workflow restores each backup to prove it. |
 | Auth, URL configuration, Redirect URLs | Include `https://<your site>/reset-password` | Otherwise invited users are signed in without ever choosing a password (seen in local full-stack testing). |
 
 Optional, for networks that block `*.supabase.co`: change the invite email template to link to `{{ .SiteURL }}/reset-password?token_hash={{ .TokenHash }}&type=invite`.
