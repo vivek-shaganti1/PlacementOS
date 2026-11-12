@@ -329,3 +329,27 @@ button, [role='button'], [role='tab'] { -webkit-user-select: none; user-select: 
 .legal-body ul { list-style: none; display: grid; gap: .4rem; }
 .legal-body li { position: relative; padding-left: 1rem; }
 .legal-body li::before { content: ''; position: absolute; left: 0; top: .7em; width: 6px; height: 6px; border-radius: 999px; background: oklch(0.6 0.22 285); }
+
+/* Landing hero: a slowly turning colour halo behind the live board (transform only; still for reduced motion). */
+.hero-halo {
+  overflow: hidden;
+  filter: blur(24px);
+  opacity: 0.55;
+}
+.hero-halo::before {
+  content: '';
+  position: absolute;
+  inset: -50%;
+  background: conic-gradient(from 0deg, #6d4aff, #38bdf8, #8ef5d9, #f7b955, #6d4aff);
+  animation: hero-halo-spin 10s linear infinite;
+}
+@keyframes hero-halo-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-halo::before {
+    animation: none;
+  }
+}
