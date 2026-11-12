@@ -3,6 +3,7 @@ import { useEffect, useRef, type PointerEvent, type ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { navMeta } from './Sidebar'
+import { LiveBadge } from './LiveBadge'
 
 export { Aurora } from './effects/Aurora'
 
@@ -50,6 +51,7 @@ export function Page({ title, accent, subtitle, children, wide, actions }: { tit
             </h1>
             {subtitle && <p className="mt-1 max-w-[680px] text-[13px] text-ink-mute">{subtitle}</p>}
           </div>
+          <LiveBadge />
           {actions}
         </div>
         <div className="mt-6 space-y-4">{children}</div>
