@@ -3,5 +3,6 @@
   "10055": "CSP style-src 'unsafe-inline': the prerendered public pages carry React style attributes, and Motion animates inline styles. script-src stays 'self' (no inline script), which is what protects against XSS. Reviewed 2026-11-12.",
   "10099": "'Source Code Disclosure - SQL' is the deliberate policy snippet shown in the landing page's Trust section (src/components/landing/Trust.tsx), not leaked source. Reviewed 2026-11-12.",
   "90004": "Cross-Origin-Embedder-Policy: require-corp would block avatars served from Supabase Storage and GitHub. The app does not use SharedArrayBuffer, which is what COEP protects. Reviewed 2026-11-12.",
-  "10036": "The 'Server' header on /supabase/ comes from the local Supabase gateway behind the proxy in CI; production answers from Supabase's own edge. Reviewed 2026-11-12."
+  "10036": "The 'Server' header on /supabase/ comes from the local Supabase gateway behind the proxy in CI; production answers from Supabase's own edge. Reviewed 2026-11-12.",
+  "10098": "Cross-Domain Misconfiguration on /auth/v1/* is Supabase Auth's own wildcard CORS (the local stack's gateway in CI; production Supabase does the same). Sessions are sent as bearer tokens in headers, never as cookies, so another origin cannot act with a visitor's login. Our own pages and /api set no CORS headers. Reviewed 2026-11-12."
 }
