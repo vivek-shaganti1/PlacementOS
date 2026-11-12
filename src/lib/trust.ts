@@ -2,7 +2,7 @@
 // their own planning, but only evidence the server fetched from accounts they proved are theirs, confirmed credentials and
 // academics reach a ranking (docs/EVIDENCE.md). Academics are the college's, or the student's own entry locked at onboarding.
 import { skillsFor } from './branches'
-import type { Credential, Integrations, Profile } from './supabase'
+import type { Credential, Integrations, Profile } from './types'
 import { allEvidence } from './verify'
 
 /** The connected accounts whose owner proved them. Stats from any other account are the student's claim, not evidence. */

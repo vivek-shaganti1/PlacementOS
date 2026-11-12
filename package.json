@@ -13,7 +13,8 @@
     "test:pgtap": "supabase test db supabase/tests/pgtap",
     "test:e2e": "playwright test",
     "stack:seed": "node scripts/e2e-seed.mjs",
-    "stack:serve": "node scripts/serve-prod.mjs"
+    "stack:serve": "node scripts/serve-prod.mjs",
+    "check:shared": "node scripts/check-shared.mjs"
   },
   "dependencies": {
     "@fontsource-variable/geist": "5.3.0",

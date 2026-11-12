@@ -1,5 +1,5 @@
 // Derives skill levels from verifiable evidence: coding-platform stats, GitHub repos and the parsed resume.
-import type { Credential, Integrations, ResumeAnalysis } from './supabase'
+import type { Credential, Integrations, ResumeAnalysis } from './types'
 import { FILE_SIGNALS, SKILL_BY_NAME } from './branches'
 
 export type Evidence = { level: number; sources: string[] }

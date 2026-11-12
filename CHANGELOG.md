@@ -5,6 +5,9 @@ Semantic versioning; see `docs/ENGINEERING.md` for how releases are made.
 ## Unreleased
 
 ### Added
+- **Mobile app scaffold** (`mobile/`, Expo SDK 58) for iOS and Android: student sign-in, readiness, drives and account,
+  using the website's own scoring code. Includes a release workflow for store builds and over-the-air updates. Not yet
+  in the stores; see `docs/MOBILE.md`.
 - Landing hero: the eligibility board now plays a live loop. The assistant names a fix, a scan sweeps the board and
   that company moves up a column while readiness and the resume score follow. It also has a cursor spotlight, a tilt
   sheen, depth layers and a turning halo. It pauses off-screen and stays still for reduced motion.
