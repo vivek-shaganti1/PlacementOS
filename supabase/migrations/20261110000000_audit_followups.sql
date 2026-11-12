@@ -12,7 +12,7 @@ begin;
 -- ---------------------------------------------------------------------------
 -- W1-1
 -- ---------------------------------------------------------------------------
-create or replace function private.belongs_elsewhere(em text, target_org uuid)
+create or replace   function private.belongs_elsewhere(em text, target_org uuid)
 returns boolean
 language sql
 stable
