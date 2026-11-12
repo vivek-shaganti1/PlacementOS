@@ -5,7 +5,8 @@
 // Reads the local stack's URL, keys and database URL from `supabase status`. Refuses anything that is not on
 // 127.0.0.1/localhost, so it can never write to a hosted project. Accounts come from tests/e2e/accounts.json.
 import { execFileSync } from 'node:child_process'
-import { readFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { totp } from './totp.mjs'
 
 const A = JSON.parse(readFileSync('tests/e2e/accounts.json', 'utf8'))
 const status = JSON.parse(execFileSync('supabase', ['status', '-o', 'json'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }))
@@ -68,6 +69,29 @@ for (const [key, email] of Object.entries({ super: A.super, admin: A.admin, recr
   ids[key] = await createUser(email)
 }
 
+// 2b. Two-factor sign-in for the platform admin and the first college's placement cell, through the same Auth endpoints
+// the app uses. The other college's admin is left without, so the browser tests can walk through first-time setup.
+const anon = status.PUBLISHABLE_KEY || status.ANON_KEY
+async function passwordToken(email) {
+  const r = await fetch(`${api}/auth/v1/token?grant_type=password`, { method: 'POST', headers: { apikey: anon, 'content-type': 'application/json' }, body: JSON.stringify({ email, password: A.password }) })
+  const b = await r.json()
+  if (!r.ok) throw new Error(`sign in ${email}: ${r.status} ${JSON.stringify(b)}`)
+  return b.access_token
+}
+const secrets = {}
+for (const email of [A.super, A.admin]) {
+  const token = await passwordToken(email)
+  const h = { apikey: anon, authorization: `Bearer ${token}`, 'content-type': 'application/json' }
+  const f = await (await fetch(`${api}/auth/v1/factors`, { method: 'POST', headers: h, body: JSON.stringify({ factor_type: 'totp', friendly_name: 'Seeded authenticator' }) })).json()
+  if (!f.id) throw new Error(`enroll ${email}: ${JSON.stringify(f)}`)
+  const c = await (await fetch(`${api}/auth/v1/factors/${f.id}/challenge`, { method: 'POST', headers: h, body: '{}' })).json()
+  const v = await fetch(`${api}/auth/v1/factors/${f.id}/verify`, { method: 'POST', headers: h, body: JSON.stringify({ challenge_id: c.id, code: totp(f.totp.secret) }) })
+  if (!v.ok) throw new Error(`verify ${email}: ${v.status} ${await v.text()}`)
+  secrets[email] = f.totp.secret
+}
+mkdirSync('tests/e2e/.state', { recursive: true })
+writeFileSync('tests/e2e/.state/totp.json', JSON.stringify(secrets, null, 2))
+
 // 3. A finished onboarding for the main student, drives and an application.
 sql(`
 update public.profiles set onboarded_at = now(), target_roles = 'Software Engineer', phone = '9000000001'
@@ -87,11 +111,7 @@ from public.organizations where name = ${q(A.otherCollege.name)};
 `)
 
 // Applying goes through the student's own session, so the eligibility trigger runs as it does in the app.
-const login = await fetch(`${api}/auth/v1/token?grant_type=password`, {
-  method: 'POST',
-  headers: { apikey: status.PUBLISHABLE_KEY || status.ANON_KEY, 'content-type': 'application/json' },
-  body: JSON.stringify({ email: A.student, password: A.password }),
-}).then((r) => r.json())
+const login = { access_token: await passwordToken(A.student) }
 const drive = sql(`select id from public.job_postings where company = 'Acme Systems'`)
 const applied = await fetch(`${api}/rest/v1/job_applications`, {
   method: 'POST',
@@ -100,7 +120,7 @@ const applied = await fetch(`${api}/rest/v1/job_applications`, {
 })
 if (!applied.ok) throw new Error(`apply: ${applied.status} ${await applied.text()}`)
 
-console.log(sql(`select format('roles=%s students=%s linked=%s drives=%s applications=%s',
-  (select count(*) from public.user_roles), (select count(*) from public.org_students),
+console.log(sql(`select format('factors=%s roles=%s students=%s linked=%s drives=%s applications=%s',
+  (select count(*) from auth.mfa_factors where status = 'verified'), (select count(*) from public.user_roles), (select count(*) from public.org_students),
   (select count(*) from public.org_students where user_id is not null), (select count(*) from public.job_postings),
   (select count(*) from public.job_applications))`))

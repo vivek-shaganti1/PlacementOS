@@ -44,7 +44,7 @@ insert into t_results values ('T05 roles assigned at sign-up', (
      and (select org_id from public.profiles where id = 'b1000000-0000-4000-8000-0000000000b1') = '0b000000-0000-4000-8000-00000000000b'));
 
 -- ---------------------------------------------------------------- as Student A
-select set_config('request.jwt.claims', '{"sub":"a1000000-0000-4000-8000-0000000000a1","role":"authenticated"}', true);
+select set_config('request.jwt.claims', '{"sub":"a1000000-0000-4000-8000-0000000000a1","role":"authenticated","aal":"aal2"}', true);
 set local role authenticated;
 insert into t_results values ('T06 student sees only own profile', (select count(*) = 1 from public.profiles));
 insert into t_results values ('T07 student sees only own college drives', (
@@ -68,7 +68,7 @@ end $$;
 reset role;
 
 -- ---------------------------------------------------------------- as Anurag placement cell
-select set_config('request.jwt.claims', '{"sub":"ad000000-0000-4000-8000-0000000000ad","role":"authenticated"}', true);
+select set_config('request.jwt.claims', '{"sub":"ad000000-0000-4000-8000-0000000000ad","role":"authenticated","aal":"aal2"}', true);
 set local role authenticated;
 insert into t_results values ('T12 placement cell sees its own students only', (
   select bool_and(org_id = (select id from public.organizations where name = 'Anurag University')) and count(*) >= 1 from public.profiles where id <> 'ad000000-0000-4000-8000-0000000000ad'));
@@ -87,7 +87,7 @@ end $$;
 reset role;
 
 -- ---------------------------------------------------------------- as recruiter
-select set_config('request.jwt.claims', '{"sub":"cc000000-0000-4000-8000-0000000000cc","role":"authenticated"}', true);
+select set_config('request.jwt.claims', '{"sub":"cc000000-0000-4000-8000-0000000000cc","role":"authenticated","aal":"aal2"}', true);
 set local role authenticated;
 insert into t_results values ('T16 recruiter sees only own drives', (select count(*) = 1 and bool_and(company = 'Acme') from public.job_postings));
 insert into t_results values ('T17 recruiter sees only applicants to own drives', (
@@ -105,7 +105,7 @@ reset role;
 -- ---------------------------------------------------------------- October 2026 audit: exploit attempts must fail
 insert into private.platform_admin_emails (email) values ('pending.boss@platform.example');
 -- recruiter: rewrite an application's student to read someone else
-select set_config('request.jwt.claims', '{"sub":"cc000000-0000-4000-8000-0000000000cc","role":"authenticated"}', true);
+select set_config('request.jwt.claims', '{"sub":"cc000000-0000-4000-8000-0000000000cc","role":"authenticated","aal":"aal2"}', true);
 set local role authenticated;
 do $$ begin
   update public.job_applications set user_id = 'b1000000-0000-4000-8000-0000000000b1' where job_id = 'd1000000-0000-4000-8000-0000000000d1';
@@ -116,7 +116,7 @@ insert into t_results values ('T21 recruiter cannot see a student of another col
 reset role;
 
 -- placement cell: point a drive at itself as recruiter, and move an application
-select set_config('request.jwt.claims', '{"sub":"ad000000-0000-4000-8000-0000000000ad","role":"authenticated"}', true);
+select set_config('request.jwt.claims', '{"sub":"ad000000-0000-4000-8000-0000000000ad","role":"authenticated","aal":"aal2"}', true);
 set local role authenticated;
 do $$ begin
   update public.job_postings set recruiter_id = 'ad000000-0000-4000-8000-0000000000ad' where id = 'd1000000-0000-4000-8000-0000000000d1';
@@ -142,7 +142,7 @@ update public.job_postings set min_cgpa = 9.9 where id = 'd2000000-0000-4000-800
 update public.profiles set cgpa = 7.2, backlogs = 0, class_x = 80, class_xii = 78, academics_source = 'student' where id = 'a1000000-0000-4000-8000-0000000000a1';
 insert into public.job_postings (id, org_id, company, role, location, job_type, description, min_cgpa, max_backlogs, min_class_x, min_class_xii, min_internships, min_projects, branches, batches, skill_requirements, status)
 values ('d3000000-0000-4000-8000-0000000000d3', (select id from public.organizations where name = 'Anurag University'), 'HardCo', 'SDE', 'x', 'Full Time', 'x', 9.99, 0, 0, 0, 0, 0, '{}', '{}', '{}', 'open');
-select set_config('request.jwt.claims', '{"sub":"a1000000-0000-4000-8000-0000000000a1","role":"authenticated"}', true);
+select set_config('request.jwt.claims', '{"sub":"a1000000-0000-4000-8000-0000000000a1","role":"authenticated","aal":"aal2"}', true);
 set local role authenticated;
 do $$ begin
   update public.job_applications set ai_fit = 100 where user_id = 'a1000000-0000-4000-8000-0000000000a1';
@@ -167,7 +167,7 @@ reset role;
 
 -- suspended college: AI refused
 update public.organizations set status = 'suspended', ai_monthly_limit = 50 where name = 'Anurag University';
-select set_config('request.jwt.claims', '{"sub":"a1000000-0000-4000-8000-0000000000a1","role":"authenticated"}', true);
+select set_config('request.jwt.claims', '{"sub":"a1000000-0000-4000-8000-0000000000a1","role":"authenticated","aal":"aal2"}', true);
 set local role authenticated;
 do $$ begin
   perform public.consume_ai('chat');
@@ -184,7 +184,7 @@ update public.organizations set status = 'active' where name = 'Anurag Universit
 
 -- private profile hidden from the drive's recruiter
 update public.profiles set visibility = 'private' where id = 'a1000000-0000-4000-8000-0000000000a1';
-select set_config('request.jwt.claims', '{"sub":"cc000000-0000-4000-8000-0000000000cc","role":"authenticated"}', true);
+select set_config('request.jwt.claims', '{"sub":"cc000000-0000-4000-8000-0000000000cc","role":"authenticated","aal":"aal2"}', true);
 set local role authenticated;
 insert into t_results values ('T36 private profile hidden from the recruiter', (select count(*) = 0 from public.profiles where id = 'a1000000-0000-4000-8000-0000000000a1'));
 reset role;
@@ -197,13 +197,13 @@ insert into t_results values ('T37 sign-up limiter blocks the 6th attempt for on
 
 -- notifications: real events still notify; students cannot fabricate one
 update public.profiles set visibility = 'college' where id = 'a1000000-0000-4000-8000-0000000000a1';
-select set_config('request.jwt.claims', '{"sub":"cc000000-0000-4000-8000-0000000000cc","role":"authenticated"}', true);
+select set_config('request.jwt.claims', '{"sub":"cc000000-0000-4000-8000-0000000000cc","role":"authenticated","aal":"aal2"}', true);
 set local role authenticated;
 update public.job_applications set status = 'shortlisted' where job_id = 'd1000000-0000-4000-8000-0000000000d1' and user_id = 'a1000000-0000-4000-8000-0000000000a1';
 reset role;
 insert into t_results values ('T38 a status change by the recruiter still notifies the student', (
   select count(*) = 1 from public.notifications where user_id = 'a1000000-0000-4000-8000-0000000000a1' and text ilike '%shortlisted%'));
-select set_config('request.jwt.claims', '{"sub":"a1000000-0000-4000-8000-0000000000a1","role":"authenticated"}', true);
+select set_config('request.jwt.claims', '{"sub":"a1000000-0000-4000-8000-0000000000a1","role":"authenticated","aal":"aal2"}', true);
 set local role authenticated;
 do $$ begin
   insert into public.notifications (user_id, text, link) values ('a1000000-0000-4000-8000-0000000000a1', 'Offer!', '/jobs');
@@ -217,7 +217,7 @@ reset role;
 update public.profiles set cgpa = 7.2, backlogs = 0, class_x = 80, class_xii = 78, academics_source = 'student' where id = 'a1000000-0000-4000-8000-0000000000a1';
 insert into public.job_postings (id, org_id, company, role, location, job_type, description, min_cgpa, max_backlogs, min_class_x, min_class_xii, min_internships, min_projects, branches, batches, skill_requirements, status)
 values ('d4000000-0000-4000-8000-0000000000d4', (select id from public.organizations where name = 'Anurag University'), 'EasyCo', 'SDE', 'x', 'Full Time', 'x', 6, 1, 50, 50, 0, 0, '{}', '{}', '{}', 'open');
-select set_config('request.jwt.claims', '{"sub":"a1000000-0000-4000-8000-0000000000a1","role":"authenticated"}', true);
+select set_config('request.jwt.claims', '{"sub":"a1000000-0000-4000-8000-0000000000a1","role":"authenticated","aal":"aal2"}', true);
 set local role authenticated;
 do $$ begin
   update public.profiles set cgpa = 10 where id = 'a1000000-0000-4000-8000-0000000000a1';
@@ -247,7 +247,7 @@ insert into t_results values ('T44 roster academics override and are marked veri
 -- A student who never entered academics cannot apply on the placeholder values.
 update public.profiles set academics_source = 'default' where id = 'a1000000-0000-4000-8000-0000000000a1';
 delete from public.job_applications where job_id = 'd4000000-0000-4000-8000-0000000000d4';
-select set_config('request.jwt.claims', '{"sub":"a1000000-0000-4000-8000-0000000000a1","role":"authenticated"}', true);
+select set_config('request.jwt.claims', '{"sub":"a1000000-0000-4000-8000-0000000000a1","role":"authenticated","aal":"aal2"}', true);
 set local role authenticated;
 do $$ begin
   insert into public.job_applications (job_id, user_id, status) values ('d4000000-0000-4000-8000-0000000000d4', 'a1000000-0000-4000-8000-0000000000a1', 'applied');
@@ -259,7 +259,7 @@ reset role;
 -- credentials (migration 20261025000000): server-written, reviewed only by the placement cell
 insert into public.credentials (id, user_id, kind, ref, title, score, status, data)
 values ('ce000000-0000-4000-8000-0000000000ce', 'a1000000-0000-4000-8000-0000000000a1', 'gate', 'EC25S00000001', 'GATE 2025', 640, 'pending', '{"paper":"EC"}');
-select set_config('request.jwt.claims', '{"sub":"a1000000-0000-4000-8000-0000000000a1","role":"authenticated"}', true);
+select set_config('request.jwt.claims', '{"sub":"a1000000-0000-4000-8000-0000000000a1","role":"authenticated","aal":"aal2"}', true);
 set local role authenticated;
 do $$ begin
   insert into public.credentials (user_id, kind, ref, status, verified_by) values ('a1000000-0000-4000-8000-0000000000a1', 'nptel', 'NPTEL24EE42S99999999', 'verified', 'platform');
@@ -272,7 +272,7 @@ do $$ begin
 exception when others then insert into t_results values ('T47 student cannot confirm their own GATE score', sqlstate = '42501');
 end $$;
 reset role;
-select set_config('request.jwt.claims', '{"sub":"ad000000-0000-4000-8000-0000000000ad","role":"authenticated"}', true);
+select set_config('request.jwt.claims', '{"sub":"ad000000-0000-4000-8000-0000000000ad","role":"authenticated","aal":"aal2"}', true);
 set local role authenticated;
 do $$ begin
   perform public.review_credential('ce000000-0000-4000-8000-0000000000ce', true);

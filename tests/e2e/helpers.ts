@@ -1,5 +1,7 @@
 import { expect, type Page } from '@playwright/test'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
+// @ts-expect-error plain ESM helper shared with the seed script
+import { totp } from '../../scripts/totp.mjs'
 
 export const accounts = JSON.parse(readFileSync('tests/e2e/accounts.json', 'utf8'))
 export const roles = ['student', 'admin', 'recruiter', 'super'] as const
@@ -28,7 +30,25 @@ export async function signIn(page: Page, email: string) {
   await page.locator('input[type="email"]').fill(email)
   await page.locator('input[type="password"]').fill(accounts.password)
   await page.getByRole('button', { name: 'Sign in' }).click()
-  await page.waitForURL((u) => !u.pathname.startsWith('/login'), { timeout: 20_000 })
+  // Admins with an authenticator app are asked for a code next, on the same address (secrets from scripts/e2e-seed.mjs).
+  const secret = secrets()[email]
+  if (secret) {
+    await page.getByRole('heading', { name: 'Enter your sign-in code' }).waitFor({ timeout: 20_000 })
+    await enterCode(page, secret)
+  }
+  await page.waitForURL((u) => !u.pathname.startsWith('/login'), { timeout: 20_000 }).catch(() => {})
+  await page.getByRole('heading', { name: /^(Welcome back|Enter your sign-in code)$/ }).waitFor({ state: 'detached', timeout: 20_000 }).catch(() => {})
+}
+
+export const secrets = (): Record<string, string> =>
+  existsSync('tests/e2e/.state/totp.json') ? JSON.parse(readFileSync('tests/e2e/.state/totp.json', 'utf8')) : {}
+
+/** Types the current code, waiting out the last seconds of a 30-second window so the code cannot expire mid-check. */
+export async function enterCode(page: Page, secret: string) {
+  if (Date.now() % 30_000 > 26_000) await page.waitForTimeout(30_000 - (Date.now() % 30_000) + 500)
+  await page.getByLabel('Code from your authenticator app').fill(totp(secret))
+  await page.getByRole('button', { name: /continue|turn on two-factor/i }).click()
+  await page.getByRole('heading', { name: /sign-in code|two-factor/i }).waitFor({ state: 'detached', timeout: 20_000 })
 }
 
 /** The page has settled: the shell is drawn and nothing is still loading. */

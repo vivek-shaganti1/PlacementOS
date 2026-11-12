@@ -5,7 +5,7 @@ grant insert, select on t_results to authenticated;
 
 create function pg_temp.as_user(uid text, pending boolean default false) returns void language plpgsql as $$
 begin
-  perform set_config('request.jwt.claims', json_build_object('sub', uid, 'role', 'authenticated', 'app_metadata', json_build_object('must_change_password', pending))::text, true);
+  perform set_config('request.jwt.claims', json_build_object('sub', uid, 'role', 'authenticated', 'aal', 'aal2', 'app_metadata', json_build_object('must_change_password', pending))::text, true);
 end $$;
 create function pg_temp.ok(n text, v boolean) returns void language sql as $$ insert into t_results values (n, coalesce(v, false)) $$;
 

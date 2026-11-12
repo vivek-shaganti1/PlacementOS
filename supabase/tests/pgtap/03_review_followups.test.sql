@@ -25,7 +25,7 @@ values ('00000000-0000-4000-b000-0000000000c1', '00000000-0000-0000-0000-0000000
 update auth.users set email_confirmed_at = now() where id = '00000000-0000-4000-b000-0000000000c1';
 
 set local role authenticated;
-select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-b000-0000000000c1","role":"authenticated"}', true);
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-b000-0000000000c1","role":"authenticated","aal":"aal2"}', true);
 
 select throws_ok(
   $$update public.profiles set resume_path = '00000000-0000-4000-b000-0000000000c1/../00000000-0000-4000-b000-000000000002/cv.pdf' where id = '00000000-0000-4000-b000-0000000000c1'$$,
@@ -45,7 +45,7 @@ select lives_ok(
 );
 
 -- A token for an account that no longer exists.
-select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-b000-0000000000dd","role":"authenticated"}', true);
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-b000-0000000000dd","role":"authenticated","aal":"aal2"}', true);
 select throws_ok(
   $$insert into storage.objects (bucket_id, name, owner_id) values ('resumes', '00000000-0000-4000-b000-0000000000dd/cv.pdf', '00000000-0000-4000-b000-0000000000dd')$$,
   '42501', null, 'a deleted account''s token cannot upload files'

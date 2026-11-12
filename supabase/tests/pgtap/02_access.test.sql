@@ -37,7 +37,7 @@ select throws_ok(
 
 -- As student one.
 set local role authenticated;
-select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-b000-000000000001","role":"authenticated"}', true);
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-b000-000000000001","role":"authenticated","aal":"aal2"}', true);
 
 select is((select count(*)::int from public.profiles), 1, 'a student sees exactly one profile: their own');
 select is((select count(*)::int from public.org_students), 0, 'a student cannot read the roster');
@@ -56,7 +56,7 @@ select is((select full_name from public.profiles where id = '00000000-0000-4000-
 set local role authenticated;
 
 -- As college A's admin.
-select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-b000-00000000000a","role":"authenticated"}', true);
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-4000-b000-00000000000a","role":"authenticated","aal":"aal2"}', true);
 select is((select count(*)::int from public.org_students where email like '%@tap_.test'), 1, 'an admin reads only their own college''s roster');
 select is((select count(*)::int from public.profiles where id = '00000000-0000-4000-b000-000000000002'), 0, 'an admin cannot read another college''s student');
 select throws_ok(

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { Card, Page } from '../components/Page'
+import { TwoFactorCard } from '../components/TwoFactorCard'
 import { callApi } from '../lib/api'
 import { useAuth, useProfile } from '../lib/auth'
 import { useApp } from '../lib/store'
@@ -76,7 +77,7 @@ export default function Settings() {
         </div>
       </Card>
 
-      <Card title="Profile visibility">
+      {role === 'student' && <Card title="Profile visibility">
         <div className="space-y-2">
           {([['college', 'My placement cell, and recruiters of drives I apply to'], ['recruiters', 'My placement cell and recruiters (same as above today)'], ['private', 'Only me and my placement cell (hidden from recruiters, even for drives I apply to)']] as const).map(([v, label]) => (
             <label key={v} className="flex cursor-pointer items-center gap-2.5 rounded-[9px] px-2 py-2 hover:bg-[#f7f8fa]">
@@ -92,7 +93,7 @@ export default function Settings() {
         >
           Save preferences
         </button>
-      </Card>
+      </Card>}
 
       <Card title="Security">
         <div className="grid max-w-[520px] grid-cols-1 gap-3 sm:grid-cols-2">
@@ -118,6 +119,8 @@ export default function Settings() {
           </button>
         </div>
       </Card>
+
+      {(role === 'super' || role === 'org') && <TwoFactorCard />}
 
       {canDelete && (
         <Card title="Delete your account">

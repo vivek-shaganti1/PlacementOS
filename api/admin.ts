@@ -3,7 +3,7 @@
 // random password per person instead of emailing), people: [{ email, full_name?, roll_number?, branch?, batch? }] }
 // The caller must be the super admin or an admin of org_id. Roster rows are written as the caller (RLS applies);
 // only the invite email itself uses the secret key, which never leaves the server.
-import { bearer, env, handle, HttpError, json, rest, SUPABASE_URL, timeout, tokenSubject } from './_lib'
+import { bearer, env, handle, HttpError, json, rest, SUPABASE_URL, timeout, tokenClaims, tokenSubject } from './_lib'
 
 export const config = { runtime: 'edge' }
 
@@ -116,6 +116,9 @@ export default handle(async (req) => {
   if (body.action !== 'invite') throw new HttpError(400, 'Unknown action')
   const role = body.role === 'platform_admin' ? 'platform_admin' : body.role === 'org_admin' ? 'org_admin' : body.role === 'recruiter' ? 'recruiter' : 'student'
   const roles = await callerRoles(token)
+  // Admin powers need a two-factor session (the database refuses them otherwise; 20261113). The roles read above went
+  // through Supabase, so the token, and its "aal" claim, has been checked.
+  if (tokenClaims(token).aal !== 'aal2') throw new HttpError(403, 'Enter the code from your authenticator app first.')
   const isSuper = roles.some((r) => r.role === 'super_admin')
   const orgId = clip(body.org_id, 40)
   if (role === 'platform_admin') {

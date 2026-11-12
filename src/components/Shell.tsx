@@ -60,6 +60,8 @@ function RoleRoutes() {
     <Route key="root" path="/" element={<Navigate to={home} replace />} />,
     <Route key="login" path="/login" element={<Navigate to={home} replace />} />,
     <Route key="signup" path="/signup" element={<Navigate to={home} replace />} />,
+    // Every account can change its password and sign out; admins also manage their authenticator apps there.
+    <Route key="settings" path="/settings" element={<Settings />} />,
     <Route key="any" path="*" element={<Navigate to={home} replace />} />,
   ]
   if (role === 'super')
@@ -112,7 +114,6 @@ function RoleRoutes() {
       <Route path="/analytics" element={<Analytics />} />
       <Route path="/resume" element={<ResumeAnalyzer />} />
       <Route path="/certifications" element={<Certifications />} />
-      <Route path="/settings" element={<Settings />} />
       <Route path="/help" element={<Help />} />
       <Route path="/jobs" element={<Jobs />} />
       {common}

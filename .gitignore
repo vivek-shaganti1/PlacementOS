@@ -144,3 +144,4 @@ test-results/
 playwright-report/
 .lighthouseci/
 zap-report/
+tests/e2e/.state/
