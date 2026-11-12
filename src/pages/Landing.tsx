@@ -1,8 +1,7 @@
-import { AnimatePresence, motion, useMotionValue, useMotionValueEvent, useReducedMotion, useScroll, useSpring, useTransform, type Variants } from 'motion/react'
+import { AnimatePresence, motion, useMotionValueEvent, useReducedMotion, useScroll, type Variants } from 'motion/react'
 import { lazy, Suspense, useEffect, useRef, useState, type FormEvent, type ReactNode } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Logo, LogoMark } from '../components/Logo'
-import { AnimatedValue } from '../components/Page'
 import { SkipLink } from '../components/SkipLink'
 import { Aurora } from '../components/effects/Aurora'
 import { companyCatalog } from '../data/companies'
@@ -15,6 +14,7 @@ import { CursorFollower, Magnetic, ScrollHighlight, ScrollProgress, SmoothScroll
 import { intensity, useMotionTier } from '../lib/motion'
 import { usd, PLANS } from '../lib/pricing'
 import { Features } from '../components/landing/Features'
+import { HeroPreview } from '../components/landing/HeroPreview'
 import { HowItWorks } from '../components/landing/HowItWorks'
 import { MegaFooter } from '../components/landing/MegaFooter'
 import { Trust } from '../components/landing/Trust'
@@ -92,113 +92,6 @@ function Section({ id, children, className }: { id?: string; children: ReactNode
     <motion.section id={id} initial="hidden" whileInView="show" viewport={{ once: true, margin: '-80px' }} variants={stagger} className={`relative mx-auto max-w-[1160px] px-6 ${className ?? ''}`}>
       {children}
     </motion.section>
-  )
-}
-
-/* ---------------------------------------------------------------- hero product preview */
-const previewCompanies = companyCatalog.filter((c) => ['Google', 'Microsoft', 'Amazon', 'Atlassian', 'Goldman Sachs', 'Uber', 'NVIDIA', 'Infosys', 'Zoho', 'Razorpay', 'Databricks', 'Jane Street'].includes(c.name))
-const buckets = [
-  { name: 'Eligible', color: '#12b76a', items: ['Infosys', 'Zoho', 'Razorpay'] },
-  { name: 'Nearly', color: '#f79009', items: ['Atlassian', 'Goldman Sachs', 'Uber'] },
-  { name: 'Can become', color: '#2e90fa', items: ['Google', 'Microsoft', 'Amazon'] },
-  { name: 'Stretch', color: '#f04438', items: ['NVIDIA', 'Databricks', 'Jane Street'] },
-]
-
-function ProductPreview() {
-  const reduce = useReducedMotion()
-  const mx = useMotionValue(0)
-  const my = useMotionValue(0)
-  const rx = useSpring(useTransform(my, [-0.5, 0.5], [6, -6]), { stiffness: 120, damping: 18 })
-  const ry = useSpring(useTransform(mx, [-0.5, 0.5], [-8, 8]), { stiffness: 120, damping: 18 })
-
-  return (
-    <motion.div
-      onPointerMove={(e) => {
-        if (reduce) return
-        const r = e.currentTarget.getBoundingClientRect()
-        mx.set((e.clientX - r.left) / r.width - 0.5)
-        my.set((e.clientY - r.top) / r.height - 0.5)
-      }}
-      onPointerLeave={() => {
-        mx.set(0)
-        my.set(0)
-      }}
-      style={{ rotateX: rx, rotateY: ry, transformPerspective: 1400 }}
-      initial={{ opacity: 0, y: 40, scale: 0.96 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ duration: 1, delay: 0.25, ease }}
-      className="gradient-border relative rounded-[26px]"
-    >
-      <div className="glass-strong overflow-hidden rounded-[26px]">
-        <div className="flex items-center gap-1.5 border-b border-line px-4 py-3">
-          {['#ff5f57', '#febc2e', '#28c840'].map((c) => <span key={c} className="h-2.5 w-2.5 rounded-full" style={{ background: c }} />)}
-          <span className="ml-3 rounded-full bg-white/70 px-3 py-0.5 text-[10.5px] text-ink-faint">placementiq.app/eligibility</span>
-        </div>
-        <div className="grid grid-cols-1 gap-3 p-4 sm:grid-cols-[1fr_150px]">
-          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-4">
-            {buckets.map((b, bi) => (
-              <div key={b.name}>
-                <div className="rounded-[12px] px-2 py-2 text-center" style={{ background: `${b.color}14`, border: `1px solid ${b.color}33` }}>
-                  <p className="text-[10.5px] font-semibold" style={{ color: b.color }}>{b.name}</p>
-                </div>
-                {b.items.map((name, i) => {
-                  const c = previewCompanies.find((x) => x.name === name)
-                  return (
-                    <motion.div
-                      key={name}
-                      initial={{ opacity: 0, y: -18, scale: 0.9 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      transition={{ delay: 0.9 + bi * 0.12 + i * 0.09, type: 'spring', stiffness: 300, damping: 22 }}
-                      className="mt-2 flex items-center gap-1.5 rounded-[11px] border border-white/80 bg-white/90 px-1.5 py-2 shadow-[var(--shadow-1)]"
-                    >
-                      <span className="grid h-5 w-5 shrink-0 place-items-center rounded-md text-[9px] font-bold text-white" style={{ background: c?.brand ?? '#6d4aff' }}>
-                        {name[0]}
-                      </span>
-                      <span className="truncate text-[10.5px] font-semibold text-ink">{name}</span>
-                    </motion.div>
-                  )
-                })}
-              </div>
-            ))}
-          </div>
-          <div className="hidden space-y-2.5 sm:block">
-            <div className="rounded-[16px] border border-white/80 bg-white/80 p-3 text-center">
-              <p className="text-[10px] font-medium text-ink-mute">Readiness</p>
-              <svg viewBox="0 0 80 80" className="mx-auto mt-1 h-[84px] w-[84px] -rotate-90">
-                <circle cx="40" cy="40" r="32" fill="none" stroke="oklch(0.92 0.015 285)" strokeWidth="8" />
-                <motion.circle
-                  cx="40" cy="40" r="32" fill="none" stroke="url(#lp-ring)" strokeWidth="8" strokeLinecap="round"
-                  strokeDasharray={201} initial={{ strokeDashoffset: 201 }} animate={{ strokeDashoffset: 201 * 0.18 }}
-                  transition={{ delay: 1.1, duration: 1.4, ease }}
-                />
-                <defs><linearGradient id="lp-ring"><stop offset="0" stopColor="#6d4aff" /><stop offset="1" stopColor="#38bdf8" /></linearGradient></defs>
-              </svg>
-              <p className="-mt-[58px] mb-[34px] text-[20px] font-semibold text-ink"><AnimatedValue value="82" /></p>
-            </div>
-            <div className="rounded-[16px] border border-white/80 bg-white/80 p-3">
-              <p className="text-[10px] font-medium text-ink-mute">Resume score</p>
-              {[['Metrics', 91, '#12b76a'], ['Keywords', 84, '#12b76a'], ['Action verbs', 58, '#f79009']].map(([l, v, c], i) => (
-                <div key={l as string} className="mt-2">
-                  <div className="flex justify-between text-[9.5px] text-ink-soft"><span>{l}</span><span>{v}%</span></div>
-                  <span className="mt-1 block h-[5px] overflow-hidden rounded-full bg-[oklch(0.92_0.015_285)]">
-                    <motion.span className="block h-full origin-left rounded-full" style={{ background: c as string }} initial={{ scaleX: 0 }} animate={{ scaleX: (v as number) / 100 }} transition={{ delay: 1.3 + i * 0.1, duration: 0.9, ease }} />
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-      <motion.div
-        initial={{ opacity: 0, x: 20, y: 10 }}
-        animate={{ opacity: 1, x: 0, y: 0 }}
-        transition={{ delay: 1.8, duration: 0.6, ease }}
-        className="glass-dark absolute -bottom-6 -left-6 hidden max-w-[260px] rounded-[18px] p-3.5 text-white md:block"
-      >
-        <p className="text-[10.5px] font-semibold uppercase tracking-[0.12em] text-white/50">AI assistant</p>
-        <p className="mt-1.5 text-[12px] leading-[1.5] text-white/90">Close System Design (62 → 75) and Google moves from <b>Can become</b> to <b>Nearly</b>.</p>
-      </motion.div>
-    </motion.div>
   )
 }
 
@@ -603,7 +496,7 @@ export default function Landing() {
               ))}
             </motion.div>
           </motion.div>
-          {!import.meta.env.SSR && <ProductPreview />}
+          {!import.meta.env.SSR && <HeroPreview />}
         </section>
 
         {/* marquee */}

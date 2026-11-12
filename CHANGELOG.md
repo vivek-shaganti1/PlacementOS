@@ -5,6 +5,9 @@ Semantic versioning; see `docs/ENGINEERING.md` for how releases are made.
 ## Unreleased
 
 ### Added
+- Landing hero: the eligibility board now plays a live loop. The assistant names a fix, a scan sweeps the board and
+  that company moves up a column while readiness and the resume score follow. It also has a cursor spotlight, a tilt
+  sheen, depth layers and a turning halo. It pauses off-screen and stays still for reduced motion.
 - **Two-factor sign-in for platform admins and placement cells** (authenticator app). It is enforced in the database, and
   a password-only session has no admin powers. Settings has a card for adding a backup app.
 - **Settings for every role.** Admins and recruiters can now change their password in the app.
