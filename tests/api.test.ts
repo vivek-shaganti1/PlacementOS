@@ -324,6 +324,7 @@ test('W5-9 the server records the new resume file together with its text and ana
   reply = (c) => {
     if (c.url.includes('rest/v1/profiles?') && c.method === 'GET') return ok([student])
     if (c.url.includes('consume_ai')) return ok(5)
+    if (c.url.includes('storage/v1/object/resumes')) return new Response('%PDF-1.7')
     if (c.url.includes('api.groq.com')) return ok({ choices: [{ message: { content: JSON.stringify({ content_quality: 60, summary: 's', tips: {}, extracted: {}, skill_levels: {} }) } }] })
     return undefined
   }
@@ -357,6 +358,100 @@ test('W5-18 a GitHub sync never deletes all repositories before saving the new o
   assert.match(repoCalls[0].url, /on_conflict=user_id,name/)
   assert.equal(repoCalls[1].method, 'DELETE')
   assert.match(decodeURIComponent(repoCalls[1].url), /name=not\.in\.\("alpha"\)/)
+})
+
+// ------------------------------------------------------------------ 2026-11-12 review (A, C)
+test('A1 a GATE scorecard path cannot reach another student\'s folder', async () => {
+  for (const file_path of [`${uid}/../b2000000-0000-4000-8000-0000000000b2/gate.pdf`, `${uid}/sub/gate.pdf`, `${uid}/gate.pdf.exe`]) {
+    calls = []
+    reply = (c) => (c.url.includes('rest/v1/profiles?') ? ok([student]) : c.url.includes('connect_attempt') ? ok(true) : c.url.includes('org_students') ? ok([{ full_name: 'Edited Name' }]) : c.url.includes('storage/v1') ? new Response('%PDF-1.7') : undefined)
+    const res = await connect(post({ credential: 'gate', ref: 'CS12345678', paper: 'CS', score: 700, year: 2025, name: 'Edited Name', file_path }, jwt({ sub: uid })))
+    assert.equal(res.status, 422, file_path)
+    assert.ok(!calls.some((c) => c.url.includes('storage/v1')), 'no storage read for a refused path')
+  }
+})
+test('A1 the scorecard is read with the student\'s own session, never the secret key', async () => {
+  const before = env.SUPABASE_SECRET_KEY
+  env.SUPABASE_SECRET_KEY = 'sb_secret_test'
+  reply = (c) => {
+    if (c.url.includes('rest/v1/profiles?')) return ok([student])
+    if (c.url.includes('connect_attempt')) return ok(true)
+    if (c.url.includes('org_students')) return ok([{ full_name: 'Edited Name' }])
+    if (c.url.includes('storage/v1/object/resumes')) return new Response('not a pdf')
+    return undefined
+  }
+  const token = jwt({ sub: uid })
+  const res = await connect(post({ credential: 'gate', ref: 'CS12345678', paper: 'CS', score: 700, year: 2025, name: 'Edited Name', file_path: `${uid}/gate.pdf` }, token))
+  const read = calls.find((c) => c.url.includes('storage/v1/object/resumes'))!
+  assert.equal(read.headers.authorization, `Bearer ${token}`)
+  assert.equal(res.status, 422, 'a file that is not a PDF is refused')
+  env.SUPABASE_SECRET_KEY = before
+})
+test('A4 a resume whose bytes are not PDF or Word is refused before any AI is charged', async () => {
+  reply = (c) => (c.url.includes('rest/v1/profiles?') ? ok([student]) : c.url.includes('storage/v1/object/resumes') ? new Response('<html>') : undefined)
+  const res = await resume(post({ action: 'analyze', text: 'Built a service. '.repeat(30), file_name: 'cv.pdf', path: `${uid}/1-cv.pdf` }, jwt({ sub: uid })))
+  assert.equal(res.status, 422)
+  assert.ok(!calls.some((c) => c.url.includes('consume_ai')))
+})
+test('C7 a bad resume path is refused before any AI is charged', async () => {
+  reply = (c) => (c.url.includes('rest/v1/profiles?') ? ok([student]) : undefined)
+  const res = await resume(post({ action: 'analyze', text: 'x'.repeat(300), path: 'someone-else/cv.pdf' }, jwt({ sub: uid })))
+  assert.equal(res.status, 422)
+  assert.ok(!calls.some((c) => c.url.includes('consume_ai') || c.url.includes('api.groq.com')))
+})
+test('C1 a failed GitHub repository list changes nothing', async () => {
+  reply = (c) => {
+    if (c.url.includes('rest/v1/profiles?')) return ok([student])
+    if (c.url.includes('connect_attempt')) return ok(true)
+    if (c.url.startsWith('https://api.github.com/users/') && c.url.includes('/repos')) return ok({ message: 'Server Error' }, 502)
+    if (c.url.startsWith('https://api.github.com/users/')) return ok({ login: 'octo', bio: '' })
+    return undefined
+  }
+  const res = await connect(post({ platform: 'github', username: 'octo' }, jwt({ sub: uid })))
+  assert.equal(res.status, 502)
+  assert.ok(!calls.some((c) => c.url.includes('github_repos') || c.url.includes('coding_profiles?on_conflict')), 'no write, no delete')
+})
+test('C1 a partial Codeforces answer changes nothing', async () => {
+  reply = (c) => {
+    if (c.url.includes('rest/v1/profiles?')) return ok([student])
+    if (c.url.includes('connect_attempt')) return ok(true)
+    if (c.url.includes('user.info')) return ok({ status: 'OK', result: [{ handle: 'tourist', rating: 3000 }] })
+    if (c.url.includes('user.status')) return ok({ status: 'FAILED', comment: 'Call limit exceeded' }, 503)
+    if (c.url.includes('user.rating')) return ok({ status: 'OK', result: [] })
+    return undefined
+  }
+  const res = await connect(post({ platform: 'codeforces', username: 'tourist' }, jwt({ sub: uid })))
+  assert.equal(res.status, 502)
+  assert.ok(!calls.some((c) => c.url.includes('coding_profiles') && c.method !== 'GET'))
+})
+test('C2 an upstream timeout is a 504, not an unexplained 500', async () => {
+  const real = globalThis.fetch
+  globalThis.fetch = (async () => {
+    throw new DOMException('The operation timed out.', 'TimeoutError')
+  }) as typeof fetch
+  try {
+    assert.equal((await resume(post({ action: 'clear' }, jwt({ sub: uid })))).status, 504)
+  } finally {
+    globalThis.fetch = real
+  }
+})
+test('C3 one person failing never loses the passwords already created in the batch', async () => {
+  let n = 0
+  reply = (c) => {
+    if (c.url.includes('/auth/v1/admin/users')) return ++n === 2 ? (() => { throw new TypeError('fetch failed') })() : ok({ id: `u${n}` })
+    return adminReply(c)
+  }
+  const res = await admin(post({ action: 'invite', org_id: org, role: 'student', logins: true, people: [{ email: 'a@x.test' }, { email: 'b@x.test' }, { email: 'c@x.test' }] }, jwt({ sub: uid })))
+  assert.equal(res.status, 200)
+  const { results } = (await res.json()) as { results: { email: string; status: string; password?: string }[] }
+  assert.deepEqual(results.map((r) => r.status), ['created', 'failed', 'created'])
+  assert.ok(results[0].password && results[2].password)
+  assert.equal(calls.filter((c) => c.url.includes('organizations?')).length, 1, 'college domains read once per request')
+})
+test('A3 raw Auth error text is not passed back to the admin', async () => {
+  reply = (c) => (c.url.includes('/auth/v1/invite') ? ok({ msg: 'internal: relation "auth.flow_state" lock timeout' }, 500) : adminReply(c))
+  const res = await admin(post({ action: 'invite', org_id: org, role: 'student', people: [{ email: 'a@x.test' }] }, jwt({ sub: uid })))
+  assert.ok(!JSON.stringify(await res.json()).includes('flow_state'))
 })
 
 // ------------------------------------------------------------------ SEC-05

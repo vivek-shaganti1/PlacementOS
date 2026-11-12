@@ -3,6 +3,7 @@ import { callApi } from './api'
 import { evaluateAll, readinessOf } from './eligibility'
 import { useAuth } from './auth'
 import { errMsg, supabase, type Profile } from './supabase'
+import { istDay } from './dates'
 
 export type ChatMsg = { role: 'user' | 'bot'; text: string }
 export type Application = { company_id: string; stage: number; created_at: string }
@@ -141,7 +142,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         .upsert(
           {
             user_id: uid,
-            day: new Date().toISOString().slice(0, 10),
+            day: istDay(),
             readiness: readinessOf(all),
             eligible: count('eligible'),
             nearly: count('nearly'),

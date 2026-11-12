@@ -3,7 +3,7 @@
 // POST { action: 'match', jd }                 -> matches the saved resume against a job description
 // POST { action: 'clear' }                     -> removes the stored resume text
 import { skillsForTracks, TRACK_BY_ID, tracksFor } from '../src/lib/branches'
-import { bearer, consumeAi, deleteRows, env, groq, handle, HttpError, insertVerified, json, loadProfile, parseJson, refundAi, rest, saveServerField, STYLE_RULES, SUPABASE_URL, tidyDeep, timeout } from './_lib'
+import { bearer, consumeAi, deleteRows, env, groq, handle, HttpError, insertVerified, json, loadProfile, parseJson, refundAi, rest, saveServerField, STYLE_RULES, SUPABASE_KEY, SUPABASE_URL, tidyDeep, timeout } from './_lib'
 
 export const config = { runtime: 'edge' }
 
@@ -208,6 +208,19 @@ ${resume.slice(0, 12000)}
   }
 }
 
+/** The first bytes of the stored file must be a PDF or a Word (zip) document, whatever type the upload declared. */
+async function checkResumeFile(token: string, path: string) {
+  const res = await fetch(`${SUPABASE_URL}/storage/v1/object/resumes/${path.split('/').map(encodeURIComponent).join('/')}`, {
+    signal: timeout(10_000),
+    headers: { apikey: SUPABASE_KEY, authorization: `Bearer ${token}`, range: 'bytes=0-7' },
+  })
+  if (!res.ok) throw new HttpError(422, 'Upload the resume to your own folder.')
+  const head = new Uint8Array(await res.arrayBuffer()).subarray(0, 5)
+  const pdf = String.fromCharCode(...head) === '%PDF-'
+  const zip = head[0] === 0x50 && head[1] === 0x4b && head[2] === 0x03 && head[3] === 0x04
+  if (!pdf && !zip) throw new HttpError(422, 'The resume must be a PDF or Word file.')
+}
+
 export default handle(async (req) => {
   if (req.method !== 'POST') throw new HttpError(405, 'Method not allowed')
   const token = bearer(req)
@@ -217,6 +230,10 @@ export default handle(async (req) => {
   if (body.action === 'analyze') {
     const text = String(body.text ?? '').replace(/\u0000/g, '').trim().slice(0, 40000)
     if (text.length < 200) throw new HttpError(422, 'Could not read enough text from this file. If it is a scanned image, export it as a text-based PDF.')
+    // The path is checked before the AI action is charged, so a bad request costs nothing.
+    const path = typeof body.path === 'string' ? body.path : ''
+    if (path && !new RegExp(`^${profile.id}/(?!\\.+$)[\\w.-]+$`).test(path)) throw new HttpError(422, 'Upload the resume to your own folder.')
+    if (path) await checkResumeFile(token, path)
     await consumeAi(token, 'resume')
     const role = String(profile.target_roles || 'Software Engineer').slice(0, 120)
     const analysis = await analyze(text, body.file_name ? String(body.file_name).slice(0, 200) : null, role, tracksFor(profile)).catch(async (e: unknown) => {
@@ -227,8 +244,6 @@ export default handle(async (req) => {
     void analyzed_at
     // The new file, its text and its analysis are recorded together here, so the profile never points at one file while
     // describing another. Older clients send no path and record the file themselves.
-    const path = typeof body.path === 'string' ? body.path : ''
-    if (path && !new RegExp(`^${profile.id}/(?!\\.+$)[\\w.-]+$`).test(path)) throw new HttpError(422, 'Upload the resume to your own folder.')
     await insertVerified(token, profile.id, 'resume_analyses', row)
     await saveServerField(token, profile.id, {
       resume_text: text,
@@ -267,14 +282,18 @@ export default handle(async (req) => {
     // ai_fit is shown to recruiters and placement cells, so students cannot write it themselves (no update policy);
     // the server writes it with the service key, scoped to this student's own application for this job.
     const key = env('SUPABASE_SECRET_KEY')
-    if (jobId && key)
-      await fetch(`${SUPABASE_URL}/rest/v1/job_applications?job_id=eq.${jobId}&user_id=eq.${profile.id}`, {
+    let fitSaved = true
+    if (jobId && key) {
+      const saved = await fetch(`${SUPABASE_URL}/rest/v1/job_applications?job_id=eq.${jobId}&user_id=eq.${profile.id}`, {
         signal: timeout(10_000),
         method: 'PATCH',
         headers: { apikey: key, authorization: `Bearer ${key}`, 'content-type': 'application/json', prefer: 'return=minimal' },
         body: JSON.stringify({ ai_fit: result.score }),
-      })
-    return json({ match: result })
+      }).catch(() => null)
+      fitSaved = !!saved?.ok
+      if (!fitSaved) console.error('ai_fit not saved', saved?.status ?? 'network')
+    }
+    return json({ match: result, fit_saved: fitSaved })
   }
 
   throw new HttpError(400, 'Unknown action')

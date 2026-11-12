@@ -70,7 +70,8 @@ app has its own token system, components and icon set; adding them would create 
 - Video: H.264/HEVC + WebM, muted, `playsInline`, poster frame, no autoplay with sound, under ~3 MB for loops.
 - Lottie: `.lottie` (dotLottie) under ~150 kB, lazy-loaded.
 - 3D: `.glb` with Draco or Meshopt compression, KTX2/WebP textures, under ~1.5 MB per scene, in `public/models`.
-- Fonts: Geist and Instrument Serif from Google Fonts with `display=swap`; no new families without a reason.
+- Fonts: Geist, Geist Mono and Instrument Serif are self-hosted through `@fontsource` packages imported in `src/main.tsx`
+  (`font-display: swap`, unicode-range subsets); nothing is loaded from Google. No new families without a reason.
 
 ## Performance budgets
 - Entry JS must not import the three or GSAP chunks (check `dist/assets/index-*.js` after building).

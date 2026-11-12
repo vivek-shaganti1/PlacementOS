@@ -3,6 +3,11 @@ import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App'
 import { holdPrerender } from './lib/prerendered'
+// Fonts are served from this site (no request to Google). Only the scripts a page uses are downloaded (unicode-range).
+import '@fontsource-variable/geist/wght.css'
+import '@fontsource-variable/geist-mono/wght.css'
+import '@fontsource/instrument-serif/400.css'
+import '@fontsource/instrument-serif/400-italic.css'
 import './index.css'
 
 // After a new deploy, an open tab still references the previous build's chunk names; loading one fails. Reload once to
@@ -26,7 +31,7 @@ holdPrerender(root)
 
 ReactDOM.createRoot(root).render(
   <React.StrictMode>
-    <BrowserRouter>
+    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <App />
     </BrowserRouter>
   </React.StrictMode>,

@@ -18,7 +18,10 @@ export function SplitText({
     show: { opacity: 1, y: 0, filter: 'blur(0px)', transition: { duration: motionConfig.duration.normal, ease: motionConfig.easing.dramatic } },
   }
   return (
-    <Tag className={className} aria-label={text}>
+    <Tag className={className}>
+      {/* The sentence once for screen readers; the animated pieces are hidden from them (aria-label is not allowed on
+          a plain span or heading text, and reading word by word would break it up). */}
+      <span className="sr-only">{text}</span>
       <motion.span aria-hidden initial="hidden" animate="show" transition={{ staggerChildren: stagger, delayChildren: delay }} style={{ display: 'inline' }}>
         {parts.map((p, i) =>
           /^\s+$/.test(p) ? (

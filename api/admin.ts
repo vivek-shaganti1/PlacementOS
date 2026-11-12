@@ -39,7 +39,8 @@ async function sendInvite(email: string, fullName: string, redirectTo: string): 
   const msg = body.msg ?? body.message ?? `HTTP ${res.status}`
   if (/already been registered|already registered|email_exists/i.test(msg + (body.error_code ?? ''))) return { email, status: 'existing', detail: 'Already has an account.' }
   if (res.status === 429) return { email, status: 'failed', detail: 'Email rate limit reached. Configure custom SMTP in Supabase to send more invites.' }
-  return { email, status: 'failed', detail: msg }
+  console.error('invite', res.status, body.error_code ?? '')
+  return { email, status: 'failed', detail: 'The invite could not be sent. Try again, or create a login instead.' }
 }
 
 /** Creates a confirmed login with a temporary password. No email is sent, so mail rate limits do not apply. */
@@ -49,16 +50,20 @@ async function sendInvite(email: string, fullName: string, redirectTo: string): 
  * never is (that account would later pick up a role granted there). Students must also be on one of this college's
  * domains when the college has set any.
  */
-async function domainAllowed(email: string, orgId: string, role: string): Promise<boolean> {
+type OrgDomains = { id: string; email_domains: string[] | null }[]
+async function readDomains(): Promise<OrgDomains | null> {
   const key = env('SUPABASE_SECRET_KEY')
-  if (!key) return false
-  const domain = email.split('@')[1]?.toLowerCase() ?? ''
+  if (!key) return null
   const res = await fetch(`${SUPABASE_URL}/rest/v1/organizations?select=id,email_domains`, {
     signal: timeout(10_000),
     headers: { apikey: key, authorization: `Bearer ${key}` },
   })
-  if (!res.ok) return false
-  const orgs = (await res.json()) as { id: string; email_domains: string[] | null }[]
+  return res.ok ? ((await res.json()) as OrgDomains) : null
+}
+
+function domainAllowed(orgs: OrgDomains | null, email: string, orgId: string, role: string): boolean {
+  if (!orgs) return false
+  const domain = email.split('@')[1]?.toLowerCase() ?? ''
   const has = (o: { email_domains: string[] | null }) => (o.email_domains ?? []).some((d) => d.toLowerCase().replace(/^@/, '') === domain)
   if (orgs.some((o) => o.id !== orgId && has(o))) return false
   const own = orgs.find((o) => o.id === orgId)
@@ -97,7 +102,8 @@ async function createLogin(email: string, fullName: string, orgId: string): Prom
   const body = (await res.json().catch(() => ({}))) as { msg?: string; error_code?: string; message?: string }
   const msg = body.msg ?? body.message ?? `HTTP ${res.status}`
   if (/already been registered|already registered|email_exists/i.test(msg + (body.error_code ?? ''))) return { email, status: 'existing', detail: 'Already has an account.' }
-  return { email, status: 'failed', detail: msg }
+  console.error('create login', res.status, body.error_code ?? '')
+  return { email, status: 'failed', detail: 'The login could not be created. Try again, or send an email invite instead.' }
 }
 
 // The account belongs to another college, or its owner never proved the mailbox, so a role cannot be attached to it.
@@ -154,14 +160,26 @@ export default handle(async (req) => {
   // otherwise be claimed with that password and granted the other role on first sign-in.
   const mayProvision = async (email: string) =>
     role === 'platform_admin' || ((await (await rest(token, 'rpc/can_provision', { method: 'POST', body: JSON.stringify({ target_org: orgId, target_email: email }) })).json()) as boolean)
+  // Read once per request (not once per person): up to 50 people would otherwise mean 50 reads of every college.
+  let domains: Promise<OrgDomains | null> | undefined
   const provision = async (p: { email: string; full_name: string }): Promise<Result> => {
     if (!logins) return sendInvite(p.email, p.full_name, redirectTo)
     if (!(await mayProvision(p.email))) return { email: p.email, status: 'failed', detail: 'A login cannot be created for this email here. Send an email invite instead.' }
-    if (!(await domainAllowed(p.email, orgId, role)))
+    domains ??= readDomains()
+    if (!domainAllowed(await domains, p.email, orgId, role))
       return { email: p.email, status: 'failed', detail: 'This email is outside your college\'s domains. Send an email invite instead, so only the owner of the mailbox can sign in.' }
     return createLogin(p.email, p.full_name, orgId)
   }
   const results: Result[] = []
+  // One person's failure is reported for that person; it never aborts the batch. That matters most for created logins,
+  // whose passwords exist only in this response: losing the response would lock those people out.
+  const each = async (email: string, fn: () => Promise<Result>): Promise<Result> => {
+    try {
+      return await fn()
+    } catch (e) {
+      return { email, status: 'failed', detail: e instanceof HttpError ? e.message : 'Could not finish this person. Try them again.' }
+    }
+  }
 
   if (role === 'student') {
     // A row with an impossible value is reported and left out, rather than half-saved.
@@ -201,14 +219,15 @@ export default handle(async (req) => {
       }
     }
     for (const p of accepted.filter((x) => !unsaved.has(x.email))) {
-      const r: Result = body.send === false ? { email: p.email, status: 'saved' } : await provision(p)
+      const r: Result = body.send === false ? { email: p.email, status: 'saved' } : await each(p.email, () => provision(p))
       results.push(r)
+      // Only a marker for the roster screen; if it fails the person still has their invite or password.
       if (r.status === 'invited' || r.status === 'created')
         await rest(token, `org_students?org_id=eq.${orgId}&email=eq.${encodeURIComponent(p.email)}`, {
           method: 'PATCH',
           body: JSON.stringify({ invited_at: new Date().toISOString() }),
           headers: { prefer: 'return=minimal' },
-        })
+        }).catch((e) => console.error('invited_at', e instanceof HttpError ? e.status : 'network'))
     }
   } else if (role === 'recruiter') {
     if (people.some((p) => !p.company)) throw new HttpError(422, 'Enter the company each recruiter hires for.')
@@ -219,7 +238,7 @@ export default handle(async (req) => {
       headers: { prefer: 'return=minimal,resolution=merge-duplicates' },
     })
     for (const p of people) {
-      const r = await provision(p)
+      const r = await each(p.email, () => provision(p))
       if (r.status !== 'existing') {
         results.push(r)
         continue
@@ -230,13 +249,17 @@ export default handle(async (req) => {
     }
   } else if (role === 'platform_admin') {
     for (const p of people) {
-      const granted = (await (await rest(token, 'rpc/add_platform_admin', { method: 'POST', body: JSON.stringify({ target_email: p.email }) })).json()) as string
-      results.push(granted === 'refused' ? REFUSED(p.email) : granted === 'granted' ? { email: p.email, status: 'existing', detail: 'Platform admin access granted to the existing account.' } : await provision(p))
+      results.push(await each(p.email, async () => {
+        const granted = (await (await rest(token, 'rpc/add_platform_admin', { method: 'POST', body: JSON.stringify({ target_email: p.email }) })).json()) as string
+        return granted === 'refused' ? REFUSED(p.email) : granted === 'granted' ? { email: p.email, status: 'existing', detail: 'Platform admin access granted to the existing account.' } : await provision(p)
+      }))
     }
   } else {
     for (const p of people) {
-      const granted = (await (await rest(token, 'rpc/add_org_admin', { method: 'POST', body: JSON.stringify({ target_org: orgId, target_email: p.email }) })).json()) as string
-      results.push(granted === 'refused' ? REFUSED(p.email) : granted === 'granted' ? { email: p.email, status: 'existing', detail: 'Admin access granted to the existing account.' } : await provision(p))
+      results.push(await each(p.email, async () => {
+        const granted = (await (await rest(token, 'rpc/add_org_admin', { method: 'POST', body: JSON.stringify({ target_org: orgId, target_email: p.email }) })).json()) as string
+        return granted === 'refused' ? REFUSED(p.email) : granted === 'granted' ? { email: p.email, status: 'existing', detail: 'Admin access granted to the existing account.' } : await provision(p)
+      }))
     }
   }
 

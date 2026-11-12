@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { JobPosting } from './eligibility'
 import { allRows, supabase } from './supabase'
+import { istDay } from './dates'
 
 export type JobStatus = 'applied' | 'shortlisted' | 'interview' | 'offer' | 'rejected'
 export type JobApplication = {
@@ -38,8 +39,7 @@ export const ctcText = (j: Pick<JobPosting, 'ctc_min' | 'ctc_max'>) =>
   j.ctc_min && j.ctc_max ? `₹${j.ctc_min}–${j.ctc_max} LPA` : j.ctc_max || j.ctc_min ? `₹${j.ctc_max ?? j.ctc_min} LPA` : 'CTC not disclosed'
 
 // Deadlines are dates in India; the database applies the same rule.
-const todayIST = () => new Date(Date.now() + 5.5 * 3_600_000).toISOString().slice(0, 10)
-export const isOpen = (j: JobPosting) => j.status === 'open' && (!j.deadline || j.deadline >= todayIST())
+export const isOpen = (j: JobPosting) => j.status === 'open' && (!j.deadline || j.deadline >= istDay())
 
 /** College job postings visible to the current user, plus their own applications (admins get every application). */
 export function useJobs() {

@@ -26,8 +26,9 @@ export default handle(async (req) => {
   // Attempt limit (per email and per client IP), recorded in the database because edge instances share no memory.
   const ip = (req.headers.get('x-real-ip') ?? req.headers.get('x-forwarded-for')?.split(',')[0] ?? '').trim().slice(0, 64)
   const gate = await fetch(`${SUPABASE_URL}/rest/v1/rpc/signup_attempt`, { signal: timeout(10_000), method: 'POST', headers, body: JSON.stringify({ target_email: email, client_ip: ip }) })
-  // Fail closed: if the limiter itself errors, refuse rather than let unlimited attempts through.
-  if (!gate.ok || (await gate.json()) === false) throw new HttpError(429, 'Too many sign-up attempts. Wait an hour and try again, or ask your placement cell for help.')
+  // Fail closed: if the limiter itself errors, refuse rather than let unlimited attempts through (but say it is an outage).
+  if (!gate.ok) throw new HttpError(503, 'Sign-up is briefly unavailable. Try again in a few minutes.')
+  if ((await gate.json()) === false) throw new HttpError(429, 'Too many sign-up attempts. Wait an hour and try again, or ask your placement cell for help.')
 
   const check = await fetch(`${SUPABASE_URL}/rest/v1/rpc/signup_check`, { signal: timeout(10_000), method: 'POST', headers, body: JSON.stringify({ target_email: email, target_roll: roll }) })
   if (!check.ok) throw new HttpError(502, 'Could not verify your college record. Try again.')
@@ -48,7 +49,7 @@ export default handle(async (req) => {
     if (/already|exists|registered/i.test(msg + (err.error_code ?? ''))) throw new HttpError(409, 'An account already exists for this email. Sign in instead.')
     console.error('signup invite', invite.status, msg.slice(0, 300))
     if (invite.status === 429) throw new HttpError(429, 'Too many sign-up emails were sent in the last hour. Try again later, or ask your placement cell to create your login.')
-    throw new HttpError(400, 'Could not send your sign-up email. Try again, or ask your placement cell for help.')
+    throw new HttpError(502, 'Could not send your sign-up email. Try again, or ask your placement cell for help.')
   }
   return json({ ok: true, verify: true })
 })

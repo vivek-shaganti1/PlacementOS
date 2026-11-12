@@ -30,6 +30,9 @@ What it changes in existing data:
 | Secure password change | On | Stops a stolen session changing the password through the API. |
 | Leaked password protection, minimum length 10 | On | Matches the app. |
 | Backups | Add the two secrets in `testing/BACKUPS.md` and run *Database backup* once | Free plan has no restorable backups; the nightly workflow restores each backup to prove it. |
+| Migration 20261112 | Run `supabase/migrations/20261112000000_review_followups.sql` in the SQL editor (after 20261110). Then `select id, file_path from public.credentials where file_path is not null and not (file_path ~ '^[0-9a-f-]{36}/[A-Za-z0-9_.-]+$' and file_path !~ '\.\.' and split_part(file_path,'/',1) = user_id::text);` and, if it returns no rows, `alter table public.credentials validate constraint credentials_file_in_own_folder;` | Path, upload, index and audit fixes from `testing/REVIEW_2026-11-12.md`. |
+| Auth settings | Secure password change on; minimum password length 10; leaked-password protection; exact redirect URLs only; CAPTCHA | Review section B. |
+| Vercel env | Set `CONNECT_PROOF_SECRET` (a long random value) | Proof codes stop depending on the Supabase secret key. |
 | Auth, URL configuration, Redirect URLs | Include `https://<your site>/reset-password` | Otherwise invited users are signed in without ever choosing a password (seen in local full-stack testing). |
 
 Optional, for networks that block `*.supabase.co`: change the invite email template to link to `{{ .SiteURL }}/reset-password?token_hash={{ .TokenHash }}&type=invite`.

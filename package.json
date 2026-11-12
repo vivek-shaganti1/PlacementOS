@@ -9,15 +9,22 @@
     "build": "tsc -b && tsc -p tsconfig.api.json --noEmit && vite build && node scripts/prerender.mjs",
     "preview": "vite preview",
     "test:unit": "esbuild tests/api.test.ts --bundle --platform=node --format=esm --outfile=node_modules/.cache/api.test.mjs --log-level=warning --banner:js=\"import{createRequire}from'module';const require=createRequire(import.meta.url);\" && node node_modules/.cache/api.test.mjs",
-    "test:db": "bash scripts/test-db.sh"
+    "test:db": "bash scripts/test-db.sh",
+    "test:pgtap": "supabase test db supabase/tests/pgtap",
+    "test:e2e": "playwright test",
+    "stack:seed": "node scripts/e2e-seed.mjs",
+    "stack:serve": "node scripts/serve-prod.mjs"
   },
   "dependencies": {
+    "@fontsource-variable/geist": "5.3.0",
+    "@fontsource-variable/geist-mono": "5.3.0",
+    "@fontsource/instrument-serif": "5.3.0",
     "@gsap/react": "2.1.2",
     "@lottiefiles/dotlottie-react": "0.19.16",
     "@react-three/drei": "9.122.0",
     "@react-three/fiber": "8.18.0",
     "@react-three/postprocessing": "2.19.1",
-    "@supabase/supabase-js": "2.117.2",
+    "@supabase/supabase-js": "2.119.0",
     "gsap": "3.15.0",
     "lenis": "1.3.26",
     "mammoth": "1.13.0",
@@ -31,6 +38,7 @@
     "three": "0.170.0"
   },
   "devDependencies": {
+    "@playwright/test": "1.64.1",
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.1",
     "@types/three": "0.170.0",
@@ -42,5 +50,8 @@
     "tailwindcss": "^3.4.13",
     "typescript": "^5.6.2",
     "vite": "^5.4.8"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

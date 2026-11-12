@@ -4,11 +4,39 @@ Campus placement readiness app (Vite + React + Tailwind) backed by Supabase Auth
 
 ## Local setup
 
+Node 22 (`.nvmrc`; 20 or later works).
+
 ```bash
 cp .env.example .env.local   # fill in your Supabase URL + publishable key
 npm install
-npm run dev                  # http://localhost:5199
+npm run dev                  # http://localhost:5199 (also serves /api)
 ```
+
+With the example values the app opens and the sign-in page works, but nothing can sign in and `/api/health` answers
+503: it needs a real backend. Either use your own Supabase project, or run everything locally:
+
+### Everything local (Docker and the Supabase CLI)
+
+```bash
+supabase start               # Postgres, Auth, Storage and REST, with every migration applied
+npm run stack:seed           # synthetic colleges, roster, drives and logins (tests/e2e/accounts.json)
+supabase status -o env       # the local URL and keys for .env.local
+```
+
+The seeded logins share the password in `tests/e2e/accounts.json`; they exist only in this local database.
+
+## Tests
+
+| Command | What it checks | Needs |
+| --- | --- | --- |
+| `npm run build` | Typecheck (app and API) and production build | nothing |
+| `npm run test:unit` | API handlers with every outside service faked | nothing |
+| `npm run test:db` | All migrations replayed on plain Postgres, then the RLS, remediation and journey suites | Postgres 16 (`psql`, `initdb`) |
+| `npm run test:pgtap` | pgTAP checks of RLS coverage, access rules and the latest fixes | `supabase start` |
+| `npm run test:e2e` | Playwright: every page for every role, buttons, journeys, public pages in three browsers | `supabase start`, `npm run stack:seed`, a build, `npm run stack:serve` |
+
+CI (`.github/workflows/full-stack.yml`) runs the last two plus OWASP ZAP and Lighthouse against a throwaway local
+stack on every pull request. Nothing in it can reach production.
 
 ## Database
 
@@ -44,7 +72,9 @@ The older jsonb columns on `profiles` (`skills`, `projects`, …) are deprecated
 | `POST /api/connect` | Sync or disconnect any of the seven evidence platforms, or add an NPTEL or GATE credential |
 | `POST /api/signup` | Student self-registration through an emailed link |
 | `POST /api/admin` | Account creation and invitations for placement cells and platform admins |
-| `GET /api/health` | Which server settings are configured (booleans only); `?ping=1` also checks the Groq key |
+| `POST /api/password` | Replace a temporary password (signed in with it, or from a reset email); only the server can clear the must-change flag |
+| `POST /api/account` | Delete your own account: login, profile, files and roster link (the email must be typed to confirm) |
+| `GET /api/health` | `{ ok }` from a database probe (503 when the database is unreachable); platform admins can add `?details=1` for configuration booleans and `&ping=1` to check the Groq key |
 
 Calls read and write as the signed-in user wherever possible, so RLS applies. `/api/signup` and the account-creation paths of
 `/api/admin` use the secret key, which never leaves the server.
@@ -58,6 +88,7 @@ Names only; `.env.example` lists them. Set real values in `.env.local` and in Ve
 | `VITE_SUPABASE_URL` | Browser and server | Supabase project URL |
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | Browser and server | Supabase publishable key |
 | `VITE_SALES_EMAIL` | Browser, optional | Address behind the pricing buttons on the landing page |
+| `VITE_SUPABASE_DIRECT` | Browser, previews and staging only | `true` makes the browser call `VITE_SUPABASE_URL` directly instead of this site's `/supabase` proxy, which points at production |
 | `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` | Server, optional | Server-side fallbacks for the two `VITE_` names above |
 | `SUPABASE_SECRET_KEY` | Server only | Creates accounts and sends invitations |
 | `GROQ_API_KEY` | Server only | AI calls |
@@ -74,12 +105,6 @@ The catalog holds 66 recruiters (`src/data/companies.ts`) plus 50 core recruiter
 and a student is scored only against the categories their tracks hire for. Evidence comes from seven platforms read by the server
 (GitHub, LeetCode, Codeforces, CodeChef, Credly, Hugging Face, CTFtime) plus NPTEL and GATE credentials. The ranking rule is in
 [`docs/EVIDENCE.md`](docs/EVIDENCE.md).
-
-## Tests
-
-`scripts/test-db.sh` replays every migration on a throwaway Postgres and runs two suites: 48 RLS tests
-(`docs/evaluation/rls_tests.sql`) and 55 regression tests (`supabase/tests/remediation_tests.sql`). It never touches a real project.
-It needs local Postgres binaries; on macOS set `LC_ALL=C` if the server refuses to start.
 
 ## Roles and flows
 
