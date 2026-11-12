@@ -17,6 +17,8 @@ type AuthCtx = {
   adminOrgIds: string[]
   /** Which kind of account this is: platform owner, a college's placement cell, or a student. */
   role: AccountRole
+  /** Whether this session has passed a second factor ('aal2') or only a password ('aal1'). Admin powers need 'aal2'. */
+  aal: 'aal1' | 'aal2' | null
   profileError: string | null
   refreshProfile: () => Promise<void>
   updateProfile: (patch: ProfilePatch) => Promise<void>
@@ -30,6 +32,18 @@ export type AccountRole = 'super' | 'org' | 'recruiter' | 'student'
 export const HOME: Record<AccountRole, string> = { super: '/super/orgs', org: '/admin', recruiter: '/recruiter', student: '/dashboard' }
 
 const Ctx = createContext<AuthCtx | null>(null)
+
+/** The "aal" claim of the current access token (the database reads the same claim). */
+function sessionAal(token: string | undefined): 'aal1' | 'aal2' | null {
+  if (!token) return null
+  try {
+    const part = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')
+    const claims = JSON.parse(atob(part.padEnd(part.length + ((4 - (part.length % 4)) % 4), '='))) as { aal?: string }
+    return claims.aal === 'aal2' ? 'aal2' : 'aal1'
+  } catch {
+    return 'aal1'
+  }
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
@@ -163,6 +177,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isSuperAdmin,
       adminOrgIds,
       role,
+      aal: sessionAal(session?.access_token),
       profileError,
       refreshProfile,
       updateProfile,

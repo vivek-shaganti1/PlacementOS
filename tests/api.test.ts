@@ -61,9 +61,11 @@ const adminReply = (c: Call) => {
   return undefined
 }
 const org = '0a000000-0000-4000-8000-00000000000a'
+// A fully signed-in admin: password and authenticator code (aal2).
+const adminJwt = () => jwt({ sub: uid, aal: 'aal2' })
 test('SEC-03 each person gets a different password, flagged in server-only metadata', async () => {
   reply = adminReply
-  const res = await admin(post({ action: 'invite', org_id: org, role: 'student', logins: true, people: [{ email: 'a@x.test' }, { email: 'b@x.test' }] }, jwt({ sub: uid })))
+  const res = await admin(post({ action: 'invite', org_id: org, role: 'student', logins: true, people: [{ email: 'a@x.test' }, { email: 'b@x.test' }] }, adminJwt()))
   const { results } = (await res.json()) as { results: { password?: string }[] }
   const made = calls.filter((c) => c.url.endsWith('/auth/v1/admin/users'))
   assert.equal(made.length, 2)
@@ -79,18 +81,18 @@ test('SEC-03 each person gets a different password, flagged in server-only metad
 })
 test('SEC-03 a caller cannot choose the password', async () => {
   reply = adminReply
-  await admin(post({ action: 'invite', org_id: org, role: 'student', logins: true, password: 'shared-password-1', people: [{ email: 'a@x.test' }] }, jwt({ sub: uid })))
+  await admin(post({ action: 'invite', org_id: org, role: 'student', logins: true, password: 'shared-password-1', people: [{ email: 'a@x.test' }] }, adminJwt()))
   assert.notEqual(calls.find((c) => c.url.endsWith('/auth/v1/admin/users'))?.body.password, 'shared-password-1')
 })
 test('NV-06 invite emails carry the authorization header', async () => {
   reply = adminReply
-  await admin(post({ action: 'invite', org_id: org, role: 'student', people: [{ email: 'a@x.test' }] }, jwt({ sub: uid })))
+  await admin(post({ action: 'invite', org_id: org, role: 'student', people: [{ email: 'a@x.test' }] }, adminJwt()))
   assert.ok(calls.find((c) => c.url.includes('/auth/v1/invite'))?.headers.authorization)
 })
 test('DEF-02 more than 50 people is refused, never cut short', async () => {
   reply = adminReply
   const people = Array.from({ length: 51 }, (_, i) => ({ email: `s${i}@x.test` }))
-  const res = await admin(post({ action: 'invite', org_id: org, role: 'student', people }, jwt({ sub: uid })))
+  const res = await admin(post({ action: 'invite', org_id: org, role: 'student', people }, adminJwt()))
   assert.equal(res.status, 422)
 })
 const userReply = (app: Record<string, unknown>) => (c: Call) => (c.url.endsWith('/auth/v1/user') ? ok({ id: uid, app_metadata: app, user_metadata: {} }) : undefined)
@@ -220,7 +222,7 @@ test('W5-4 a re-import sends only the cells that were filled in', async () => {
   await admin(post({ action: 'invite', org_id: org, role: 'student', send: false, people: [
     { email: 'a@x.test' },
     { email: 'b@x.test', full_name: 'B', section: 'c', cgpa: 8.2 },
-  ] }, jwt({ sub: uid })))
+  ] }, adminJwt()))
   const rows = rosterCalls().flat()
   const a = rows.find((r) => r.email === 'a@x.test')!
   const b = rows.find((r) => r.email === 'b@x.test')!
@@ -233,7 +235,7 @@ test('W5-4 a re-import sends only the cells that were filled in', async () => {
 })
 test('F7 a group the database refuses is reported row by row; other groups are saved', async () => {
   reply = (c) => (c.url.includes('org_students?on_conflict') && (c.body as any[]).some((r) => 'cgpa' in r) ? ok({ message: 'ROSTER_DOMAIN: This email cannot be added here.' }, 400) : adminReply(c))
-  const res = await admin(post({ action: 'invite', org_id: org, role: 'student', send: false, people: [{ email: 'a@x.test' }, { email: 'b@x.test', cgpa: 'NA' }, { email: 'c@x.test', cgpa: 7 }] }, jwt({ sub: uid })))
+  const res = await admin(post({ action: 'invite', org_id: org, role: 'student', send: false, people: [{ email: 'a@x.test' }, { email: 'b@x.test', cgpa: 'NA' }, { email: 'c@x.test', cgpa: 7 }] }, adminJwt()))
   assert.equal(res.status, 200)
   const { results } = (await res.json()) as { results: { email: string; status: string; detail?: string }[] }
   assert.equal(results.find((r) => r.email === 'c@x.test')?.status, 'failed')
@@ -243,7 +245,7 @@ test('F7 a group the database refuses is reported row by row; other groups are s
 })
 test('W5-4 an impossible academic value is reported and that row is not saved', async () => {
   reply = adminReply
-  const res = await admin(post({ action: 'invite', org_id: org, role: 'student', send: false, people: [{ email: 'a@x.test', cgpa: 42 }, { email: 'b@x.test' }] }, jwt({ sub: uid })))
+  const res = await admin(post({ action: 'invite', org_id: org, role: 'student', send: false, people: [{ email: 'a@x.test', cgpa: 42 }, { email: 'b@x.test' }] }, adminJwt()))
   const { results } = (await res.json()) as { results: { email: string; status: string; detail?: string }[] }
   assert.equal(results.find((r) => r.email === 'a@x.test')?.status, 'failed')
   assert.match(results.find((r) => r.email === 'a@x.test')?.detail ?? '', /CGPA/)
@@ -441,7 +443,7 @@ test('C3 one person failing never loses the passwords already created in the bat
     if (c.url.includes('/auth/v1/admin/users')) return ++n === 2 ? (() => { throw new TypeError('fetch failed') })() : ok({ id: `u${n}` })
     return adminReply(c)
   }
-  const res = await admin(post({ action: 'invite', org_id: org, role: 'student', logins: true, people: [{ email: 'a@x.test' }, { email: 'b@x.test' }, { email: 'c@x.test' }] }, jwt({ sub: uid })))
+  const res = await admin(post({ action: 'invite', org_id: org, role: 'student', logins: true, people: [{ email: 'a@x.test' }, { email: 'b@x.test' }, { email: 'c@x.test' }] }, adminJwt()))
   assert.equal(res.status, 200)
   const { results } = (await res.json()) as { results: { email: string; status: string; password?: string }[] }
   assert.deepEqual(results.map((r) => r.status), ['created', 'failed', 'created'])
@@ -450,8 +452,14 @@ test('C3 one person failing never loses the passwords already created in the bat
 })
 test('A3 raw Auth error text is not passed back to the admin', async () => {
   reply = (c) => (c.url.includes('/auth/v1/invite') ? ok({ msg: 'internal: relation "auth.flow_state" lock timeout' }, 500) : adminReply(c))
-  const res = await admin(post({ action: 'invite', org_id: org, role: 'student', people: [{ email: 'a@x.test' }] }, jwt({ sub: uid })))
+  const res = await admin(post({ action: 'invite', org_id: org, role: 'student', people: [{ email: 'a@x.test' }] }, adminJwt()))
   assert.ok(!JSON.stringify(await res.json()).includes('flow_state'))
+})
+test('MFA an admin action from a password-only session is refused', async () => {
+  reply = adminReply
+  const res = await admin(post({ action: 'invite', org_id: org, role: 'student', logins: true, people: [{ email: 'a@x.test' }] }, jwt({ sub: uid, aal: 'aal1' })))
+  assert.equal(res.status, 403)
+  assert.ok(!calls.some((c) => c.url.includes('/auth/v1/admin/users') || c.url.includes('org_students')), 'nothing created or saved')
 })
 
 // ------------------------------------------------------------------ SEC-05

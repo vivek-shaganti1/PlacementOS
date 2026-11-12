@@ -13,6 +13,7 @@ import { supabaseConfigured } from './lib/supabase'
 // Everything below loads on demand: the entry chunk holds only auth, routing and the gate.
 const SignedInApp = lazy(() => import('./components/Shell'))
 const Login = lazy(() => import('./pages/Login'))
+const TwoFactor = lazy(() => import('./pages/TwoFactor'))
 const Onboarding = lazy(() => import('./pages/Onboarding'))
 const Landing = lazy(() => import('./pages/Landing'))
 const Legal = lazy(() => import('./pages/Legal'))
@@ -61,7 +62,7 @@ function PublicRoutes() {
 }
 
 function Gate() {
-  const { session, loading, recovering, mustChangePassword, profile, profileError, signOut, role } = useAuth()
+  const { session, loading, recovering, mustChangePassword, profile, profileError, signOut, role, aal } = useAuth()
   const { pathname } = useLocation()
 
   // Policy pages open for everyone, signed in or not.
@@ -92,6 +93,14 @@ function Gate() {
       </Centered>
     ) : (
       <Splash />
+    )
+
+  // Platform admins and placement cells need a code from an authenticator app as well as the password.
+  if ((role === 'super' || role === 'org') && aal !== 'aal2')
+    return (
+      <Suspense fallback={<Splash />}>
+        <TwoFactor />
+      </Suspense>
     )
 
   // Students get in only after their college adds their email to its roster.

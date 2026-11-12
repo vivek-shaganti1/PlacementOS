@@ -6,7 +6,7 @@ begin;
 create temp table t_results (name text, pass boolean);
 grant insert, select on t_results to authenticated;
 create function pg_temp.as_user(uid text) returns void language plpgsql as $$
-begin perform set_config('request.jwt.claims', json_build_object('sub', uid, 'role', 'authenticated')::text, true); end $$;
+begin perform set_config('request.jwt.claims', json_build_object('sub', uid, 'role', 'authenticated', 'aal', 'aal2')::text, true); end $$;
 create function pg_temp.owner() returns void language plpgsql as $$ begin perform set_config('request.jwt.claims', '', true); end $$;
 create function pg_temp.ok(n text, v boolean) returns void language sql as $$ insert into t_results values (n, coalesce(v, false)) $$;
 -- What Supabase Auth does when someone opens an invite: create, mark invited, confirm.

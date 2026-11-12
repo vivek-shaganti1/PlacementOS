@@ -64,6 +64,8 @@ const placementItems = [
   { to: '/admin/team', label: 'Admins & recruiters', Icon: IconUser },
 ]
 
+const accountItem = { to: '/settings', label: 'Settings', Icon: IconSettings }
+
 const NAV: Record<AccountRole, Group[]> = {
   super: [
     {
@@ -75,9 +77,10 @@ const NAV: Record<AccountRole, Group[]> = {
       ],
     },
     { label: 'All colleges', items: placementItems },
+    { label: 'Account', items: [accountItem] },
   ],
-  org: [{ label: 'Placement cell', items: placementItems }],
-  recruiter: [{ label: 'Recruiter', items: [{ to: '/recruiter', label: 'My drives', Icon: IconDrives }] }],
+  org: [{ label: 'Placement cell', items: placementItems }, { label: 'Account', items: [accountItem] }],
+  recruiter: [{ label: 'Recruiter', items: [{ to: '/recruiter', label: 'My drives', Icon: IconDrives }] }, { label: 'Account', items: [accountItem] }],
   student: groups,
 }
 
