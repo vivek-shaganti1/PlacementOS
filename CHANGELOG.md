@@ -5,6 +5,12 @@ Semantic versioning; see `docs/ENGINEERING.md` for how releases are made.
 ## Unreleased
 
 ### Added
+- **Download my data** (Settings, every role): one JSON file with everything stored about the account.
+- **Activity log** for placement cells and platform admins: who changed the roster, access, drives and certificates,
+  with a filter, search and CSV export.
+- **Automatic sign-out** after 30 minutes without activity (15 for admins), with a one-minute warning.
+- **Add deadline to calendar** on a drive: an `.ics` file with a reminder the day before.
+- **Search for every role:** ⌘K also finds pages, and admins and recruiters now have the search box.
 - Landing hero: the eligibility board now plays a live loop. The assistant names a fix, a scan sweeps the board and
   that company moves up a column while readiness and the resume score follow. It also has a cursor spotlight, a tilt
   sheen, depth layers and a turning halo. It pauses off-screen and stays still for reduced motion.
@@ -29,6 +35,7 @@ Semantic versioning; see `docs/ENGINEERING.md` for how releases are made.
 - The CSV export opens correctly in Excel.
 
 ### Fixed
+- **Roster paste:** a quoted name containing a comma ("Rao, Asha") no longer shifts the columns.
 - **Scorecard and resume paths:** a GATE scorecard or resume path could point into another student's folder.
 - **File types:** uploads are now checked by their content, not only by the type the uploader declared.
 - **Evidence:** a failed GitHub or Codeforces sync could erase proven evidence.
