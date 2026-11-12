@@ -15,6 +15,26 @@ updates:
       prefix: 'ci'
 
   - package-ecosystem: npm
+    directory: /mobile
+    schedule:
+      interval: weekly
+      day: monday
+      time: '09:00'
+      timezone: Asia/Kolkata
+    open-pull-requests-limit: 3
+    groups:
+      # Expo packages move together with the SDK; upgrade those with `npx expo install --fix`, not one by one.
+      mobile-minor-and-patch:
+        update-types: [minor, patch]
+    ignore:
+      - dependency-name: 'expo*'
+      - dependency-name: 'react-native*'
+      - dependency-name: react
+      - dependency-name: react-dom
+    commit-message:
+      prefix: 'deps(mobile)'
+
+  - package-ecosystem: npm
     directory: /
     schedule:
       interval: weekly
