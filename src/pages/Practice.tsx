@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Card, Page, Stat } from '../components/Page'
+import { useProfile } from '../lib/auth'
+import { practiceTopicsFor } from '../lib/prep'
 import { useApp } from '../lib/store'
 import { istDay, istDayBefore, istDayNumber } from '../lib/dates'
 
@@ -43,6 +45,63 @@ const bank: Record<string, { level: string; questions: Q[] }> = {
       { id: 'sql-2', q: 'A LEFT JOIN returns…', options: ['Only matching rows', 'All rows from the right table', 'All rows from the left table plus matches', 'The Cartesian product'], answer: 2, why: 'Unmatched left rows appear with NULLs on the right.' },
     ],
   },
+  // Core branches: the fundamentals a campus written test and technical round open with.
+  'Digital & Analog Electronics': {
+    level: 'Core',
+    questions: [
+      { id: 'ece-1', q: 'How many flip-flops does a decade (mod-10) ripple counter need?', options: ['3', '4', '5', '10'], answer: 1, why: 'Three flip-flops count only to 8; four count to 16, which covers 10 states.' },
+      { id: 'ece-2', q: 'A CMOS inverter draws almost no static power because…', options: ['Its supply voltage is low', 'One of its two transistors is always off in a steady state', 'It has no gate capacitance', 'It switches very slowly'], answer: 1, why: 'In either logic state the pull-up or the pull-down transistor is off, so there is no path from supply to ground.' },
+      { id: 'ece-3', q: 'A signal is band-limited to 4 kHz. The minimum sampling rate that avoids aliasing is…', options: ['2 kHz', '4 kHz', '8 kHz', '16 kHz'], answer: 2, why: 'The Nyquist rate is twice the highest frequency: 2 × 4 kHz = 8 kHz.' },
+    ],
+  },
+  'Machines & Power Systems': {
+    level: 'Core',
+    questions: [
+      { id: 'eee-1', q: 'The synchronous speed of a 4-pole induction motor on a 50 Hz supply is…', options: ['750 rpm', '1000 rpm', '1500 rpm', '3000 rpm'], answer: 2, why: 'Ns = 120 f / P = 120 × 50 / 4 = 1500 rpm.' },
+      { id: 'eee-2', q: 'Transformer cores are built from thin laminations mainly to reduce…', options: ['Copper loss', 'Eddy current loss', 'Hysteresis loss', 'Leakage flux'], answer: 1, why: 'Laminations break up the paths of eddy currents in the core, cutting that loss.' },
+      { id: 'eee-3', q: 'The power factor of a purely inductive load is…', options: ['Unity', '0.5 lagging', 'Zero lagging', 'Zero leading'], answer: 2, why: 'Current lags voltage by 90°, so cos 90° = 0, lagging.' },
+    ],
+  },
+  'Thermodynamics, Mechanics & Design': {
+    level: 'Core',
+    questions: [
+      { id: 'mech-1', q: 'A Carnot engine works between 600 K and 300 K. Its efficiency is…', options: ['25%', '50%', '75%', '100%'], answer: 1, why: 'η = 1 − Tc/Th = 1 − 300/600 = 50%.' },
+      { id: 'mech-2', q: 'A simply supported beam of span L carries a point load W at mid-span. The maximum bending moment is…', options: ['WL/2', 'WL/4', 'WL/8', 'WL²/8'], answer: 1, why: 'Each support carries W/2, so the moment at the centre is (W/2)(L/2) = WL/4.' },
+      { id: 'mech-3', q: 'Flow in a circular pipe is generally laminar when the Reynolds number is below about…', options: ['500', '2000', '4000', '10000'], answer: 1, why: 'Pipe flow stays laminar up to a Reynolds number of roughly 2000 to 2300.' },
+    ],
+  },
+  'Structures & Construction': {
+    level: 'Core',
+    questions: [
+      { id: 'civ-1', q: 'In IS 456, concrete grade M25 has a characteristic compressive strength of…', options: ['25 N/mm² at 7 days', '25 N/mm² at 28 days', '25 kN/m² at 28 days', '250 N/mm² at 28 days'], answer: 1, why: 'The number is the 28-day characteristic cube strength in N/mm².' },
+      { id: 'civ-2', q: 'The Standard Proctor test is used to find…', options: ['The bearing capacity of soil', 'Optimum moisture content and maximum dry density', 'The permeability of soil', 'The liquid limit'], answer: 1, why: 'It is a compaction test that gives the moisture content at which dry density is highest.' },
+      { id: 'civ-3', q: 'In the Critical Path Method, the critical path is…', options: ['The shortest path through the network', 'The path with the most activities', 'The longest path, with zero total float', 'The path with the highest cost'], answer: 2, why: 'The longest path fixes the project duration; its activities have no float.' },
+    ],
+  },
+  'Process Engineering': {
+    level: 'Core',
+    questions: [
+      { id: 'chem-1', q: 'For a positive-order reaction at the same conversion, which reactor needs the smaller volume?', options: ['CSTR', 'Plug flow reactor', 'Both need the same', 'It depends only on temperature'], answer: 1, why: 'A PFR works at higher average concentration than a CSTR, so the rate is higher and the volume smaller.' },
+      { id: 'chem-2', q: 'The ratio of momentum diffusivity to thermal diffusivity is the…', options: ['Reynolds number', 'Nusselt number', 'Prandtl number', 'Schmidt number'], answer: 2, why: 'Pr = ν / α. The Schmidt number is the mass-transfer counterpart.' },
+      { id: 'chem-3', q: 'Running a distillation column at total reflux gives…', options: ['The maximum number of stages', 'The minimum number of stages', 'The maximum product rate', 'The minimum reboiler duty'], answer: 1, why: 'At total reflux the operating lines sit on the diagonal, which needs the fewest stages (and gives no product).' },
+    ],
+  },
+  Biotechnology: {
+    level: 'Core',
+    questions: [
+      { id: 'bio-1', q: 'In PCR, the denaturation step is typically run at about…', options: ['37 °C', '55 °C', '72 °C', '95 °C'], answer: 3, why: 'Around 94 to 95 °C separates the two DNA strands; annealing and extension run cooler.' },
+      { id: 'bio-2', q: 'In Michaelis-Menten kinetics, Km is the substrate concentration at which the rate is…', options: ['Zero', 'Half of Vmax', 'Equal to Vmax', 'Twice Vmax'], answer: 1, why: 'Setting v = Vmax/2 in the rate equation gives [S] = Km.' },
+      { id: 'bio-3', q: 'Which technique separates proteins mainly by molecular weight?', options: ['SDS-PAGE', 'Isoelectric focusing', 'PCR', 'ELISA'], answer: 0, why: 'SDS gives proteins a uniform charge-to-mass ratio, so they migrate by size.' },
+    ],
+  },
+  'Materials & Metallurgy': {
+    level: 'Core',
+    questions: [
+      { id: 'mat-1', q: 'The eutectoid composition in the iron-carbon system is about…', options: ['0.02% C', '0.8% C', '2.1% C', '4.3% C'], answer: 1, why: 'Austenite transforms to pearlite at about 0.76 to 0.8% carbon; 4.3% is the eutectic.' },
+      { id: 'mat-2', q: 'Which hardness test uses a square-based diamond pyramid indenter?', options: ['Brinell', 'Rockwell B', 'Vickers', 'Shore'], answer: 2, why: 'Vickers uses a diamond pyramid; Brinell uses a ball.' },
+      { id: 'mat-3', q: 'Rapidly quenching a plain carbon steel from the austenite region produces…', options: ['Pearlite', 'Ferrite', 'Martensite', 'Cementite'], answer: 2, why: 'Fast cooling suppresses diffusion, so austenite shears into hard martensite.' },
+    ],
+  },
   'Aptitude & Logical': {
     level: 'Easy',
     questions: [
@@ -52,14 +111,15 @@ const bank: Record<string, { level: string; questions: Q[] }> = {
   },
 }
 
-const topics = Object.keys(bank)
-const allQs = topics.flatMap((t) => bank[t].questions)
-const dayIndex = istDayNumber() % allQs.length
 
 export default function Practice() {
   const { attempts, recordAttempt } = useApp()
+  const profile = useProfile()
+  // The sets a student sees follow their branch: core subjects for core branches, programming for software tracks.
+  const topics = useMemo(() => practiceTopicsFor(profile).filter((t) => bank[t]), [profile])
+  const allQs = useMemo(() => topics.flatMap((t) => bank[t].questions), [topics])
   const [topic, setTopic] = useState<string | null>(null)
-  const [current, setCurrent] = useState<Q>(allQs[dayIndex])
+  const [current, setCurrent] = useState<Q>(() => allQs[istDayNumber() % allQs.length])
   const [picked, setPicked] = useState<number | null>(null)
 
   const solvedIds = useMemo(() => new Set(attempts.filter((a) => a.correct).map((a) => a.question_id)), [attempts])

@@ -29,6 +29,13 @@ Semantic versioning; see `docs/ENGINEERING.md` for how releases are made.
 - The CSV export opens correctly in Excel.
 
 ### Fixed
+- **Scoring for non-software branches.** Each company category had one skill list for every student, so a robotics,
+  EV, metallurgy, mining, textile or agricultural student scored 40% everywhere however strong they were, and a civil
+  student could never pass "Can become". Students are now also scored on their own track's skills at each company, and
+  the better result counts. The company page says which skills were used. Pure software branches score exactly as before;
+  Cyber Security and IoT specialisations improve at the companies their second track covers.
+- **Roadmap, practice sets and mock interview types** now follow the student's branch (they were software-only): core
+  branches get a plan built from their own skill gaps, core-subject questions, and a core technical round.
 - **Scorecard and resume paths:** a GATE scorecard or resume path could point into another student's folder.
 - **File types:** uploads are now checked by their content, not only by the type the uploader declared.
 - **Evidence:** a failed GitHub or Codeforces sync could erase proven evidence.
