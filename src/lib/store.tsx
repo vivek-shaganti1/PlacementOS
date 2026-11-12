@@ -50,7 +50,7 @@ export const canned = (q: string, p: Profile) => {
   if (t.includes('roadmap') || t.includes('prepare') || t.includes('plan'))
     return `Start with ${g1?.name ?? 'Advanced DSA'} for 4 weeks, then ${g2?.name ?? 'System Design'} for 3 weeks. Ship one distributed-systems project and do 2 mock interviews per week. Track it all on your Learning Roadmap page.`
   if (t.includes('message') || t.includes('intro'))
-    return `Suggested message: "Hi — I am a ${p.meta} student from ${p.college}. I am preparing for the upcoming SDE drive and would value 10 minutes of your advice on what the interview loop focuses on. Thank you!"`
+    return `Suggested message: "Hi — I am a ${p.meta} student from ${p.college}. I am preparing for the upcoming campus drive and would value 10 minutes of your advice on what the interview loop focuses on. Thank you!"`
   if (t.includes('resume'))
     return p.resume_name
       ? `I have your resume "${p.resume_name}" on file. Biggest wins: quantify impact on every project, move skills above education, and cut the objective statement.`

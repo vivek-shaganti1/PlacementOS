@@ -1,16 +1,18 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { Card, Meter, Page, Stat } from '../components/Page'
 import { interviewReadiness } from '../lib/predict'
+import { mockTypesFor } from '../lib/prep'
 import { useAuth, useProfile } from '../lib/auth'
 import { useApp } from '../lib/store'
 import { errMsg } from '../lib/supabase'
 
-const types = ['DSA Round', 'System Design', 'HR & Behavioural', 'Full Loop Simulation', 'Company OA']
 const input = 'h-[34px] rounded-[9px] border border-line bg-white px-3 text-[12.5px] outline-none focus:border-[#d5cbff]'
 
-const slots = [
-  { id: 's1', type: 'DSA Round', mentor: 'Interviewer not assigned yet', when: 'Tomorrow, 6:00 PM' },
-  { id: 's2', type: 'System Design', mentor: 'Interviewer not assigned yet', when: 'Thu, 7:30 PM' },
+// The first two slots are the track's own technical rounds (DSA and system design for software; a core technical
+// round and a written test for every other branch).
+const slotsFor = (types: string[]) => [
+  { id: 's1', type: types[0], mentor: 'Interviewer not assigned yet', when: 'Tomorrow, 6:00 PM' },
+  { id: 's2', type: types[1], mentor: 'Interviewer not assigned yet', when: 'Thu, 7:30 PM' },
   { id: 's3', type: 'HR & Behavioural', mentor: 'Placement cell · HR panel', when: 'Sat, 11:00 AM' },
   { id: 's4', type: 'Full Loop Simulation', mentor: 'Interviewers not assigned yet', when: 'Sun, 4:00 PM' },
 ]
@@ -18,6 +20,8 @@ const slots = [
 export default function MockInterviews() {
   const { bookings: booked, toggleBooking, showToast } = useApp()
   const p = useProfile()
+  const types = useMemo(() => mockTypesFor(p), [p])
+  const slots = useMemo(() => slotsFor(types), [types])
   const { updateProfile } = useAuth()
   const past = p.mock_feedback
   const [d, setD] = useState({ type: types[0], score: '7', note: '' })

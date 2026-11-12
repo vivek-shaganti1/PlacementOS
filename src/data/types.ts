@@ -44,4 +44,6 @@ export type Company = CompanyBase & {
   breakdown: { academic: number; skills: number; experience: number; projects: number }
   criteria: Criterion[]
   gaps: { skill: string; have: number; need: number }[]
+  /** Set when the student was scored on their own track's skills at this company (the track's label, for example "Electric vehicles"). */
+  scoredFor?: string
 }

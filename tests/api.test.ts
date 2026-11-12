@@ -462,6 +462,74 @@ test('MFA an admin action from a password-only session is refused', async () => 
   assert.ok(!calls.some((c) => c.url.includes('/auth/v1/admin/users') || c.url.includes('org_students')), 'nothing created or saved')
 })
 
+// ------------------------------------------------------------------ every branch is scored on what it studies
+const { BRANCHES, TRACKS, skillsFor: skillsOf, tracksFor: tracksOf } = await import('../src/lib/branches')
+const { TRACK_ROLE_SKILLS, catalogFor, rolesFor } = await import('../src/lib/eligibility')
+const { trackReadiness } = await import('../src/lib/predict')
+const { roadmapFor, mockTypesFor, practiceTopicsFor, isSoftwareTrack } = await import('../src/lib/prep')
+const studentOf = (branch: string, level: number, tracks?: string[]) => {
+  const who = { branch, tracks }
+  return { ...who, batch: '2026', cgpa: 9, backlogs: 0, class_x: 90, class_xii: 90, skills: skillsOf(who).map((name: string) => ({ name, level })), projects: [{}, {}, {}], internships: [{}], integrations: {}, credentials: [] } as any
+}
+test('BRANCH a role template only ever names skills of its own track', () => {
+  for (const [id, skills] of Object.entries(TRACK_ROLE_SKILLS)) {
+    const track = TRACKS.find((t: any) => t.id === id)
+    assert.ok(track, `unknown track ${id}`)
+    for (const s of Object.keys(skills as object)) assert.ok(track.skills.includes(s), `${id} role tests "${s}", which the track does not list`)
+  }
+})
+test('BRANCH a student strong in their own track is eligible somewhere, in every branch', () => {
+  for (const b of BRANCHES) {
+    const all = evaluateAll(studentOf(b.name, 90))
+    assert.ok(all.length >= 3, `${b.code} has only ${all.length} companies`)
+    assert.ok(all.some((c: any) => c.bucket === 'eligible'), `${b.code}: nobody is reachable`)
+    // No company a core track is shown can sit below 55 for a student at 90 in every skill of that track.
+    if (!isSoftwareTrack({ branch: b.name })) assert.ok(Math.min(...all.map((c: any) => c.match)) >= 88, `${b.code}: lowest match ${Math.min(...all.map((c: any) => c.match))}`)
+  }
+})
+test('BRANCH for every track, each company it lists can be reached with that track alone', () => {
+  for (const t of TRACKS.filter((t: any) => TRACK_ROLE_SKILLS[t.id])) {
+    const family = t.families[0]
+    const branch = BRANCHES.find((b: any) => b.family === family)!.name
+    const p = studentOf(branch, 95, [t.id])
+    for (const c of catalogFor(p)) {
+      const roles = rolesFor(c, p)
+      assert.ok(roles.some((r: any) => Object.keys(r.requirements.skills).every((s) => t.skills.includes(s))), `${t.id} at ${c.name}: no role uses only the track's skills`)
+    }
+  }
+})
+test('BRANCH a weak student is not made eligible by the role scoring', () => {
+  for (const b of BRANCHES) assert.equal(evaluateAll(studentOf(b.name, 35)).filter((c: any) => c.bucket === 'eligible' || c.bucket === 'nearly').length, 0, b.code)
+})
+test('BRANCH software scoring is unchanged', () => {
+  const cse = evaluateAll(studentOf('Computer Science & Engineering', 70))
+  assert.equal(cse.length, 66)
+  assert.ok(cse.every((c: any) => !c.scoredFor), 'software students are scored on the category list')
+  const n = (k: string) => cse.filter((c: any) => c.bucket === k).length
+  assert.deepEqual([n('eligible'), n('nearly'), n('canBecome'), n('notEligible')], [14, 21, 31, 0]) // the counts on main before role scoring
+})
+test('BRANCH rankings and the student page agree for core tracks', () => {
+  const p = studentOf('Mechatronics', 80)
+  assert.equal(trackReadiness(p), 100)
+  assert.ok(evaluateAll(p).every((c: any) => c.scoredFor === 'Robotics'))
+})
+test('BRANCH roadmap, practice and mock interviews follow the branch', () => {
+  const civil = studentOf('Civil Engineering', 40)
+  const plan = roadmapFor(civil, evaluateAll(civil))
+  assert.equal(plan.length, 4)
+  assert.ok(!JSON.stringify(plan).includes('DSA') && !JSON.stringify(plan).includes('System Design'))
+  assert.match(plan[0].title, /Structural|AutoCAD|Geotechnical/)
+  assert.deepEqual(practiceTopicsFor(civil), ['Structures & Construction', 'Aptitude & Logical'])
+  assert.equal(mockTypesFor(civil)[0], 'Core Technical Round')
+  const cse = studentOf('Computer Science & Engineering', 40)
+  assert.match(roadmapFor(cse, evaluateAll(cse))[0].title, /Advanced DSA/)
+  assert.equal(practiceTopicsFor(cse)[0], 'Arrays & Strings')
+  assert.equal(mockTypesFor(cse)[0], 'DSA Round')
+  // ECE prepares for both: its core subject and programming.
+  assert.deepEqual(practiceTopicsFor({ branch: 'Electronics & Communication Engineering' }).slice(0, 2), ['Digital & Analog Electronics', 'Arrays & Strings'])
+  assert.ok(tracksOf({ branch: 'Civil Engineering' }).length > 0)
+})
+
 // ------------------------------------------------------------------ SEC-05
 const base = {
   branch: 'CSE', tracks: [], cgpa: 8, backlogs: 0, class_x: 80, class_xii: 80,

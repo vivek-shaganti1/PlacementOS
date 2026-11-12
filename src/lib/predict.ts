@@ -4,7 +4,7 @@
  */
 import type { Bucket, Company } from '../data/types'
 import { skillsFor, skillShort, TRACK_BY_ID, tracksFor } from './branches'
-import { catalogFor, evaluate, evaluateAll, readinessOf, requirementsFor, type StudentLike } from './eligibility'
+import { catalogFor, evaluate, evaluateAll, readinessOf, requirementsForStudent, type StudentLike } from './eligibility'
 
 /* ---------------------------------------------------------------- salary prediction */
 
@@ -127,7 +127,8 @@ export function trackReadiness(p: StudentLike): number {
   const own = new Set(skillsFor(p))
   return readinessOf(
     catalogFor(p).map((c) => {
-      const { category, requirements } = requirementsFor(c)
+      // The role the student is scored for (their own track's, where the company hires for it).
+      const { category, requirements } = requirementsForStudent(c, p)
       const skills = Object.fromEntries(Object.entries(requirements.skills).filter(([name]) => own.has(name)))
       return evaluate(c, p, { category, requirements: { ...requirements, skills } })
     }),
