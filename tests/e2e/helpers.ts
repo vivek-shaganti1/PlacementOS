@@ -15,6 +15,9 @@ export function watchErrors(page: Page) {
     const text = m.text()
     // The browser's own report of a refused request is noise when the test itself expects the refusal.
     if (/Failed to load resource: the server responded with a status of (401|403|404|409|422)/.test(text)) return
+    // WebKit on Linux reports a viewport key it does not support (interactive-widget, used by Chrome on Android) and
+    // ignores it; that is the browser describing itself, not an error in the page.
+    if (/Viewport argument key "interactive-widget" not recognized/.test(text)) return
     errors.push(`console: ${text}`)
   })
   return errors
