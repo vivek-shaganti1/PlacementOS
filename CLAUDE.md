@@ -89,6 +89,10 @@ Project skills in `.claude/skills/`: `motion-design` (start here), `premium-ui`,
 `page-transitions`, `magnetic-effects`, `parallax`, `particle-effects`, `cursor-effects`, `glassmorphism`,
 `typography-animation`, `performance`, `accessibility`.
 
+## Process
+Branching, required CI checks, migrations (and the production ledger), releases, rollback and scheduled jobs are in
+`docs/ENGINEERING.md`. Follow it for every change: branch → PR → CI → apply migration in production → merge → post-deploy check.
+
 ## Before finishing any change
 1. `npm run build` passes.
 2. Entry chunk does not import three or GSAP.

@@ -1,0 +1,40 @@
+# Changelog
+
+Semantic versioning; see `docs/ENGINEERING.md` for how releases are made.
+
+## Unreleased
+
+### Added
+- **Two-factor sign-in for platform admins and placement cells** (authenticator app). It is enforced in the database, and
+  a password-only session has no admin powers. Settings has a card for adding a backup app.
+- **Settings for every role.** Admins and recruiters can now change their password in the app.
+- **Full-stack CI** against a throwaway stack:
+  - Playwright on every page for every role.
+  - pgTAP access tests.
+  - OWASP ZAP active scan with a reviewed gate.
+  - Lighthouse budgets.
+- A weekly read-only Lighthouse check of the live site.
+- A post-deploy smoke check of production.
+- Nightly encrypted database backups, each restored into a throwaway database to prove it works.
+- Dependabot for GitHub Actions and npm packages.
+- `docs/ENGINEERING.md`, a pull request template and this changelog.
+
+### Changed
+- Fonts are self-hosted (no requests to Google) and the main ones are preloaded.
+- `@supabase/supabase-js` 2.117.2 → 2.119.0.
+- Days count in India time for practice streaks and daily snapshots.
+- The CSV export opens correctly in Excel.
+
+### Fixed
+- **Scorecard and resume paths:** a GATE scorecard or resume path could point into another student's folder.
+- **File types:** uploads are now checked by their content, not only by the type the uploader declared.
+- **Evidence:** a failed GitHub or Codeforces sync could erase proven evidence.
+- **Batch logins:** one failure in a batch of "create logins" lost the other passwords.
+- **Error codes:** timeouts and outages were reported as 500.
+- **Deleted accounts:** a deleted account's open session could still upload files.
+- **Database:** nine indexes were missing, and some admin actions were not in the audit log.
+- **Landing page:** accessibility rose from 93 to 100.
+
+## 0.1.0 — 2026-11-10
+
+The first audited release: security remediation, roster and recruiter fixes, and full-stack test reports in `testing/`.

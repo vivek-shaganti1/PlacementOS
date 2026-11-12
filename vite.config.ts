@@ -35,8 +35,25 @@ function apiDevServer(): Plugin {
   }
 }
 
+// Preloads the fonts the first screen uses (Latin subsets of Geist and Instrument Serif), so text is not drawn in a
+// fallback font and then re-flowed when they arrive (a layout shift on systems whose fallback differs in size).
+function preloadFonts(): Plugin {
+  return {
+    name: 'preload-fonts',
+    apply: 'build',
+    transformIndexHtml: {
+      order: 'post',
+      handler(_html, ctx) {
+        return Object.keys(ctx.bundle ?? {})
+          .filter((f) => /(geist-latin-wght-normal|instrument-serif-latin-400-(normal|italic))-[\w-]+\.woff2$/.test(f))
+          .map((f) => ({ tag: 'link', attrs: { rel: 'preload', as: 'font', type: 'font/woff2', href: `/${f}`, crossorigin: '' }, injectTo: 'head' as const }))
+      },
+    },
+  }
+}
+
 export default defineConfig({
-  plugins: [react(), apiDevServer()],
+  plugins: [react(), apiDevServer(), preloadFonts()],
   server: { port: 5199 },
   build: {
     rollupOptions: {
