@@ -135,3 +135,12 @@ dev.html
 
 # Rendered videos are large binaries: keep them out of the repository
 *.mp4
+
+# Supabase CLI state
+supabase/.temp/
+supabase/.branches/
+# Test output
+test-results/
+playwright-report/
+.lighthouseci/
+zap-report/

@@ -26,9 +26,9 @@ export default handle(async (req) => {
 
   const out: Record<string, unknown> = { ok: true, groq_key: Boolean(env('GROQ_API_KEY')), models: MODELS, github_token: Boolean(env('GITHUB_TOKEN')) }
   if (url.searchParams.get('ping') === '1' && env('GROQ_API_KEY')) {
-    const res = await fetch('https://api.groq.com/openai/v1/models', { signal: timeout(8000), headers: { authorization: `Bearer ${env('GROQ_API_KEY')}` } })
-    out.groq_reachable = res.ok
-    out.groq_status = res.status
+    const res = await fetch('https://api.groq.com/openai/v1/models', { signal: timeout(8000), headers: { authorization: `Bearer ${env('GROQ_API_KEY')}` } }).catch(() => null)
+    out.groq_reachable = !!res?.ok
+    out.groq_status = res?.status ?? null
   }
   return json(out)
 })

@@ -18,6 +18,7 @@ import { safeUrl } from '../lib/links'
 import { plural } from '../lib/format'
 import { HoldButton } from '../components/HoldButton'
 import { useDialog } from '../lib/useDialog'
+import { istDay } from '../lib/dates'
 
 const tone = (v: number) => (v >= 75 ? '#12b76a' : v >= 55 ? '#f79009' : '#f04438')
 
@@ -464,9 +465,12 @@ export function AdminStudents() {
     }
     const csv = [head, ...lines].map((l) => l.map(cell).join(',')).join('\n')
     const a = document.createElement('a')
-    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }))
-    a.download = `placementiq-students-${new Date().toISOString().slice(0, 10)}.csv`
+    // The byte-order mark tells Excel the file is UTF-8, so names in Indic scripts, accents and "₹" open correctly.
+    const url = URL.createObjectURL(new Blob(['\uFEFF', csv], { type: 'text/csv;charset=utf-8' }))
+    a.href = url
+    a.download = `placementiq-students-${istDay()}.csv`
     a.click()
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
   }
 
   return (

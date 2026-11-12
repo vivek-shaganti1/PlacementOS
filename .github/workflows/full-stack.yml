@@ -1,0 +1,116 @@
+name: Full stack
+# Everything runs against a throwaway stack inside this job: a local Supabase (all migrations, synthetic data from
+# scripts/e2e-seed.mjs) and the built app served the way Vercel serves it (scripts/serve-prod.mjs). No secrets are used
+# and nothing can reach production, so the OWASP ZAP active scan is safe here. The only live-site job is a read-only
+# Lighthouse pass on the public pages, on the weekly schedule.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '0 22 * * 0' # Mondays 03:30 IST
+  workflow_dispatch:
+
+concurrency:
+  group: full-stack-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  ZAP_IMAGE: ghcr.io/zaproxy/zaproxy@sha256:9624669db72f54d86c4b46a7064518bd9bf79d8c61a4c31befa9923489f328af # 2.17.0
+  LHCI: '@lhci/cli@0.15.1'
+
+jobs:
+  stack:
+    name: e2e, pgTAP, ZAP, Lighthouse
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+          cache: npm
+      - uses: supabase/setup-cli@689adcfb80d947100a1eab127289b97d1fb07b13 # v3.2.0
+        with:
+          version: 3.1.0
+      - run: npm ci
+
+      - name: Start a throwaway Supabase
+        run: supabase start -x studio,imgproxy,postgres-meta,logflare,vector,supavisor,edge-runtime,realtime
+
+      - name: pgTAP
+        run: supabase test db supabase/tests/pgtap
+
+      - name: Seed synthetic data
+        run: node scripts/e2e-seed.mjs
+
+      - name: Build against the local stack and serve it like Vercel
+        run: |
+          eval "$(supabase status -o env | grep -E '^(API_URL|PUBLISHABLE_KEY|SECRET_KEY)=')"
+          echo "::add-mask::$SECRET_KEY"
+          VITE_SUPABASE_URL="$API_URL" VITE_SUPABASE_PUBLISHABLE_KEY="$PUBLISHABLE_KEY" npm run build
+          node scripts/check-entry.mjs
+          SUPABASE_URL="$API_URL" SUPABASE_PUBLISHABLE_KEY="$PUBLISHABLE_KEY" SUPABASE_SECRET_KEY="$SECRET_KEY" \
+            CONNECT_PROOF_SECRET=ci-only HOST=0.0.0.0 nohup node scripts/serve-prod.mjs > serve.log 2>&1 &
+          for i in $(seq 1 30); do curl -sf http://127.0.0.1:4173/api/health && exit 0; sleep 1; done
+          cat serve.log; exit 1
+
+      - name: Playwright browsers
+        run: npx playwright install --with-deps chromium firefox webkit
+
+      - name: Playwright (every page, every role, three browsers)
+        run: npx playwright test
+
+      - name: Lighthouse (public pages)
+        run: npx --yes "$LHCI" autorun
+
+      - name: OWASP ZAP full active scan (this job's local stack only)
+        run: |
+          mkdir -p zap-report && chmod 777 zap-report
+          docker run --rm --network host -v "$PWD/zap-report:/zap/wrk:rw" "$ZAP_IMAGE" \
+            zap-full-scan.py -t http://127.0.0.1:4173 -j -m 3 -I -J zap.json -r zap.html \
+            -z "-config scanner.maxScanDurationInMins=12 -config scanner.threadPerHost=4"
+
+      - name: ZAP gate
+        run: node scripts/zap-gate.mjs zap-report/zap.json
+
+      - name: Reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: full-stack-reports-${{ github.run_id }}
+          path: |
+            playwright-report/
+            test-results/
+            .lighthouseci/
+            zap-report/
+            serve.log
+          retention-days: 14
+          if-no-files-found: ignore
+
+  live-lighthouse:
+    name: Lighthouse on the live site (read-only)
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Measure the public pages
+        run: |
+          npx --yes "$LHCI" collect --numberOfRuns=3 --settings.chromeFlags="--no-sandbox --headless=new" \
+            --url=https://placementiq-os.vercel.app/ --url=https://placementiq-os.vercel.app/login \
+            --url=https://placementiq-os.vercel.app/signup --url=https://placementiq-os.vercel.app/privacy
+          npx --yes "$LHCI" assert --preset=lighthouse:no-pwa \
+            --assertions.categories:accessibility=error --assertions.categories:performance=warn || \
+            echo "::warning::The live site is below a Lighthouse budget; see the report artifact."
+          npx --yes "$LHCI" upload --target=filesystem --outputDir=lighthouse-live
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: lighthouse-live-${{ github.run_id }}
+          path: lighthouse-live/
+          retention-days: 30

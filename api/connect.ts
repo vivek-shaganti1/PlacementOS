@@ -5,7 +5,7 @@
 // POST { credential: 'nptel', ref, skill }                                   -> checked on nptel.ac.in, then confirmed by the placement cell
 // POST { credential: 'gate', ref, paper, score, year, name, file_path }       -> pending until the placement cell confirms
 import { FILE_SIGNALS, GATE_PAPERS, IGNORED_PATH, SKILL_BY_NAME, type FileSignal } from '../src/lib/branches'
-import { bearer, deleteRows, env, handle, HttpError, insertVerified, json, loadProfile, rest, rosterName, saveProfile, SUPABASE_URL, timeout } from './_lib'
+import { bearer, deleteRows, env, handle, HttpError, insertVerified, json, loadProfile, rest, rosterName, saveProfile, SUPABASE_KEY, SUPABASE_URL, timeout } from './_lib'
 
 export const config = { runtime: 'edge' }
 
@@ -32,8 +32,11 @@ export async function github(username: string) {
   if (res.status === 403 || res.status === 429) throw new HttpError(429, 'GitHub rate limit reached. Try again in a few minutes.')
   if (!user) throw new HttpError(502, 'Could not reach GitHub.')
 
-  const { body: repos } = await getJson(`https://api.github.com/users/${encodeURIComponent(username)}/repos?per_page=100&type=owner&sort=pushed`, { headers })
-  const own = ((repos ?? []) as any[]).filter((r) => !r.fork && !r.archived)
+  const { res: reposRes, body: repos } = await getJson(`https://api.github.com/users/${encodeURIComponent(username)}/repos?per_page=100&type=owner&sort=pushed`, { headers })
+  // A failed list must not be saved as "no repositories": that would wipe proven evidence until the next sync.
+  if (reposRes.status === 403 || reposRes.status === 429) throw new HttpError(429, 'GitHub rate limit reached. Try again in a few minutes.')
+  if (!reposRes.ok || !Array.isArray(repos)) throw new HttpError(502, 'GitHub did not return the repository list. Nothing was changed; try again shortly.')
+  const own = (repos as any[]).filter((r) => !r.fork && !r.archived)
   const langCount: Record<string, number> = {}
   const topicSet = new Set<string>()
   for (const r of own) {
@@ -247,6 +250,8 @@ async function codeforces(username: string) {
     getJson(`https://codeforces.com/api/user.status?handle=${encodeURIComponent(username)}&from=1&count=10000`),
     getJson(`https://codeforces.com/api/user.rating?handle=${encodeURIComponent(username)}`),
   ])
+  // Codeforces often rate-limits user.status; saving its absence would record zero solved problems.
+  if (status?.status !== 'OK' || rating?.status !== 'OK') throw new HttpError(502, 'Codeforces did not answer in full. Nothing was changed; try again shortly.')
   const solved = new Set(
     ((status?.result ?? []) as any[]).filter((s) => s.verdict === 'OK').map((s) => `${s.problem.contestId}-${s.problem.index}`),
   ).size
@@ -358,16 +363,20 @@ async function gateCredential(token: string, profile: Record<string, any>, b: Re
   if (!GATE_PAPERS[paper]) throw new HttpError(422, 'Could not read the GATE paper code from the scorecard.')
   if (!Number.isFinite(score) || score < 0 || score > 1000) throw new HttpError(422, 'The GATE score must be between 0 and 1000.')
   if (!(year >= 2015 && year <= new Date().getFullYear() + 1)) throw new HttpError(422, 'Could not read the GATE year from the scorecard.')
-  if (!path.startsWith(`${profile.id}/`) || !/\.pdf$/i.test(path)) throw new HttpError(422, 'Upload the scorecard PDF first.')
+  // One file directly in the student's own folder: no sub-folders and no "..", so the path cannot reach another student.
+  if (!new RegExp(`^${profile.id}/(?!.*\\.\\.)[\\w.-]+\\.pdf$`, 'i').test(path)) throw new HttpError(422, 'Upload the scorecard PDF first.')
   // The roster name, because students can edit the name on their profile.
   const onRoster = await rosterName(profile.id)
   if (!onRoster) throw new HttpError(422, 'Your college has no name on record for you yet. Ask your placement cell to add it first.')
   if (!b.name || !sameName(String(b.name), onRoster)) throw new HttpError(422, `The scorecard is for "${String(b.name ?? 'someone else')}", not the name your college has for you.`)
   // Fingerprint of the stored PDF: the placement cell's review compares it, so the file cannot be swapped after submission.
-  const key = env('SUPABASE_SECRET_KEY')
-  const stored = key ? await fetch(`${SUPABASE_URL}/storage/v1/object/resumes/${path.split('/').map(encodeURIComponent).join('/')}`, { signal: timeout(10_000), headers: { apikey: key, authorization: `Bearer ${key}` } }) : null
-  if (key && !stored?.ok) throw new HttpError(502, 'Could not read the scorecard you uploaded. Try again.')
-  const digest = stored?.ok ? [...new Uint8Array(await crypto.subtle.digest('SHA-256', await stored.arrayBuffer()))].map((x) => x.toString(16).padStart(2, '0')).join('') : null
+  // Read with the student's own session, so storage's own-folder rule applies as a second check on the path.
+  const stored = await fetch(`${SUPABASE_URL}/storage/v1/object/resumes/${path.split('/').map(encodeURIComponent).join('/')}`, { signal: timeout(10_000), headers: { apikey: SUPABASE_KEY, authorization: `Bearer ${token}` } })
+  if (!stored.ok) throw new HttpError(502, 'Could not read the scorecard you uploaded. Try again.')
+  const file = new Uint8Array(await stored.arrayBuffer())
+  // The declared type is the uploader's word; the first bytes are not.
+  if (String.fromCharCode(...file.subarray(0, 5)) !== '%PDF-') throw new HttpError(422, 'The scorecard must be a PDF file.')
+  const digest = [...new Uint8Array(await crypto.subtle.digest('SHA-256', file))].map((x) => x.toString(16).padStart(2, '0')).join('')
   await insertVerified(token, profile.id, 'credentials', {
     kind: 'gate', ref, skill: '', title: `GATE ${year} · ${GATE_PAPERS[paper]}`, score, status: 'pending', verified_by: null, file_path: path,
     data: { paper, year, name: String(b.name ?? '').slice(0, 120), air: Number(b.air) || null, sha256: digest },

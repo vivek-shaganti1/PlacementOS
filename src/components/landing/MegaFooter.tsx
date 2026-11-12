@@ -66,7 +66,7 @@ export function MegaFooter() {
       </div>
 
       {/* The wordmark: rises out of a mask once, colour flows slowly, a light follows the pointer on desktop. */}
-      <div onPointerMove={track} className="wordmark relative mt-16 select-none overflow-hidden px-2" aria-label="PlacementIQ">
+      <div onPointerMove={track} className="wordmark relative mt-16 select-none overflow-hidden px-2" role="img" aria-label="PlacementIQ">
         <motion.p
           aria-hidden
           initial={reduce ? false : { y: '60%', opacity: 0 }}

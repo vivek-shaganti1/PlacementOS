@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Card, Page, Stat } from '../components/Page'
 import { useApp } from '../lib/store'
+import { istDay, istDayBefore, istDayNumber } from '../lib/dates'
 
 type Q = { id: string; q: string; options: string[]; answer: number; why: string }
 
@@ -53,7 +54,7 @@ const bank: Record<string, { level: string; questions: Q[] }> = {
 
 const topics = Object.keys(bank)
 const allQs = topics.flatMap((t) => bank[t].questions)
-const dayIndex = Math.floor(Date.now() / 86400000) % allQs.length
+const dayIndex = istDayNumber() % allQs.length
 
 export default function Practice() {
   const { attempts, recordAttempt } = useApp()
@@ -64,13 +65,14 @@ export default function Practice() {
   const solvedIds = useMemo(() => new Set(attempts.filter((a) => a.correct).map((a) => a.question_id)), [attempts])
   const accuracy = attempts.length ? Math.round((attempts.filter((a) => a.correct).length / attempts.length) * 100) : 0
   const streak = useMemo(() => {
-    const days = new Set(attempts.map((a) => a.created_at.slice(0, 10)))
+    // Days are counted in India time, so late-night practice counts for the day the student is living in.
+    const days = new Set(attempts.map((a) => istDay(a.created_at)))
     let n = 0
-    const d = new Date()
-    if (!days.has(d.toISOString().slice(0, 10))) d.setUTCDate(d.getUTCDate() - 1)
-    while (days.has(d.toISOString().slice(0, 10))) {
+    let d = istDay()
+    if (!days.has(d)) d = istDayBefore(d)
+    while (days.has(d)) {
       n++
-      d.setUTCDate(d.getUTCDate() - 1)
+      d = istDayBefore(d)
     }
     return n
   }, [attempts])

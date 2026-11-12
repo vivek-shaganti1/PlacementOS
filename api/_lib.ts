@@ -27,6 +27,14 @@ export const handle = (fn: (req: Request) => Promise<Response>) => async (req: R
     return await fn(req)
   } catch (e) {
     if (e instanceof HttpError) return json({ error: e.message }, e.status)
+    // An upstream that is slow, unreachable or answers garbage is not a bug here; say so with the right status, so
+    // clients and monitoring can tell an outage from a defect.
+    const name = (e as { name?: string })?.name
+    if (name === 'TimeoutError' || name === 'AbortError') return json({ error: 'A service we depend on took too long. Try again shortly.' }, 504)
+    if (e instanceof TypeError || e instanceof SyntaxError) {
+      console.error('upstream', name, String((e as Error).message).slice(0, 200))
+      return json({ error: 'A service we depend on is not answering. Try again shortly.' }, 502)
+    }
     console.error(e)
     return json({ error: 'Unexpected server error' }, 500)
   }
@@ -57,7 +65,16 @@ export async function rest(token: string, path: string, init: RequestInit = {}, 
     if (/"code":"23505"/.test(text)) throw new HttpError(409, 'This record already exists.')
     if (/"code":"42501"|row-level security/.test(text)) throw new HttpError(403, 'You do not have permission to change this.')
     // Never echo raw database text (table, column and constraint names) to the browser; keep it in the server log.
-    console.error('db', res.status, path.split('?')[0], text.slice(0, 500))
+    // Only the error code and constraint are logged: Postgres "detail" text can contain the row's values (emails, names).
+    let code = '', constraint = ''
+    try {
+      const j = JSON.parse(text)
+      code = String(j.code ?? '')
+      constraint = String(j.message ?? '').match(/constraint "([^"]+)"/)?.[1] ?? ''
+    } catch {
+      /* not JSON */
+    }
+    console.error('db', res.status, path.split('?')[0], code, constraint)
     throw new HttpError(502, 'The database rejected this request. Try again, or contact your placement cell if it keeps happening.')
   }
   return res

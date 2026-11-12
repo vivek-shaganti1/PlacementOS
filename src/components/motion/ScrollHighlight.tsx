@@ -13,7 +13,8 @@ export function ScrollHighlight({ children, as: Tag = 'p', className }: { childr
       const mm = gsap.matchMedia()
       mm.add(MM.motion, () => {
         if (!ref.current) return
-        const split = SplitText.create(ref.current, { type: 'words', aria: 'auto' })
+        // aria 'none': the words stay real text that screen readers read in order (an aria-label on a <p> is not allowed).
+        const split = SplitText.create(ref.current, { type: 'words', aria: 'none' })
         gsap.fromTo(
           split.words,
           { opacity: 0.18 },

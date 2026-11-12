@@ -1,0 +1,7 @@
+{
+  "_note": "ZAP alerts reviewed and accepted, with the reason. scripts/zap-gate.mjs fails the build on any High alert and on any Medium alert not listed here. Review this list when the app changes.",
+  "10055": "CSP style-src 'unsafe-inline': the prerendered public pages carry React style attributes, and Motion animates inline styles. script-src stays 'self' (no inline script), which is what protects against XSS. Reviewed 2026-11-12.",
+  "10099": "'Source Code Disclosure - SQL' is the deliberate policy snippet shown in the landing page's Trust section (src/components/landing/Trust.tsx), not leaked source. Reviewed 2026-11-12.",
+  "90004": "Cross-Origin-Embedder-Policy: require-corp would block avatars served from Supabase Storage and GitHub. The app does not use SharedArrayBuffer, which is what COEP protects. Reviewed 2026-11-12.",
+  "10036": "The 'Server' header on /supabase/ comes from the local Supabase gateway behind the proxy in CI; production answers from Supabase's own edge. Reviewed 2026-11-12."
+}
