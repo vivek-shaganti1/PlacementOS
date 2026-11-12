@@ -5,6 +5,8 @@ Semantic versioning; see `docs/ENGINEERING.md` for how releases are made.
 ## Unreleased
 
 ### Added
+- **Contact us** replaces "Get started" on the landing page: a form for colleges, stored and rate-limited on the
+  server, with an Enquiries page for platform admins. Students still register from the sign-in page.
 - Landing hero: the eligibility board now plays a live loop. The assistant names a fix, a scan sweeps the board and
   that company moves up a column while readiness and the resume score follow. It also has a cursor spotlight, a tilt
   sheen, depth layers and a turning halo. It pauses off-screen and stays still for reduced motion.

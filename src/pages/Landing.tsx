@@ -13,6 +13,7 @@ import { Glow } from '../components/effects'
 import { CursorFollower, Magnetic, ScrollHighlight, ScrollProgress, SmoothScroll, TextReveal } from '../components/motion'
 import { intensity, useMotionTier } from '../lib/motion'
 import { usd, PLANS } from '../lib/pricing'
+import { ContactDialog, openContact } from '../components/landing/ContactDialog'
 import { Features } from '../components/landing/Features'
 import { HeroPreview } from '../components/landing/HeroPreview'
 import { HowItWorks } from '../components/landing/HowItWorks'
@@ -71,9 +72,9 @@ function Pricing() {
                   {p.name === 'Enterprise' ? 'Talk to us' : p.name === 'Trial' ? 'Start a trial' : `Choose ${p.name}`}
                 </a>
               ) : (
-                <Link to="/login" className={`${p.featured ? 'btn-primary' : 'btn-glass'} mt-6 h-[42px] justify-center text-[13px]`}>
+                <button type="button" onClick={() => openContact(`${p.name} plan`)} className={`${p.featured ? 'btn-primary' : 'btn-glass'} mt-6 h-[42px] justify-center text-[13px]`}>
                   {p.name === 'Enterprise' ? 'Talk to us' : p.name === 'Trial' ? 'Start a trial' : `Choose ${p.name}`}
-                </Link>
+                </button>
               )}
             </div>
           </motion.div>
@@ -106,7 +107,7 @@ function Announcement() {
   )
 }
 
-/** Three floating pills: section links, the brand, and account actions with keyboard hints (G, S). */
+/** Three floating pills: section links, the brand, and account actions with keyboard hints (C, S). */
 function Nav() {
   const navigate = useNavigate()
   useEffect(() => {
@@ -115,7 +116,7 @@ function Nav() {
       // WCAG 2.1.4: single-letter shortcuts fire only when nothing interactive has focus (so screen-reader and speech
       // users who type letters while on a control never trigger them).
       if (e.metaKey || e.ctrlKey || e.altKey || e.repeat || t.closest('input, textarea, select, button, a, [role="tab"], [contenteditable="true"]')) return
-      if (e.key === 'g') navigate('/signup')
+      if (e.key === 'c') openContact()
       if (e.key === 's') navigate('/login')
     }
     window.addEventListener('keydown', onKey)
@@ -139,9 +140,9 @@ function Nav() {
           <Link to="/login" className="inline-flex items-center gap-2 whitespace-nowrap rounded-full px-2.5 py-1.5 text-[12.5px] font-semibold text-ink-soft hover:bg-white/80 hover:text-ink sm:px-3.5">
             Sign in <span className="kbd kbd-light hidden sm:inline-grid">S</span>
           </Link>
-          <Link to="/signup" className="btn-ink h-[34px] whitespace-nowrap px-4 text-[12.5px]">
-            Get started <span className="kbd hidden sm:inline-grid">G</span>
-          </Link>
+          <button type="button" onClick={() => openContact()} className="btn-ink h-[34px] whitespace-nowrap px-4 text-[12.5px]">
+            Contact us <span className="kbd hidden sm:inline-grid">C</span>
+          </button>
         </div>
       </nav>
     </div>
@@ -168,7 +169,7 @@ function AskBar({ compact = false }: { compact?: boolean }) {
   }, [reduce, value])
   const submit = (e: FormEvent) => {
     e.preventDefault()
-    navigate('/signup')
+    navigate('/login')
   }
   return (
     <form onSubmit={submit} className={`gradient-border rounded-[20px] ${compact ? 'w-[min(560px,calc(100vw-32px))]' : 'w-full max-w-[540px]'}`}>
@@ -380,7 +381,7 @@ function Roles() {
                 ))}
               </ul>
               {/* Only students register themselves; colleges, recruiters and admins get a login from their college or the platform. */}
-              <Link to={role.key === 'student' ? '/signup' : '/login'} className="btn-bracket mt-7 -ml-1">{role.key === 'student' ? 'Create your student account' : `Sign in to the ${role.label.toLowerCase().replace(/s$/, '')} view`} →</Link>
+              <Link to="/login" className="btn-bracket mt-7 -ml-1">{role.key === 'student' ? 'Sign in as a student' : `Sign in to the ${role.label.toLowerCase().replace(/s$/, '')} view`} →</Link>
             </motion.div>
           </AnimatePresence>
         </div>
@@ -451,6 +452,7 @@ export default function Landing() {
       <Announcement />
       <Nav />
       {!import.meta.env.SSR && <AskDock />}
+      {!import.meta.env.SSR && <ContactDialog />}
 
       <main id="main" tabIndex={-1} className="relative z-10 outline-none">
         {/* hero */}
@@ -484,7 +486,7 @@ export default function Landing() {
               <AskBar />
             </motion.div>
             <motion.div variants={reveal} className="mt-5 flex flex-wrap items-center gap-3">
-              <Magnetic><Link to="/signup" className="btn-ink">Start free <span className="kbd hidden sm:inline-grid">G</span></Link></Magnetic>
+              <Magnetic><button type="button" onClick={() => openContact()} className="btn-ink">Contact us <span className="kbd hidden sm:inline-grid">C</span></button></Magnetic>
               <a href="#how" className="btn-bracket">See how it works</a>
             </motion.div>
             <motion.div variants={reveal} className="mt-10 flex items-center gap-6 text-[12px] text-ink-mute">
@@ -546,10 +548,10 @@ export default function Landing() {
               <h2 className="relative mx-auto mt-6 max-w-[640px] text-[clamp(2rem,1.4rem+2vw,3.2rem)] font-semibold leading-[1.05] tracking-[-0.04em]">
                 Walk into every drive <span className="font-display font-normal italic text-gradient">prepared.</span>
               </h2>
-              <p className="relative mx-auto mt-4 max-w-[520px] text-[15px] text-ink-mute">Free for students. Your first full analysis takes about two minutes.</p>
+              <p className="relative mx-auto mt-4 max-w-[520px] text-[15px] text-ink-mute">Bring PlacementIQ to your college. Students join free through their placement cell.</p>
               <div className="relative mt-8 flex flex-wrap justify-center gap-3">
-                <Link to="/signup" className="btn-ink">Create your account <span className="kbd hidden sm:inline-grid">G</span></Link>
-                <Link to="/login" className="btn-bracket">I already have one</Link>
+                <button type="button" onClick={() => openContact()} className="btn-ink">Contact us <span className="kbd hidden sm:inline-grid">C</span></button>
+                <Link to="/login" className="btn-bracket">Sign in</Link>
               </div>
             </div>
           </motion.div>
