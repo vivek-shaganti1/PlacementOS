@@ -462,6 +462,32 @@ test('MFA an admin action from a password-only session is refused', async () => 
   assert.ok(!calls.some((c) => c.url.includes('/auth/v1/admin/users') || c.url.includes('org_students')), 'nothing created or saved')
 })
 
+// ------------------------------------------------------------------ 2026-11-13 features
+const { parseDelimited, csvCell, toCsv } = await import('../src/lib/csv')
+const { deadlineIcs } = await import('../src/lib/calendar')
+test('CSV a quoted name with a comma stays one cell; tabs and "" are handled', () => {
+  assert.deepEqual(parseDelimited('a@x.test,"Rao, Asha",22A01\r\nb@x.test\tRavi "RK" Kumar\t22A02\n\n"c@x.test","She said ""hi""",'), [
+    ['a@x.test', 'Rao, Asha', '22A01'],
+    ['b@x.test', 'Ravi "RK" Kumar', '22A02'],
+    ['c@x.test', 'She said "hi"', ''],
+  ])
+})
+test('CSV cells cannot be read as formulas, and phone numbers are left alone', () => {
+  assert.equal(csvCell('=HYPERLINK("http://x")'), '"\'=HYPERLINK(""http://x"")"')
+  assert.equal(csvCell('+91 98765 43210'), '"+91 98765 43210"')
+  assert.equal(csvCell(null), '""')
+  assert.equal(toCsv(['a', 'b'], [[1, 'x,y']]), '"a","b"\n"1","x,y"')
+})
+test('ICS a drive deadline is an all-day event on that date with escaped text', () => {
+  const ics = deadlineIcs({ id: 'j1', company: 'Acme, Inc.', role: 'SDE; Intern', deadline: '2026-12-31', location: 'Hyderabad' }, 'https://example.test', new Date('2026-11-13T10:00:00Z'))
+  assert.match(ics, /DTSTART;VALUE=DATE:20261231\r\n/)
+  assert.match(ics, /DTEND;VALUE=DATE:20270101\r\n/)
+  assert.ok(ics.includes('SUMMARY:Apply by today: Acme\\, Inc. (SDE\\; Intern)'), 'commas and semicolons are escaped')
+  assert.match(ics, /UID:drive-j1@placementiq/)
+  assert.ok(ics.startsWith('BEGIN:VCALENDAR\r\n') && ics.endsWith('END:VCALENDAR\r\n'))
+  assert.ok(ics.split('\r\n').every((l) => l.length <= 75), 'lines are folded')
+})
+
 // ------------------------------------------------------------------ SEC-05
 const base = {
   branch: 'CSE', tracks: [], cgpa: 8, backlogs: 0, class_x: 80, class_xii: 80,
