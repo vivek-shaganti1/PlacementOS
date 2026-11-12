@@ -802,6 +802,27 @@ export function AdminJobs() {
   const [mode, setMode] = useState<'list' | 'new' | 'edit'>('list')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const selected = jobs.find((j) => j.id === selectedId) ?? jobs[0] ?? null
+
+  // Applications that arrive while this page is open are announced and marked "New" for a while.
+  const known = useRef<Set<string> | null>(null)
+  const [fresh, setFresh] = useState<Set<string>>(new Set())
+  useEffect(() => {
+    const ids = new Set(applications.map((a) => `${a.job_id}:${a.user_id}`))
+    // The first non-empty answer is the baseline, not news.
+    if (!known.current) {
+      if (jobs.length || applications.length) known.current = ids
+      return
+    }
+    const added = applications.filter((a) => !known.current!.has(`${a.job_id}:${a.user_id}`))
+    known.current = ids
+    if (!added.length) return
+    const company = (id: string) => jobs.find((j) => j.id === id)?.company ?? 'a drive'
+    showToast(added.length === 1 ? `New application to ${company(added[0].job_id)}.` : `${added.length} new applications.`)
+    setFresh((old) => new Set([...old, ...added.map((a) => `${a.job_id}:${a.user_id}`)]))
+    const t = window.setTimeout(() => setFresh(new Set()), 20_000)
+    return () => window.clearTimeout(t)
+  }, [applications, jobs, showToast])
+
   if (!isAdmin && !isRecruiter) return <Denied />
 
   const applicants = selected
@@ -903,6 +924,7 @@ export function AdminJobs() {
                   {applicants.map(({ a, r, ev }, idx) => (
                     <div key={a.user_id} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-2.5">
                       <span className="w-6 text-[12px] font-semibold text-ink-faint">{idx + 1}</span>
+                      {fresh.has(`${a.job_id}:${a.user_id}`) && <span className="rounded-full bg-brand px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">New</span>}
                       <Avatar src={r?.profile.avatar_url ?? undefined} name={r?.profile.full_name || 'Student'} size={30} />
                       <span className="min-w-[140px] flex-1">
                         <button type="button" onClick={() => r && setOpenRow(r)} className="block truncate text-left text-[13px] font-semibold text-ink hover:underline">{r?.profile.full_name ?? 'Student'}</button>

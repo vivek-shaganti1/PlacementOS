@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import type { JobPosting } from './eligibility'
 import { allRows, supabase } from './supabase'
 import { istDay } from './dates'
+import { useAuth } from './auth'
+import { useLive } from './live'
 
 export type JobStatus = 'applied' | 'shortlisted' | 'interview' | 'offer' | 'rejected'
 export type JobApplication = {
@@ -58,6 +60,10 @@ export function useJobs() {
     setApplications(a.data ?? [])
     setLoading(false)
   }, [])
+
+  // Consoles hear about new applications, status changes and drive edits as they happen (src/lib/live.ts).
+  const { role } = useAuth()
+  useLive(['job_applications', 'job_postings'], reload, { enabled: role !== 'student' })
 
   useEffect(() => {
     reload()

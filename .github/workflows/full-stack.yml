@@ -41,7 +41,7 @@ jobs:
       - run: npm ci
 
       - name: Start a throwaway Supabase
-        run: supabase start -x studio,imgproxy,postgres-meta,logflare,vector,supavisor,edge-runtime,realtime
+        run: supabase start -x studio,imgproxy,postgres-meta,logflare,vector,supavisor,edge-runtime
 
       - name: pgTAP
         run: supabase test db supabase/tests/pgtap
