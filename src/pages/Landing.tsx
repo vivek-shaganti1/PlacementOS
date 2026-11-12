@@ -12,6 +12,7 @@ const RECRUITERS = companyCatalog.length + coreCatalog.length
 import { Glow } from '../components/effects'
 import { CursorFollower, Magnetic, ScrollHighlight, ScrollProgress, SmoothScroll, TextReveal } from '../components/motion'
 import { intensity, useMotionTier } from '../lib/motion'
+import { usePauseOffscreen } from '../lib/pauseOffscreen'
 import { usd, PLANS } from '../lib/pricing'
 import { Features } from '../components/landing/Features'
 import { HeroPreview } from '../components/landing/HeroPreview'
@@ -439,10 +440,13 @@ export default function Landing() {
   const idle = useIdle()
   const names = companyCatalog.map((c) => c.name)
   const tier = useMotionTier()
+  // Decorative loops only run while they are on screen.
+  const page = useRef<HTMLDivElement>(null)
+  usePauseOffscreen(page, '.gradient-border, .trust-grid, .wordmark__fill, .prism, .marquee__track, .hero-halo, .float-y, .pulse-dot')
 
   return (
     <SmoothScroll>
-    <div className="relative min-h-[calc(100svh/var(--z))] overflow-x-hidden">
+    <div ref={page} className="relative min-h-[calc(100svh/var(--z))] overflow-x-hidden">
       <SkipLink />
       <Aurora />
       <CursorFollower />

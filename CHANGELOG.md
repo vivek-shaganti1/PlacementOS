@@ -29,6 +29,8 @@ Semantic versioning; see `docs/ENGINEERING.md` for how releases are made.
 - The CSV export opens correctly in Excel.
 
 ### Fixed
+- **Scrolling:** looping decorative animations (spinning borders, the trust grid, the footer wordmark, the hero halo)
+  now pause while off-screen, the grid moves on the GPU, and the sidebar's border no longer spins in the app.
 - **Scorecard and resume paths:** a GATE scorecard or resume path could point into another student's folder.
 - **File types:** uploads are now checked by their content, not only by the type the uploader declared.
 - **Evidence:** a failed GitHub or Codeforces sync could erase proven evidence.

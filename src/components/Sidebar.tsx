@@ -137,7 +137,7 @@ export default function Sidebar({ open, onChat, mobile, onClose }: { open: boole
         </nav>
 
         {role === 'student' && <div className="p-2.5">
-          <div className="gradient-border rounded-[18px]">
+          <div className="gradient-border gradient-border--still rounded-[18px]">
             <div className="glass-dark rounded-[18px] p-3.5 text-white">
               <div className="flex items-center gap-2">
                 <span className="grid h-7 w-7 place-items-center rounded-lg bg-white/15">
