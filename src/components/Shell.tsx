@@ -10,6 +10,7 @@ import { LogoMark } from './Logo'
 import { Aurora } from './effects/Aurora'
 import { PageTransition } from './motion/PageTransition'
 import { SkipLink } from './SkipLink'
+import { IdleGuard } from './IdleGuard'
 import Sidebar from './Sidebar'
 import Topbar from './Topbar'
 
@@ -39,7 +40,9 @@ const SuperOrgs = lazy(() => import('../pages/AdminOrg').then((m) => ({ default:
 const AdminClasses = lazy(() => import('../pages/AdminOrg').then((m) => ({ default: m.AdminClasses })))
 const SuperAdmins = lazy(() => import('../pages/AdminOrg').then((m) => ({ default: m.SuperAdmins })))
 const SuperCertifications = lazy(() => import('../pages/SuperCertifications'))
+const SuperEnquiries = lazy(() => import('../pages/SuperEnquiries'))
 const ResumeAnalyzer = lazy(() => import('../pages/ResumeAnalyzer'))
+const AuditLog = lazy(() => import('../pages/AuditLog'))
 
 function Loader() {
   return (
@@ -70,12 +73,14 @@ function RoleRoutes() {
         <Route path="/super/orgs" element={<SuperOrgs />} />
         <Route path="/super/admins" element={<SuperAdmins />} />
         <Route path="/super/certifications" element={<SuperCertifications />} />
+        <Route path="/super/enquiries" element={<SuperEnquiries />} />
         <Route path="/admin" element={<AdminOverview />} />
         <Route path="/admin/students" element={<AdminStudents />} />
         <Route path="/admin/classes" element={<AdminClasses />} />
         <Route path="/admin/roster" element={<AdminRoster />} />
         <Route path="/admin/jobs" element={<AdminJobs />} />
         <Route path="/admin/team" element={<AdminTeam />} />
+        <Route path="/admin/activity" element={<AuditLog />} />
         {common}
       </Routes>
     )
@@ -95,6 +100,7 @@ function RoleRoutes() {
         <Route path="/admin/roster" element={<AdminRoster />} />
         <Route path="/admin/jobs" element={<AdminJobs />} />
         <Route path="/admin/team" element={<AdminTeam />} />
+        <Route path="/admin/activity" element={<AuditLog />} />
         {common}
       </Routes>
     )
@@ -145,6 +151,7 @@ function Shell() {
       <SkipLink />
       <Aurora />
       <div className="relative z-10 flex min-h-0 flex-1 flex-col">
+        <IdleGuard />
         <Topbar sidebarOpen={sidebarOpen} onToggleSidebar={() => setSidebarOpen((v) => !v)} />
         <div className="flex min-h-0 flex-1">
           <Sidebar open={sidebarOpen} onChat={() => openAssistant()} mobile={isMobile} onClose={() => setSidebarOpen(false)} />

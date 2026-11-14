@@ -1,16 +1,20 @@
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { FeedbackPrompt } from '../components/Feedback'
 import { Card, Page, Stat } from '../components/Page'
+import { TweenNumber } from '../components/motion/TweenNumber'
 import { bucketMeta, bucketOrder } from '../data/companies'
 import type { Bucket } from '../data/types'
 import { useProfile } from '../lib/auth'
 import { SKILL_SHORT } from '../lib/eligibility'
 import { skillsFor } from '../lib/branches'
+import { motionConfig } from '../lib/motion'
 import { bucketChanges, snapshot, withSkillLevels } from '../lib/predict'
 
 const delta = (n: number, unit = '') => (n > 0 ? `+${n}${unit}` : n < 0 ? `${n}${unit}` : `no change`)
 const lpa = (n: number) => `₹${n.toFixed(1)} LPA`
+const MotionLink = motion.create(Link)
 
 /**
  * What-If Simulator: change CGPA, backlogs, skill levels, projects, internships and mock interview scores and see,
@@ -18,6 +22,7 @@ const lpa = (n: number) => `₹${n.toFixed(1)} LPA`
  */
 export default function WhatIf() {
   const profile = useProfile()
+  const reduce = useReducedMotion()
   // The student's own track skills (a civil student moves structural skills, not React).
   const SKILLS = useMemo(() => skillsFor(profile), [profile.tracks, profile.branch])
   const baseSkills = useMemo(() => Object.fromEntries(SKILLS.map((s) => [s, profile.skills.find((x) => x.name === s)?.level ?? 0])), [profile.skills, SKILLS])
@@ -79,10 +84,10 @@ export default function WhatIf() {
       actions={changed ? <button onClick={() => setS(initial)} className="btn-glass">Reset to my profile</button> : undefined}
     >
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Stat label="Placement readiness" value={`${after.readiness}`} sub={delta(after.readiness - before.readiness)} />
-        <Stat label="Eligible companies" value={`${after.counts.eligible}`} sub={`${delta(after.counts.eligible - before.counts.eligible)} · ${after.counts.nearly} nearly`} />
-        <Stat label="Expected CTC" value={lpa(after.salary.expected)} sub={`${lpa(after.salary.low)} to ${lpa(after.salary.high)} · ${delta(Math.round((after.salary.expected - before.salary.expected) * 10) / 10, ' LPA')}`} />
-        <Stat label="Interview readiness" value={`${after.interview.score}`} sub={delta(after.interview.score - before.interview.score)} />
+        <Stat label="Placement readiness" value={<TweenNumber value={after.readiness} />} sub={delta(after.readiness - before.readiness)} />
+        <Stat label="Eligible companies" value={<TweenNumber value={after.counts.eligible} />} sub={`${delta(after.counts.eligible - before.counts.eligible)} · ${after.counts.nearly} nearly`} />
+        <Stat label="Expected CTC" value={after.salary.reachable ? <TweenNumber value={after.salary.expected} format={lpa} /> : 'Not yet'} sub={after.salary.reachable ? `${lpa(after.salary.low)} to ${lpa(after.salary.high)}${before.salary.reachable ? ` · ${delta(Math.round((after.salary.expected - before.salary.expected) * 10) / 10, ' LPA')}` : ''}` : 'Shown once a company is within reach'} />
+        <Stat label="Interview readiness" value={<TweenNumber value={after.interview.score} />} sub={delta(after.interview.score - before.interview.score)} />
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_1.1fr]">
@@ -112,12 +117,13 @@ export default function WhatIf() {
                     <div className="flex justify-between text-[12px]">
                       <span className={`font-semibold ${bucketMeta[b].text}`}>{bucketMeta[b].title}</span>
                       <span className="tabular-nums text-ink-mute">
-                        {before.counts[b]} → <b className="text-ink">{after.counts[b]}</b>
+                        {before.counts[b]} → <b className="text-ink"><TweenNumber value={after.counts[b]} /></b>
                       </span>
                     </div>
                     <div className="relative mt-1 h-2 overflow-hidden rounded-full bg-[oklch(0.94_0.01_285)]">
-                      <div className={`absolute inset-y-0 left-0 rounded-full opacity-35 ${bucketMeta[b].dot}`} style={{ width: `${(before.counts[b] / total) * 100}%` }} />
-                      <div className={`absolute inset-y-0 left-0 rounded-full transition-[width] duration-300 ${bucketMeta[b].dot}`} style={{ width: `${(after.counts[b] / total) * 100}%` }} />
+                      <div className={`absolute inset-0 origin-left rounded-full opacity-35 ${bucketMeta[b].dot}`} style={{ transform: `scaleX(${before.counts[b] / total})` }} />
+                      {/* Scaled, not resized: a transform stays on the GPU while a slider is dragged. */}
+                      <div className={`absolute inset-0 origin-left rounded-full transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none ${bucketMeta[b].dot}`} style={{ transform: `scaleX(${after.counts[b] / total})` }} />
                     </div>
                   </div>
                 )
@@ -130,22 +136,39 @@ export default function WhatIf() {
               <p className="py-3 text-[12.5px] text-ink-faint">Move a slider to see which companies change category.</p>
             ) : (
               <div className="max-h-[260px] divide-y divide-line overflow-y-auto">
+                {/* Rows arrive, leave and reorder as the sliders move, so it is clear which companies the last change moved. */}
+                <AnimatePresence initial={false} mode="popLayout">
                 {changes.slice(0, 30).map((x) => (
-                  <Link key={x.company.id} to={`/eligibility?company=${x.company.id}`} className="flex items-center gap-3 py-2 text-[12.5px] hover:bg-white/50">
+                  <MotionLink
+                    key={x.company.id}
+                    layout={!reduce}
+                    initial={{ opacity: 0, transform: reduce ? 'none' : 'translateX(-6px)' }}
+                    animate={{ opacity: 1, transform: 'translateX(0px)' }}
+                    exit={{ opacity: 0, transition: { duration: 0.18, ease: motionConfig.easing.exit } }}
+                    transition={{ duration: 0.28, ease: motionConfig.easing.smooth }}
+                    to={`/eligibility?company=${x.company.id}`}
+                    className="flex items-center gap-3 py-2 text-[12.5px] hover:bg-white/50"
+                  >
                     <span className="min-w-0 flex-1 truncate font-semibold text-ink">{x.company.name}</span>
                     <span className={bucketMeta[x.from].text}>{bucketMeta[x.from].title}</span>
                     <span className="text-ink-faint">to</span>
                     <span className={`font-semibold ${bucketMeta[x.to].text}`}>{bucketMeta[x.to].title}</span>
                     <span className="w-14 text-right tabular-nums text-ink-mute">{delta(x.matchDelta, '%')}</span>
-                  </Link>
+                  </MotionLink>
                 ))}
+                </AnimatePresence>
               </div>
             )}
           </Card>
 
           <Card title="Biggest levers from here">
             {levers.length === 0 ? (
-              <p className="text-[12.5px] text-ink-faint">Your skills already meet what your target companies ask for.</p>
+              <p className="text-[12.5px] text-ink-faint">
+                {after.companies.some((c) => c.gaps.length > 0)
+                  ? // The skills part of a match bottoms out at zero, so when the gaps are wide, +10 on one skill does not move it yet.
+                    'No single +10 step moves your score yet: your skill gaps are still wide. Raise several skills together, or start with the ones your target companies ask for most.'
+                  : 'Your skills already meet what your target companies ask for.'}
+              </p>
             ) : (
               <ul className="space-y-1.5 text-[12.5px] text-ink-soft">
                 {levers.map((l) => (

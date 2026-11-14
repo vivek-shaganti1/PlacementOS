@@ -162,5 +162,6 @@ export const coreCatalog: (CompanyBase & { category: Category })[] = SEEDS.map((
   careers: `https://www.google.com/search?q=${encodeURIComponent(`${s.name} careers freshers`)}`,
   process: PROCESS[s.category] ?? [],
   stats: [{ label: 'Typical fresher CTC', value: `₹${s.ctc[1]}–${s.ctc[2]} LPA` }],
+  provenance: 'typical',
   category: s.category,
 }))

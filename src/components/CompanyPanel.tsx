@@ -7,7 +7,7 @@ import { useApp } from '../lib/store'
 import { SwapText } from './motion/SwapText'
 import { useDialog } from '../lib/useDialog'
 
-const TABS = ['Overview', 'Eligibility Criteria', 'Recruitment Process', 'Statistics'] as const
+const TABS = ['Overview', 'Eligibility Criteria', 'Recruitment Process', 'Package'] as const
 type Tab = (typeof TABS)[number]
 
 const pill = (c: Company) => {
@@ -15,11 +15,11 @@ const pill = (c: Company) => {
     case 'eligible':
       return { text: `Eligible (${c.match}% Match)`, cls: 'bg-[#ecfdf3] text-[#067647] border-[#c9f0d9]' }
     case 'nearly':
-      return { text: `Nearly Eligible (${c.match}% Match)`, cls: 'bg-[#fff8ec] text-[#d97706] border-[#fbe3bd]' }
+      return { text: `Nearly Eligible (${c.match}% Match)`, cls: 'bg-[#fff8ec] text-[#b54708] border-[#fbe3bd]' }
     case 'canBecome':
       return { text: `Can Become Eligible (${c.match}% Match)`, cls: 'bg-[#eef6ff] text-[#1570cd] border-[#cfe4fb]' }
     default:
-      return { text: `Not Eligible (${c.match}% Match)`, cls: 'bg-[#fef3f2] text-[#d92d20] border-[#fbd5d1]' }
+      return { text: `Not Eligible (${c.match}% Match)`, cls: 'bg-[#fef3f2] text-[#b42318] border-[#fbd5d1]' }
   }
 }
 
@@ -135,7 +135,7 @@ export default function CompanyPanel({ company, onClose, overlay }: { company: C
           <>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {[
-                { k: 'CTC (Average)', v: `₹${company.ctcAvg.toFixed(1)}`, u: 'LPA', s: `Min: ${company.ctcMin} LPA | Max: ${company.ctcMax} LPA` },
+                { k: company.provenance === 'typical' ? 'Typical CTC (unverified)' : 'CTC', v: `₹${company.ctcAvg.toFixed(1)}`, u: 'LPA', s: `Range ${company.ctcMin}–${company.ctcMax} LPA` },
                 { k: 'Work Location', v: company.location, s: 'On-site' },
                 { k: 'Job Type', v: company.jobType, s: company.tenure },
                 { k: 'Batch', v: company.batches, s: 'Eligible' },
@@ -154,14 +154,14 @@ export default function CompanyPanel({ company, onClose, overlay }: { company: C
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="card p-4">
                 <p className="text-[13px] font-semibold text-ink">About {company.name}</p>
-                <p className="mt-2 text-[11.5px] leading-[1.65] text-ink-mute">{company.about}</p>
+                <p className="mt-2 text-[11.5px] leading-[1.65] text-ink-mute">{company.about || 'No verified description yet.'}</p>
                 <a
-                  href={company.careers}
+                  href={company.careers || `https://www.google.com/search?q=${encodeURIComponent(`${company.name} careers India`)}`}
                   target="_blank"
                   rel="noreferrer"
                   className="mt-3 inline-flex items-center gap-1.5 text-[11.5px] font-medium text-brand-dark hover:underline"
                 >
-                  Visit Careers Page <IconArrowRight className="h-3.5 w-3.5" />
+                  {company.careers ? 'Visit careers page' : `Search for ${company.name} careers`} <IconArrowRight className="h-3.5 w-3.5" />
                 </a>
               </div>
 
@@ -184,6 +184,11 @@ export default function CompanyPanel({ company, onClose, overlay }: { company: C
           </>
         )}
 
+        {tab === 'Eligibility Criteria' && company.scoredFor && (
+          <p className="rounded-[12px] border border-[#d5cbff] bg-brand-tint px-3.5 py-2.5 text-[12px] leading-relaxed text-ink-soft">
+            Scored on your <b className="text-ink">{company.scoredFor}</b> skills: {company.name} hires for more than one kind of role, and this is the one your track prepares you for.
+          </p>
+        )}
         {tab === 'Eligibility Criteria' && (
           <div className="card overflow-x-auto">
             <div className="grid min-w-[460px] grid-cols-[1.3fr_1fr_1fr_auto] gap-3 border-b border-line bg-[#fafbfc] px-4 py-2.5 text-[11px] font-semibold text-ink-mute">
@@ -199,7 +204,7 @@ export default function CompanyPanel({ company, onClose, overlay }: { company: C
                 <span className="text-ink-soft">{c.yours}</span>
                 <span
                   className={`rounded-md border px-2 py-[3px] text-[11px] font-semibold ${
-                    c.met ? 'border-[#c9f0d9] bg-[#ecfdf3] text-[#067647]' : 'border-[#fbd5d1] bg-[#fef3f2] text-[#d92d20]'
+                    c.met ? 'border-[#c9f0d9] bg-[#ecfdf3] text-[#067647]' : 'border-[#fbd5d1] bg-[#fef3f2] text-[#b42318]'
                   }`}
                 >
                   {c.met ? 'Met' : 'Gap'}
@@ -212,6 +217,7 @@ export default function CompanyPanel({ company, onClose, overlay }: { company: C
         {tab === 'Recruitment Process' && (
           <div className="card p-4">
             <p className="text-[13px] font-semibold text-ink">Selection Rounds</p>
+            {company.provenance === 'typical' && <p className="mt-1 text-[11.5px] text-ink-mute">The usual process for this kind of company, not confirmed for {company.name}. Your placement cell's drive notice has the real rounds.</p>}
             <ol className="mt-4 space-y-0">
               {company.process.map((s, i) => (
                 <li key={s.stage} className="relative flex gap-3.5 pb-5 last:pb-0">
@@ -231,7 +237,12 @@ export default function CompanyPanel({ company, onClose, overlay }: { company: C
           </div>
         )}
 
-        {tab === 'Statistics' && (
+        {tab === 'Package' && company.provenance === 'typical' && (
+          <p className="rounded-[12px] border border-[#fedf89] bg-[#fffaeb] px-3.5 py-2.5 text-[12px] leading-relaxed text-[#93370d]">
+            A typical fresher range entered by hand, not verified and not specific to your campus. The package in your college's drive is the one that counts.
+          </p>
+        )}
+        {tab === 'Package' && (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
             {company.stats.map((s) => (
               <div key={s.label} className="card p-4">

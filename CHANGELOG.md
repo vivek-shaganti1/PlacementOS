@@ -5,6 +5,25 @@ Semantic versioning; see `docs/ENGINEERING.md` for how releases are made.
 ## Unreleased
 
 ### Added
+- **Download my data** (Settings, every role): one JSON file with everything stored about the account.
+- **Activity log** for placement cells and platform admins: who changed the roster, access, drives and certificates,
+  with a filter, search and CSV export.
+- **Automatic sign-out** after 30 minutes without activity (15 for admins), with a one-minute warning.
+- **Add deadline to calendar** on a drive: an `.ics` file with a reminder the day before.
+- **Search for every role:** ⌘K also finds pages, and admins and recruiters now have the search box.
+- **Contact us** replaces "Get started" on the landing page: a form for colleges, stored and rate-limited on the
+  server, with an Enquiries page for platform admins. Students still register from the sign-in page.
+- **Mobile app scaffold** (`mobile/`, Expo SDK 58) for iOS and Android: student sign-in, readiness, drives and account,
+  using the website's own scoring code. Includes a release workflow for store builds and over-the-air updates. Not yet
+  in the stores; see `docs/MOBILE.md`.
+- **Live college console:** new applications, status changes, drive edits, students joining and certificate reviews
+  appear by themselves for placement cells, recruiters and platform admins. A badge shows whether the page is live, a
+  toast and a "New" tag mark arriving applications, and pages fall back to a 15-second refresh where the network
+  blocks the live connection.
+- **Motion that shows a change:** What-If numbers glide to their new value as a slider moves, the before/after bars
+  slide, and companies that change category arrive and leave in the list. The jobs filter has a sliding pill and rows
+  that enter and leave with the filter. "Show more" in the eligibility stacks grows the extra cards in. Nothing
+  animates on load, and reduced motion swaps values instantly.
 - Landing hero: the eligibility board now plays a live loop. The assistant names a fix, a scan sweeps the board and
   that company moves up a column while readiness and the resume score follow. It also has a cursor spotlight, a tilt
   sheen, depth layers and a turning halo. It pauses off-screen and stays still for reduced motion.
@@ -29,6 +48,31 @@ Semantic versioning; see `docs/ENGINEERING.md` for how releases are made.
 - The CSV export opens correctly in Excel.
 
 ### Fixed
+- **Company data honesty:** the catalogue's applicant, offer, selection-ratio and round counts were invented and have
+  been removed. Company pages now say the CTC range is typical and unverified, the process is a template, and link to a
+  careers search when no verified page is recorded. College drives are marked as the college's own data.
+- **Expected CTC** is no longer claimed when no company is within reach; the dashboard and what-if say "Not yet".
+- **What-If levers:** a student far below every requirement was told "Your skills already meet what your target
+  companies ask for". It now says the gaps are still wide and to raise several skills together.
+- **Admin averages:** the average resume score counts only students who have analysed a resume, and labels say what
+  each number is measured against.
+- **Sign-in page counts** come from the catalogue itself instead of fixed numbers.
+- **Accessibility (axe, WCAG 2.2 AA, every page for every role):** amber and red text darkened to pass contrast,
+  visible button text now matches the accessible name, class rows in the college console open from a real button,
+  and the logo marquee no longer reads every name twice. A new `tests/e2e/a11y.spec.ts` keeps it that way.
+- **Security (2026-11-14 audit):** react-router 6 → 7.18.5 removes the two production dependency advisories;
+  notification links are limited to in-app paths; Dependabot waits 7 days before proposing a new release. Report:
+  `testing/SECURITY_AUDIT_2026-11-14.md`.
+- **Scrolling:** looping decorative animations (spinning borders, the trust grid, the footer wordmark, the hero halo)
+  now pause while off-screen, the grid moves on the GPU, and the sidebar's border no longer spins in the app.
+- **Roster paste:** a quoted name containing a comma ("Rao, Asha") no longer shifts the columns.
+- **Scoring for non-software branches.** Each company category had one skill list for every student, so a robotics,
+  EV, metallurgy, mining, textile or agricultural student scored 40% everywhere however strong they were, and a civil
+  student could never pass "Can become". Students are now also scored on their own track's skills at each company, and
+  the better result counts. The company page says which skills were used. Pure software branches score exactly as before;
+  Cyber Security and IoT specialisations improve at the companies their second track covers.
+- **Roadmap, practice sets and mock interview types** now follow the student's branch (they were software-only): core
+  branches get a plan built from their own skill gaps, core-subject questions, and a core technical round.
 - **Scorecard and resume paths:** a GATE scorecard or resume path could point into another student's folder.
 - **File types:** uploads are now checked by their content, not only by the type the uploader declared.
 - **Evidence:** a failed GitHub or Codeforces sync could erase proven evidence.

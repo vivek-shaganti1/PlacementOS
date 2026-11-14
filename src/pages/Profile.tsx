@@ -239,7 +239,7 @@ export default function Profile() {
                 <button
                   onClick={() => save({ projects: p.projects.filter((_, j) => j !== i) }, 'Project removed.')}
                   aria-label={`Remove ${proj.title}`}
-                  className="text-[11px] text-ink-faint opacity-0 focus-visible:opacity-100 [@media(hover:none)]:opacity-100 hover:text-[#d92d20] group-hover:opacity-100"
+                  className="text-[11px] text-ink-faint opacity-0 focus-visible:opacity-100 [@media(hover:none)]:opacity-100 hover:text-[#b42318] group-hover:opacity-100"
                 >
                   Remove
                 </button>
@@ -273,7 +273,7 @@ export default function Profile() {
                 <button
                   onClick={() => save({ internships: p.internships.filter((_, j) => j !== i) }, 'Internship removed.')}
                   aria-label={`Remove ${it.role} at ${it.org}`}
-                  className="text-[11px] text-ink-faint opacity-0 focus-visible:opacity-100 [@media(hover:none)]:opacity-100 hover:text-[#d92d20] group-hover:opacity-100"
+                  className="text-[11px] text-ink-faint opacity-0 focus-visible:opacity-100 [@media(hover:none)]:opacity-100 hover:text-[#b42318] group-hover:opacity-100"
                 >
                   Remove
                 </button>

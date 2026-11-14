@@ -33,7 +33,7 @@ export default function Applications() {
     <Page title="Applications" subtitle="Everything you have applied to and shortlisted." wide>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Applied" value={`${rows.length + myDrives.length}`} sub={`${myDrives.length} campus drives · ${rows.length} tracked`} />
-        <Stat label="In progress" value={`${rows.length - offers + driveActive}`} tone="text-[#d97706]" />
+        <Stat label="In progress" value={`${rows.length - offers + driveActive}`} tone="text-[#b54708]" />
         <Stat label="Offers" value={`${offers + driveOffers}`} tone="text-[#067647]" />
         <Stat label="Shortlisted" value={`${savedRows.length}`} tone="text-brand-dark" />
       </div>
@@ -111,7 +111,7 @@ export default function Applications() {
                   <HoldButton
                     onConfirm={() => withdraw(c.id)}
                     warning={`Withdraws your application to ${c.name}.`}
-                    className="rounded-md border border-line px-2.5 py-1.5 text-[11.5px] font-medium text-[#d92d20] hover:bg-[#fef3f2]"
+                    className="rounded-md border border-line px-2.5 py-1.5 text-[11.5px] font-medium text-[#b42318] hover:bg-[#fef3f2]"
                   >
                     Withdraw
                   </HoldButton>

@@ -2,6 +2,9 @@ import { useState } from 'react'
 import { Card, Page } from '../components/Page'
 import { TwoFactorCard } from '../components/TwoFactorCard'
 import { callApi } from '../lib/api'
+import { downloadText } from '../lib/csv'
+import { istDay } from '../lib/dates'
+import { collectMyData } from '../lib/exportData'
 import { useAuth, useProfile } from '../lib/auth'
 import { useApp } from '../lib/store'
 import { errMsg, supabase, type Profile } from '../lib/supabase'
@@ -12,6 +15,7 @@ export default function Settings() {
   const { showToast } = useApp()
   const [visibility, setVisibility] = useState<Profile['visibility']>(p.visibility)
   const [busy, setBusy] = useState(false)
+  const [exporting, setExporting] = useState(false)
   const [pw, setPw] = useState({ current: '', next: '', confirm: '' })
   const [confirmEmail, setConfirmEmail] = useState('')
   const canDelete = role === 'student'
@@ -114,10 +118,34 @@ export default function Settings() {
           <button onClick={changePassword} disabled={busy || !pw.next || !pw.current} className="rounded-[9px] border border-[#d5cbff] px-4 py-2 text-[12.5px] font-semibold text-brand-dark hover:bg-[#faf8ff] disabled:opacity-50">
             Change password
           </button>
-          <button onClick={signOut} className="ml-auto rounded-[9px] border border-[#fbd5d1] px-4 py-2 text-[12.5px] font-semibold text-[#d92d20] hover:bg-[#fef3f2]">
+          <button onClick={signOut} className="ml-auto rounded-[9px] border border-[#fbd5d1] px-4 py-2 text-[12.5px] font-semibold text-[#b42318] hover:bg-[#fef3f2]">
             Sign out
           </button>
         </div>
+      </Card>
+
+      <Card title="Your data">
+        <p className="max-w-[560px] text-[12.5px] leading-relaxed text-ink-mute">
+          Download everything PlacementIQ stores about your account as one file: your profile, skills, projects, connected
+          accounts, resume analyses, applications, practice history, assistant conversations and a list of your uploaded files.
+        </p>
+        <button
+          onClick={async () => {
+            setExporting(true)
+            try {
+              downloadText(`placementiq-my-data-${istDay()}.json`, JSON.stringify(await collectMyData(), null, 2), 'application/json')
+              showToast('Your data was downloaded.')
+            } catch (e) {
+              showToast(errMsg(e))
+            } finally {
+              setExporting(false)
+            }
+          }}
+          disabled={exporting}
+          className="mt-3 rounded-[9px] border border-[#d5cbff] px-4 py-2 text-[12.5px] font-semibold text-brand-dark hover:bg-[#faf8ff] disabled:opacity-50"
+        >
+          {exporting ? 'Preparing…' : 'Download my data'}
+        </button>
       </Card>
 
       {(role === 'super' || role === 'org') && <TwoFactorCard />}
@@ -132,7 +160,7 @@ export default function Settings() {
           <button
             onClick={deleteAccount}
             disabled={busy || confirmEmail.trim().toLowerCase() !== session?.user.email?.toLowerCase()}
-            className="mt-3 rounded-[9px] border border-[#fbd5d1] px-4 py-2 text-[12.5px] font-semibold text-[#d92d20] hover:bg-[#fef3f2] disabled:opacity-50"
+            className="mt-3 rounded-[9px] border border-[#fbd5d1] px-4 py-2 text-[12.5px] font-semibold text-[#b42318] hover:bg-[#fef3f2] disabled:opacity-50"
           >
             Delete my account
           </button>

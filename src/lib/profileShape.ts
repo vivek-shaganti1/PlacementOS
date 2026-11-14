@@ -1,6 +1,6 @@
 // Assembles the app's Profile object from the normalized tables. Shared by the browser and /api.
 import { skillsFor } from './branches'
-import type { Integrations, JdMatch, Profile, ResumeAnalysis } from './supabase'
+import type { Integrations, JdMatch, Profile, ResumeAnalysis } from './types'
 
 /** The tables (and select lists) that make up a profile, in a fixed order. */
 export const RELATED = {

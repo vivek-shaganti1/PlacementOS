@@ -1,4 +1,6 @@
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import type { Bucket, Company } from '../data/types'
+import { motionConfig } from '../lib/motion'
 import { bucketMeta } from '../data/companies'
 import CompanyLogo from './CompanyLogo'
 
@@ -20,6 +22,7 @@ export default function StackColumn({
   onToggleExpand: () => void
 }) {
   const meta = bucketMeta[bucket]
+  const reduce = useReducedMotion()
   const shown = expanded ? list : list.slice(0, 5)
   const rest = list.length - 5
   const share = total ? Math.round((list.length / total) * 100) : 0
@@ -40,14 +43,23 @@ export default function StackColumn({
         <p className="mt-2 text-[10.5px] leading-[1.35] text-ink-mute">{meta.hint}</p>
       </div>
 
-      {shown.map((c) => {
+      {/* Cards revealed by "Show more" grow in below the first five (never on load: initial={false}),
+          staggered for the first eight only, so a long column still finishes within about 0.6s. The wrapper carries
+          the motion so the card's own CSS hover lift is not overridden by an inline transform. */}
+      <AnimatePresence initial={false}>
+      {shown.map((c, i) => {
         const active = c.id === selectedId
         return (
-          <button
+          <motion.div
             key={c.id}
+            initial={{ opacity: 0, transform: reduce ? 'none' : 'translateY(-6px)' }}
+            animate={{ opacity: 1, transform: 'translateY(0px)', transition: { duration: 0.28, ease: motionConfig.easing.smooth, delay: reduce ? 0 : Math.min(Math.max(0, i - 5), 8) * motionConfig.stagger.tight } }}
+            exit={{ opacity: 0, transition: { duration: 0.16, ease: motionConfig.easing.exit } }}
+          >
+          <button
             onClick={() => onSelect(c)}
             aria-pressed={active}
-            className={`group rounded-[14px] border bg-white/95 px-2.5 py-2.5 text-left transition duration-200 ${
+            className={`group w-full rounded-[14px] border bg-white/95 px-2.5 py-2.5 text-left transition duration-200 ${
               active
                 ? 'border-transparent shadow-[0_0_0_2px_#6d4aff,0_10px_24px_rgba(109,74,255,.18)]'
                 : 'border-line shadow-card hover:-translate-y-0.5 hover:border-[#d9dce2] hover:shadow-pop'
@@ -70,8 +82,10 @@ export default function StackColumn({
               <span className={`block h-full rounded-full ${meta.dot}`} style={{ width: `${c.match}%` }} />
             </span>
           </button>
+          </motion.div>
         )
       })}
+      </AnimatePresence>
 
       {list.length === 0 && (
         <p className="rounded-[14px] border border-dashed border-line px-2.5 py-5 text-center text-[11px] leading-[1.5] text-ink-faint">No companies here right now</p>

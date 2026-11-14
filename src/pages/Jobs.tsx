@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Card, Meter, Page, Ring, Stat } from '../components/Page'
@@ -7,12 +7,16 @@ import { callApi } from '../lib/api'
 import { useProfile } from '../lib/auth'
 import { evaluateJob, type JobPosting } from '../lib/eligibility'
 import { ctcText, isOpen, STATUS_META, useJobs } from '../lib/jobs'
+import { motionConfig } from '../lib/motion'
 import { useApp } from '../lib/store'
 import { errMsg, supabase } from '../lib/supabase'
 import { HoldButton } from '../components/HoldButton'
+import { deadlineIcs } from '../lib/calendar'
+import { downloadText } from '../lib/csv'
 
 export default function Jobs() {
   const p = useProfile()
+  const reduce = useReducedMotion()
   const { showToast } = useApp()
   const { jobs, applications, loading, reload } = useJobs()
   const [params, setParams] = useSearchParams()
@@ -108,18 +112,26 @@ export default function Jobs() {
           <Card className="self-start">
             <div className="mb-3 flex gap-1.5">
               {(['all', 'eligible', 'applied'] as const).map((f) => (
-                <button key={f} onClick={() => setFilter(f)} className={`rounded-full px-3 py-1 text-[11.5px] font-semibold capitalize transition ${filter === f ? 'bg-brand text-white' : 'bg-white/70 text-ink-soft hover:bg-white'}`}>
-                  {f === 'eligible' ? 'Can apply' : f}
+                <button key={f} onClick={() => setFilter(f)} aria-pressed={filter === f} className={`relative rounded-full px-3 py-1 text-[11.5px] font-semibold capitalize transition-colors ${filter === f ? 'text-white' : 'bg-white/70 text-ink-soft hover:bg-white'}`}>
+                  {/* The active pill slides to the chosen filter, so the eye follows the change. */}
+                  {filter === f && <motion.span layoutId="jobs-filter" aria-hidden className="absolute inset-0 rounded-full bg-brand" transition={reduce ? { duration: 0 } : motionConfig.spring.snappy} />}
+                  <span className="relative">{f === 'eligible' ? 'Can apply' : f}</span>
                 </button>
               ))}
             </div>
             <div className="space-y-2">
+              <AnimatePresence initial={false} mode="popLayout">
               {rows.map(({ job, ev }) => {
                 const app = mine.get(job.id)
                 const active = job.id === selectedId
                 return (
-                  <button
+                  <motion.button
                     key={job.id}
+                    layout={!reduce}
+                    initial={{ opacity: 0, transform: reduce ? 'none' : 'scale(0.98)' }}
+                    animate={{ opacity: 1, transform: 'scale(1)' }}
+                    exit={{ opacity: 0, transition: { duration: 0.16, ease: motionConfig.easing.exit } }}
+                    transition={{ duration: 0.26, ease: motionConfig.easing.smooth }}
                     onClick={() => {
                       setParams({ job: job.id }, { replace: true })
                       // Stacked layout: bring the details into view.
@@ -137,12 +149,13 @@ export default function Jobs() {
                     <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[10.5px]">
                       <span className="rounded-md bg-white/80 px-1.5 py-0.5 text-ink-soft">{ctcText(job)}</span>
                       {job.deadline && <span className="rounded-md bg-white/80 px-1.5 py-0.5 text-ink-soft">Apply by {new Date(job.deadline).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</span>}
-                      {!isOpen(job) && <span className="rounded-md bg-[#fef3f2] px-1.5 py-0.5 text-[#d92d20]">Closed</span>}
+                      {!isOpen(job) && <span className="rounded-md bg-[#fef3f2] px-1.5 py-0.5 text-[#b42318]">Closed</span>}
                       {app && <span className={`rounded-md border px-1.5 py-0.5 font-semibold ${STATUS_META[app.status].cls}`}>{STATUS_META[app.status].label}</span>}
                     </div>
-                  </button>
+                  </motion.button>
                 )
               })}
+              </AnimatePresence>
               {rows.length === 0 && <p className="py-6 text-center text-[12px] text-ink-faint">Nothing in this view.</p>}
             </div>
           </Card>
@@ -165,7 +178,7 @@ export default function Jobs() {
                             return (
                               <>
                                 <span className={`rounded-[10px] border px-3 py-1.5 text-[12px] font-semibold ${STATUS_META[app.status].cls}`}>{STATUS_META[app.status].label}</span>
-                                {app.status === 'applied' && <HoldButton onConfirm={() => withdraw(selected.job)} warning={`Withdraws your application to ${selected.job.company}.`} className="btn-glass py-1.5 text-[12px] text-[#d92d20]">Withdraw</HoldButton>}
+                                {app.status === 'applied' && <HoldButton onConfirm={() => withdraw(selected.job)} warning={`Withdraws your application to ${selected.job.company}.`} className="btn-glass py-1.5 text-[12px] text-[#b42318]">Withdraw</HoldButton>}
                               </>
                             )
                           if (!isOpen(selected.job)) return <span className="text-[12px] text-ink-faint">Applications are closed.</span>
@@ -180,6 +193,14 @@ export default function Jobs() {
                             </button>
                           )
                         })()}
+                        {selected.job.deadline && isOpen(selected.job) && (
+                          <button
+                            onClick={() => downloadText(`${selected.job.company.replace(/[^\w]+/g, '-').toLowerCase()}-deadline.ics`, deadlineIcs({ ...selected.job, deadline: selected.job.deadline! }, window.location.origin), 'text/calendar')}
+                            className="btn-glass py-1.5 text-[12px]"
+                          >
+                            Add deadline to calendar
+                          </button>
+                        )}
                         <button onClick={() => aiFit(selected.job)} disabled={busy === `fit-${selected.job.id}`} className="btn-glass py-1.5 text-[12px]">
                           {busy === `fit-${selected.job.id}` ? 'Matching resume…' : fit ? 'Re-run AI resume match' : 'AI resume match'}
                         </button>
@@ -196,7 +217,7 @@ export default function Jobs() {
                       <p className="text-ink-soft">{fit.verdict}</p>
                       <div className="mt-2 flex flex-wrap gap-1.5">
                         {fit.matched_skills.slice(0, 8).map((s) => <span key={s} className="rounded-full border border-[#c9f0d9] bg-[#ecfdf3] px-2 py-0.5 text-[11px] font-semibold text-[#067647]">✓ {s}</span>)}
-                        {fit.missing_skills.slice(0, 8).map((s) => <span key={s} className="rounded-full border border-[#fbd5d1] bg-[#fef3f2] px-2 py-0.5 text-[11px] font-semibold text-[#d92d20]">+ {s}</span>)}
+                        {fit.missing_skills.slice(0, 8).map((s) => <span key={s} className="rounded-full border border-[#fbd5d1] bg-[#fef3f2] px-2 py-0.5 text-[11px] font-semibold text-[#b42318]">+ {s}</span>)}
                       </div>
                       {fit.suggestions.length > 0 && <ul className="mt-2 space-y-1 text-ink-mute">{fit.suggestions.slice(0, 3).map((s) => <li key={s}>→ {s}</li>)}</ul>}
                     </div>

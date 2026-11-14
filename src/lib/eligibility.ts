@@ -73,6 +73,39 @@ const coreTemplates: Partial<Record<Category, CoreTemplate>> = {
   security: { ...acad(7, 0, 2), minClassX: 65, minClassXII: 65, skills: { Networking: 70, 'Security Fundamentals': 72, 'Linux & Scripting': 60, 'Data Structures & Algorithms': 55, 'Aptitude & Reasoning': 65 } },
 }
 const CORE_CATEGORIES = Object.keys(coreTemplates) as Category[]
+
+/**
+ * What a recruiter's written test and technical interview expect from a graduate of each track, as levels out of 100.
+ *
+ * A category has one skill list, but a company hires several kinds of engineer: Tata Motors takes vehicle engineers,
+ * EV engineers and robotics engineers; Tata Steel takes metallurgists and production engineers. Scoring every student
+ * on the category's list alone holds a robotics student to thermodynamics and a metallurgist to CAD, subjects their
+ * track never asks them to rate, so a strong student stopped at 40% everywhere. A student is therefore also scored for
+ * the role their own track is hired for (see rolesFor), and the better of the two counts.
+ *
+ * Tracks whose home category already tests exactly their skills reuse that category's levels. The others are set here.
+ * Every skill named must be one of the track's own (tests enforce this).
+ */
+const trackTemplates: Record<string, Record<string, number>> = {
+  cyber: coreTemplates.security!.skills,
+  vlsi: coreTemplates.semiconductor!.skills,
+  embedded: coreTemplates.embedded!.skills,
+  comms: coreTemplates.telecom!.skills,
+  power: coreTemplates.electrical!.skills,
+  automation: coreTemplates.automation!.skills,
+  automotive: coreTemplates.automotive!.skills,
+  manufacturing: coreTemplates.manufacturing!.skills,
+  mech_design: coreTemplates.engineering_services!.skills,
+  process: coreTemplates.process!.skills,
+  biotech: coreTemplates.biotech!.skills,
+  ev: { 'Battery & EV Systems': 65, 'Power Electronics': 62, 'Electrical Machines': 58, 'MATLAB / Simulink': 45, 'Aptitude & Reasoning': 65 },
+  robotics: { 'Robotics & ROS': 65, 'Control Systems': 60, 'Embedded C': 55, 'CAD Modelling': 45, 'Aptitude & Reasoning': 65 },
+  structural: { 'Structural Analysis & Design (IS codes)': 65, 'Structural Software (STAAD / ETABS)': 55, 'AutoCAD & BIM (Revit)': 50, 'Geotechnical & Transportation': 50, 'Aptitude & Reasoning': 60 },
+  construction: { 'Construction Planning & Estimation': 62, 'AutoCAD & BIM (Revit)': 52, 'Structural Analysis & Design (IS codes)': 50, 'Geotechnical & Transportation': 50, 'Aptitude & Reasoning': 60 },
+  materials: { 'Materials & Metallurgy': 65, 'Manufacturing & Industrial Engineering': 55, 'Thermodynamics & Fluids': 50, 'Aptitude & Reasoning': 65 },
+}
+/** For tests and documentation. */
+export const TRACK_ROLE_SKILLS: Readonly<Record<string, Readonly<Record<string, number>>>> = trackTemplates
 const coreCategoryOf = new Map(coreCatalog.map((c) => [c.name, c.category]))
 
 const categories: Record<string, Category> = {
@@ -115,10 +148,45 @@ export function requirementsFor(c: Pick<CompanyBase, 'name'>): { category: Categ
   return { category, requirements: { ...t, skills } }
 }
 
+/**
+ * The roles a student can be scored for at a company: the category's own skill list, plus one per track of the
+ * student's that hires into this category and tests different skills. Academic cut-offs, internships and projects are
+ * the company's and are the same for every role; only the skills differ.
+ */
+export function rolesFor(base: Pick<CompanyBase, 'name'>, p: Pick<StudentLike, 'branch' | 'tracks'>): { category: Category; requirements: Requirements; scoredFor?: string }[] {
+  const general = requirementsFor(base)
+  const h = hash(base.name)
+  const vary = (v: number, i: number) => clamp(v + (((h >>> (i * 3)) % 7) - 3), 20, 98)
+  const listed = Object.keys(general.requirements.skills).sort().join('|')
+  const roles = tracksFor(p)
+    .map((id) => TRACK_BY_ID.get(id))
+    .filter((t): t is NonNullable<typeof t> => !!t && t.categories.includes(general.category) && !!trackTemplates[t.id])
+    .filter((t) => Object.keys(trackTemplates[t.id]).sort().join('|') !== listed)
+    .map((t) => ({
+      category: general.category,
+      scoredFor: t.label,
+      requirements: { ...general.requirements, skills: Object.fromEntries(Object.entries(trackTemplates[t.id]).map(([name, v], i) => [name, vary(v, i)])) },
+    }))
+  return [general, ...roles]
+}
+
+/** The role a student is scored for: the one they match best. On a tie the category's own list wins. */
+export function requirementsForStudent(base: CompanyBase, p: StudentLike) {
+  return rolesFor(base, p)
+    .map((o) => ({ o, match: score(base, p, o.category, o.requirements).match }))
+    .reduce((best, x) => (x.match > best.match ? x : best)).o
+}
+
 const levelOf = (p: StudentLike, name: string) => p.skills.find((s) => s.name === name)?.level ?? 0
 
 export function evaluate(base: CompanyBase, p: StudentLike, override?: { category: Category; requirements: Requirements }): Company {
-  const { category, requirements: r } = override ?? requirementsFor(base)
+  if (override) return score(base, p, override.category, override.requirements)
+  const chosen = requirementsForStudent(base, p)
+  const scored = score(base, p, chosen.category, chosen.requirements)
+  return chosen.scoredFor ? { ...scored, scoredFor: chosen.scoredFor } : scored
+}
+
+function score(base: CompanyBase, p: StudentLike, category: Category, r: Requirements): Company {
   const projects = Math.max(p.projects.length, Math.min(6, p.integrations?.github?.original_repos ?? 0))
   const internships = p.internships.length
 
@@ -240,7 +308,7 @@ export function evaluateJob(job: JobPosting, p: StudentLike & { branch?: string;
   const base: CompanyBase = {
     id: job.id, name: job.company, role: job.role, brand: '#6d4aff', ctcAvg: Number(job.ctc_max ?? job.ctc_min ?? 0),
     ctcMin: Number(job.ctc_min ?? 0), ctcMax: Number(job.ctc_max ?? 0), location: job.location, jobType: job.job_type,
-    tenure: '', batches: job.batches.join(', '), about: '', careers: '', process: [], stats: [],
+    tenure: '', batches: job.batches.join(', '), about: '', careers: '', process: [], stats: [], provenance: 'drive',
   }
   const requirements: Requirements = {
     minCgpa: Number(job.min_cgpa), maxBacklogs: job.max_backlogs, minClassX: Number(job.min_class_x), minClassXII: Number(job.min_class_xii),
