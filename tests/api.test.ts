@@ -486,6 +486,8 @@ test('ICS a drive deadline is an all-day event on that date with escaped text', 
   assert.match(ics, /UID:drive-j1@placementiq/)
   assert.ok(ics.startsWith('BEGIN:VCALENDAR\r\n') && ics.endsWith('END:VCALENDAR\r\n'))
   assert.ok(ics.split('\r\n').every((l) => l.length <= 75), 'lines are folded')
+})
+
 // ------------------------------------------------------------------ contact form
 const { default: contact } = await import('../api/contact')
 const enquiry = { name: 'Dr. Rao', college: 'Test Engineering College', email: 'Rao@TEC.test', phone: '+91 98765 43210', topic: 'Pro plan', message: 'We have 900 students and start in January.' }
@@ -517,6 +519,8 @@ test('CONTACT the rate limit answers 429, and another site cannot post the form'
   const cross = new Request('https://piq.test/api/contact', { method: 'POST', headers: { 'content-type': 'application/json', origin: 'https://evil.example' }, body: JSON.stringify(enquiry) })
   assert.equal((await contact(cross)).status, 403)
   assert.equal(calls.length, 0)
+})
+
 // ------------------------------------------------------------------ every branch is scored on what it studies
 const { BRANCHES, TRACKS, skillsFor: skillsOf, tracksFor: tracksOf } = await import('../src/lib/branches')
 const { TRACK_ROLE_SKILLS, catalogFor, rolesFor } = await import('../src/lib/eligibility')

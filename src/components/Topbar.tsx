@@ -206,7 +206,8 @@ export default function Topbar({ onToggleSidebar, sidebarOpen }: { onToggleSideb
                   onClick={() => {
                     if (!n.read) markRead(n.id)
                     setOpenBell(false)
-                    if (n.link) navigate(n.link)
+                    // Only paths inside the app: never another site, whatever ends up in a notification.
+                    if (n.link && /^\/(?![\\/])/.test(n.link)) navigate(n.link)
                   }}
                   className={`flex w-full items-start gap-2 border-b border-line px-4 py-2.5 text-left text-[12.5px] last:border-0 hover:bg-brand-tint ${n.read ? 'text-ink-faint' : 'text-ink-soft'}`}
                 >

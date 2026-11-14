@@ -44,6 +44,9 @@ Semantic versioning; see `docs/ENGINEERING.md` for how releases are made.
 - The CSV export opens correctly in Excel.
 
 ### Fixed
+- **Security (2026-11-14 audit):** react-router 6 → 7.18.5 removes the two production dependency advisories;
+  notification links are limited to in-app paths; Dependabot waits 7 days before proposing a new release. Report:
+  `testing/SECURITY_AUDIT_2026-11-14.md`.
 - **Scrolling:** looping decorative animations (spinning borders, the trust grid, the footer wordmark, the hero halo)
   now pause while off-screen, the grid moves on the GPU, and the sidebar's border no longer spins in the app.
 - **Roster paste:** a quoted name containing a comma ("Rao, Asha") no longer shifts the columns.
