@@ -27,7 +27,7 @@ jobs:
         run: |
           [ -n "$SUPABASE_DB_URL" ] || { echo "::error::SUPABASE_DB_URL is not set (see testing/BACKUPS.md)"; exit 1; }
           [ -n "$BACKUP_PASSPHRASE" ] || { echo "::error::BACKUP_PASSPHRASE is not set (see testing/BACKUPS.md)"; exit 1; }
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
       - uses: supabase/setup-cli@689adcfb80d947100a1eab127289b97d1fb07b13 # v3.2.0
