@@ -635,6 +635,120 @@ test('SEC-08 an unconfirmed credential does not count', () => {
 })
 
 let failed = 0
+// ------------------------------------------------------------------ verified catalogue
+const { setCatalogOverrides } = await import('../src/lib/eligibility')
+test('CATALOG a checked row replaces the typical figures and is labelled verified; an unchecked one is not', () => {
+  const student = { cgpa: 8, backlogs: 0, class_x: 90, class_xii: 90, branch: 'CSE', tracks: ['software'], skills: [], projects: [], internships: [], certifications: [], mock_feedback: [] } as never
+  const before = evaluateAll(student)
+  const [a, b] = before
+  setCatalogOverrides([
+    { id: a.id, name: a.name, about: 'Checked text.', careers_url: 'https://a.test/careers', ctc_min: '10', ctc_max: '14', ats: 'lever', ats_board: 'a', source_url: 'https://a.test/report', last_checked: '2026-11-14' },
+    { id: b.id, name: b.name, about: 'Draft text.', careers_url: '', ctc_min: null, ctc_max: null, ats: null, ats_board: null, source_url: '', last_checked: null },
+  ])
+  const after = evaluateAll(student)
+  const va = after.find((c) => c.id === a.id)!
+  const vb = after.find((c) => c.id === b.id)!
+  assert.equal(va.provenance, 'verified')
+  assert.equal(va.ctcVerified, true)
+  assert.deepEqual([va.ctcMin, va.ctcMax, va.ctcAvg], [10, 14, 12])
+  assert.equal(va.jobBoard, true)
+  assert.equal(va.lastChecked, '2026-11-14')
+  assert.equal(vb.provenance, 'typical', 'an edit nobody checked against a source stays "typical"')
+  assert.equal(vb.about, 'Draft text.')
+  assert.equal(vb.ctcVerified, undefined)
+  assert.equal(vb.ctcAvg, b.ctcAvg)
+  setCatalogOverrides([])
+  assert.equal(evaluateAll(student).find((c) => c.id === a.id)!.ctcAvg, a.ctcAvg)
+})
+
+// ------------------------------------------------------------------ live openings
+const { default: openings } = await import('../api/openings')
+const studentToken = jwt({ sub: uid, role: 'authenticated' })
+const get = (q: string, token: string | null = studentToken) =>
+  new Request(`https://piq.test/api/openings?${q}`, { headers: token ? { authorization: `Bearer ${token}` } : {} })
+test('OPENINGS signed-out callers are refused before any job board is called', async () => {
+  calls = []
+  assert.equal((await openings(get('company=acme', null))).status, 401)
+  assert.equal(calls.length, 0)
+})
+test('OPENINGS a Greenhouse board is read from the catalogue row, normalised, India first, unsafe links dropped', async () => {
+  calls = []
+  reply = (c) => {
+    if (c.url.includes('/rest/v1/company_catalog')) return ok([{ name: 'Acme', ats: 'greenhouse', ats_board: 'acme' }])
+    if (c.url.startsWith('https://boards-api.greenhouse.io/v1/boards/acme/jobs'))
+      return ok({ jobs: [
+        { title: 'SWE <b>II</b>', location: { name: 'London' }, absolute_url: 'https://boards.greenhouse.io/acme/1', updated_at: '2026-11-01T00:00:00Z' },
+        { title: 'Graduate SWE', location: { name: 'Bengaluru, India' }, absolute_url: 'https://boards.greenhouse.io/acme/2', departments: [{ name: 'Engineering' }] },
+        { title: 'Phish', location: { name: 'India' }, absolute_url: 'javascript:alert(1)' },
+      ] })
+  }
+  const res = await openings(get('company=acme'))
+  assert.equal(res.status, 200)
+  const body = await res.json()
+  assert.deepEqual(body.jobs.map((j: any) => j.title), ['Graduate SWE', 'SWE II'])
+  assert.equal(body.jobs[0].team, 'Engineering')
+  assert.equal(body.source, 'greenhouse')
+  assert.ok(calls.every((c) => /^https:\/\/(db\.test|boards-api\.greenhouse\.io)\//.test(c.url)), 'only the database and the fixed board host are called')
+})
+test('OPENINGS a second request within 30 minutes is served from memory', async () => {
+  calls = []
+  reply = (c) => (c.url.includes('/rest/v1/company_catalog') ? ok([{ name: 'Acme', ats: 'greenhouse', ats_board: 'acme' }]) : undefined)
+  assert.equal((await openings(get('company=acme'))).status, 200)
+  assert.ok(!calls.some((c) => c.url.includes('greenhouse')))
+})
+test('OPENINGS a company id or board name that could reach another host is refused or ignored', async () => {
+  calls = []
+  assert.equal((await openings(get('company=../../evil'))).status, 400)
+  assert.equal(calls.length, 0)
+  reply = (c) => (c.url.includes('/rest/v1/company_catalog') ? ok([{ name: 'X', ats: 'lever', ats_board: 'evil.example/x?' }]) : undefined)
+  const body = await (await openings(get('company=x'))).json()
+  assert.deepEqual(body.jobs, [])
+  assert.ok(!calls.some((c) => c.url.includes('lever')))
+})
+test('OPENINGS a company without a job board answers an empty list', async () => {
+  reply = (c) => (c.url.includes('/rest/v1/company_catalog') ? ok([{ name: 'Y', ats: null, ats_board: null }]) : undefined)
+  assert.deepEqual(await (await openings(get('company=y'))).json(), { source: null, jobs: [] })
+})
+test('OPENINGS off-campus search says "not set up" without Adzuna keys, and never calls Adzuna', async () => {
+  calls = []
+  delete env.ADZUNA_APP_ID
+  delete env.ADZUNA_APP_KEY
+  reply = () => ok([])
+  assert.equal((await openings(get('q=data analyst'))).status, 503)
+  assert.ok(!calls.some((c) => c.url.includes('adzuna')))
+})
+test('OPENINGS the status check reports whether Adzuna is set up, without calling it', async () => {
+  calls = []
+  reply = () => ok([])
+  assert.deepEqual(await (await openings(get('status'))).json(), { adzuna: false })
+  assert.ok(!calls.some((c) => c.url.includes('adzuna')))
+})
+test('OPENINGS Adzuna results are normalised with the salary in LPA and the keys never returned', async () => {
+  env.ADZUNA_APP_ID = 'test-id'
+  env.ADZUNA_APP_KEY = 'test-key'
+  calls = []
+  reply = (c) =>
+    c.url.startsWith('https://api.adzuna.com/v1/api/jobs/in/search/1?')
+      ? ok({ count: 1, results: [{ title: '<strong>Data</strong> Analyst', company: { display_name: 'Northwind' }, location: { display_name: 'Pune' }, redirect_url: 'https://www.adzuna.in/land/ad/1', created: '2026-11-10T00:00:00Z', salary_min: 600000, salary_max: 900000, salary_is_predicted: '1' }] })
+      : ok([])
+  const res = await openings(get('q=data analyst&where=Pune'))
+  const text = await res.text()
+  assert.equal(res.status, 200)
+  assert.ok(!text.includes('test-key') && !text.includes('test-id'))
+  const body = JSON.parse(text)
+  assert.equal(body.jobs[0].title, 'Data Analyst')
+  assert.equal(body.jobs[0].salary, '₹6–9 LPA (estimated by Adzuna)')
+  const call = calls.find((c) => c.url.includes('adzuna'))!
+  assert.equal(new URL(call.url).searchParams.get('where'), 'Pune')
+})
+test('OPENINGS a person is limited to 20 off-campus searches in 10 minutes', async () => {
+  reply = (c) => (c.url.includes('adzuna') ? ok({ count: 0, results: [] }) : ok([]))
+  const t = jwt({ sub: 'b2000000-0000-4000-8000-0000000000b2', role: 'authenticated' })
+  const codes: number[] = []
+  for (let i = 0; i < 21; i++) codes.push((await openings(get(`q=role number ${i}`, t))).status)
+  assert.deepEqual([codes[19], codes[20]], [200, 429])
+})
+
 for (const [name, fn] of tests) {
   calls = []
   console.error = () => undefined
