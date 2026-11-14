@@ -589,6 +589,16 @@ test('BRANCH roadmap, practice and mock interviews follow the branch', () => {
   assert.ok(tracksOf({ branch: 'Civil Engineering' }).length > 0)
 })
 
+test('PREDICT no expected CTC is claimed when no company is within reach', async () => {
+  const { predictSalary } = await import('../src/lib/predict')
+  const weak = { branch: 'Computer Science & Engineering', batch: '2026', cgpa: 5, backlogs: 3, class_x: 50, class_xii: 50, skills: [], projects: [], internships: [], integrations: {}, credentials: [] } as any
+  const s = predictSalary(evaluateAll(weak))
+  assert.equal(s.reachable, 0)
+  assert.equal(s.bestRealistic, 0)
+  const strong = predictSalary(evaluateAll(studentOf('Computer Science & Engineering', 75)))
+  assert.ok(strong.reachable > 0 && strong.expected > 0)
+})
+
 // ------------------------------------------------------------------ SEC-05
 const base = {
   branch: 'CSE', tracks: [], cgpa: 8, backlogs: 0, class_x: 80, class_xii: 80,

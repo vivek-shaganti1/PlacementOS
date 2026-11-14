@@ -87,7 +87,7 @@ export default function MockInterviews() {
               <span className="min-w-0 flex-1 text-[12.5px] font-semibold text-ink sm:w-[150px] sm:flex-none">{x.type}</span>
               <span className="w-[70px] text-[11.5px] text-ink-faint">{new Date(x.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</span>
               <span className="order-last w-full text-[11.5px] text-ink-mute sm:order-none sm:w-auto sm:flex-1">{x.note}</span>
-              <span className={`text-[13px] font-bold ${x.score >= 7.5 ? 'text-[#067647]' : 'text-[#d97706]'}`}>{x.score.toFixed(1)}</span>
+              <span className={`text-[13px] font-bold ${x.score >= 7.5 ? 'text-[#067647]' : 'text-[#b54708]'}`}>{x.score.toFixed(1)}</span>
             </div>
           ))}
           {past.length === 0 && <p className="py-4 text-center text-[12px] text-ink-faint">After each mock interview, log your score and notes here to track progress.</p>}

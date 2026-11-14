@@ -85,9 +85,10 @@ export default function Topbar({ onToggleSidebar, sidebarOpen }: { onToggleSideb
         }
       }}
       className="glass relative z-30 mx-2 mt-2 flex h-[58px] shrink-0 items-center gap-2 rounded-[18px] px-2.5 sm:mx-3 sm:mt-3 sm:h-[62px] sm:gap-4 sm:rounded-[20px] sm:px-4">
-      <button onClick={() => navigate(HOME[role])} className="shrink-0 text-left lg:w-[206px]" aria-label="PlacementIQ home">
+      <button onClick={() => navigate(HOME[role])} className="shrink-0 text-left lg:w-[206px]">
         <span className="sm:hidden"><LogoMark size={34} /></span>
         <span className="hidden sm:block"><Logo size={34} /></span>
+        <span className="sr-only">, home</span>
       </button>
 
       <button
@@ -225,7 +226,6 @@ export default function Topbar({ onToggleSidebar, sidebarOpen }: { onToggleSideb
         <button
           id="menu-btn"
           onClick={() => { setOpenMenu((v) => !v); setOpenBell(false) }}
-          aria-label="Account menu"
           aria-haspopup="true"
           aria-expanded={openMenu}
           className="flex min-w-0 items-center gap-2.5 rounded-[14px] py-1 pl-1 pr-2 transition-colors hover:bg-white/80"
@@ -236,6 +236,7 @@ export default function Topbar({ onToggleSidebar, sidebarOpen }: { onToggleSideb
             <p className="truncate text-[11px] text-ink-faint">{role === 'super' ? 'Platform admin' : role === 'org' ? 'Placement cell' : role === 'recruiter' ? 'Recruiter' : profile.meta}</p>
           </div>
           <IconChevronDown className="hidden h-4 w-4 text-ink-faint sm:block" />
+          <span className="sr-only">, account menu</span>
         </button>
         <AnimatePresence>
         {openMenu && (
@@ -262,7 +263,7 @@ export default function Topbar({ onToggleSidebar, sidebarOpen }: { onToggleSideb
             ))}
             <button
               onClick={() => { setOpenMenu(false); signOut() }}
-              className={`block w-full px-4 ${isStudent ? 'mt-1 border-t border-line' : ''} py-2 text-left text-[13px] text-[#d92d20] hover:bg-[#fef3f2]`}
+              className={`block w-full px-4 ${isStudent ? 'mt-1 border-t border-line' : ''} py-2 text-left text-[13px] text-[#b42318] hover:bg-[#fef3f2]`}
             >
               Sign out
             </button>

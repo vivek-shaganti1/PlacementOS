@@ -34,6 +34,11 @@ export type CompanyBase = {
   careers: string
   process: { stage: string; detail: string; duration: string }[]
   stats: { label: string; value: string }[]
+  /**
+   * Where the details come from. 'typical': hand-entered typical figures (fresher CTC range, a process template for
+   * this kind of company) with no source behind them; shown with that warning. 'drive': a drive the college posted, the real data.
+   */
+  provenance: 'typical' | 'drive'
 }
 
 export type Company = CompanyBase & {

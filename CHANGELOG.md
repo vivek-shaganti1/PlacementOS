@@ -44,6 +44,16 @@ Semantic versioning; see `docs/ENGINEERING.md` for how releases are made.
 - The CSV export opens correctly in Excel.
 
 ### Fixed
+- **Company data honesty:** the catalogue's applicant, offer, selection-ratio and round counts were invented and have
+  been removed. Company pages now say the CTC range is typical and unverified, the process is a template, and link to a
+  careers search when no verified page is recorded. College drives are marked as the college's own data.
+- **Expected CTC** is no longer claimed when no company is within reach; the dashboard and what-if say "Not yet".
+- **Admin averages:** the average resume score counts only students who have analysed a resume, and labels say what
+  each number is measured against.
+- **Sign-in page counts** come from the catalogue itself instead of fixed numbers.
+- **Accessibility (axe, WCAG 2.2 AA, every page for every role):** amber and red text darkened to pass contrast,
+  visible button text now matches the accessible name, class rows in the college console open from a real button,
+  and the logo marquee no longer reads every name twice. A new `tests/e2e/a11y.spec.ts` keeps it that way.
 - **Security (2026-11-14 audit):** react-router 6 → 7.18.5 removes the two production dependency advisories;
   notification links are limited to in-app paths; Dependabot waits 7 days before proposing a new release. Report:
   `testing/SECURITY_AUDIT_2026-11-14.md`.

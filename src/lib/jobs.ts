@@ -22,7 +22,7 @@ export const STATUS_META: Record<JobStatus, { label: string; cls: string }> = {
   shortlisted: { label: 'Shortlisted', cls: 'border-[#cfe4fb] bg-[#eef6ff] text-[#1570cd]' },
   interview: { label: 'Interview', cls: 'border-[#fbe3bd] bg-[#fff8ec] text-[#b45309]' },
   offer: { label: 'Offer', cls: 'border-[#c9f0d9] bg-[#ecfdf3] text-[#067647]' },
-  rejected: { label: 'Not selected', cls: 'border-[#fbd5d1] bg-[#fef3f2] text-[#d92d20]' },
+  rejected: { label: 'Not selected', cls: 'border-[#fbd5d1] bg-[#fef3f2] text-[#b42318]' },
 }
 
 export const normalizeJob = (j: Record<string, any>): JobPosting => ({

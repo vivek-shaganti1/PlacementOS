@@ -81,7 +81,7 @@ export default function WhatIf() {
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Stat label="Placement readiness" value={`${after.readiness}`} sub={delta(after.readiness - before.readiness)} />
         <Stat label="Eligible companies" value={`${after.counts.eligible}`} sub={`${delta(after.counts.eligible - before.counts.eligible)} · ${after.counts.nearly} nearly`} />
-        <Stat label="Expected CTC" value={lpa(after.salary.expected)} sub={`${lpa(after.salary.low)} to ${lpa(after.salary.high)} · ${delta(Math.round((after.salary.expected - before.salary.expected) * 10) / 10, ' LPA')}`} />
+        <Stat label="Expected CTC" value={after.salary.reachable ? lpa(after.salary.expected) : 'Not yet'} sub={after.salary.reachable ? `${lpa(after.salary.low)} to ${lpa(after.salary.high)}${before.salary.reachable ? ` · ${delta(Math.round((after.salary.expected - before.salary.expected) * 10) / 10, ' LPA')}` : ''}` : 'Shown once a company is within reach'} />
         <Stat label="Interview readiness" value={`${after.interview.score}`} sub={delta(after.interview.score - before.interview.score)} />
       </div>
 

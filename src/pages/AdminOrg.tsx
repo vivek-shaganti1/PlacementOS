@@ -92,7 +92,7 @@ function ResultList({ results }: { results: InviteResult[] }) {
         {results.map((r, i) => (
           <p key={`${i}-${r.email}`} className="flex flex-wrap gap-x-3 border-b border-line px-3 py-1.5 text-[12px] last:border-0">
             <span className="font-medium text-ink">{r.email}</span>
-            <span className={r.status === 'failed' ? 'text-[#d92d20]' : r.status === 'invited' || r.status === 'created' ? 'text-[#067647]' : 'text-ink-mute'}>{label[r.status]}</span>
+            <span className={r.status === 'failed' ? 'text-[#b42318]' : r.status === 'invited' || r.status === 'created' ? 'text-[#067647]' : 'text-ink-mute'}>{label[r.status]}</span>
             {r.password && <code className="select-all font-mono text-ink">{r.password}</code>}
             {r.detail && <span className="text-ink-faint">{r.detail}</span>}
           </p>
@@ -338,7 +338,7 @@ export function AdminRoster() {
                           {r.invited_at ? 'Resend' : 'Invite'}
                         </button>
                       )}
-                      <HoldButton onConfirm={() => remove(r)} warning={`${r.email} loses access to PlacementIQ; their account is not deleted.`} className="rounded px-1 text-[12px] text-[#d92d20] underline">Remove</HoldButton>
+                      <HoldButton onConfirm={() => remove(r)} warning={`${r.email} loses access to PlacementIQ; their account is not deleted.`} className="rounded px-1 text-[12px] text-[#b42318] underline">Remove</HoldButton>
                     </td>
                   </tr>
                 ))}
@@ -421,7 +421,7 @@ function RecruitersCard({ orgId }: { orgId: string }) {
               <span className="block truncate text-[12px] text-ink-mute">{[r.full_name, r.email].filter(Boolean).join(' · ')}</span>
             </span>
             <span className={`text-[12px] ${r.user_id ? 'text-[#067647]' : 'text-ink-mute'}`}>{r.user_id ? 'Active' : 'Invited, not signed up'}</span>
-            <HoldButton onConfirm={() => remove(r)} warning={`${r.email} (${r.company}) loses access to this college; their drives stay with the placement cell.`} className="rounded px-1 text-[12px] text-[#d92d20] underline">Remove</HoldButton>
+            <HoldButton onConfirm={() => remove(r)} warning={`${r.email} (${r.company}) loses access to this college; their drives stay with the placement cell.`} className="rounded px-1 text-[12px] text-[#b42318] underline">Remove</HoldButton>
           </div>
         ))}
         {!rows.length && <p className="py-4 text-center text-[12.5px] text-ink-faint">No recruiters yet.</p>}
@@ -506,7 +506,7 @@ export function AdminTeam() {
                   {a.full_name && <span className="block truncate text-[12px] text-ink-mute">{a.email}</span>}
                 </span>
                 <span className={`text-[12px] ${a.joined ? 'text-[#067647]' : 'text-ink-mute'}`}>{a.joined ? 'Active' : a.user_id ? 'Account exists' : 'Invited, not signed up'}</span>
-                {a.email !== me && <HoldButton onConfirm={() => remove(a)} warning={`Removes admin access for ${a.email}.`} className="rounded px-1 text-[12px] text-[#d92d20] underline">Remove</HoldButton>}
+                {a.email !== me && <HoldButton onConfirm={() => remove(a)} warning={`Removes admin access for ${a.email}.`} className="rounded px-1 text-[12px] text-[#b42318] underline">Remove</HoldButton>}
               </div>
             ))}
           </div>
@@ -577,7 +577,7 @@ function ProfitCard({ orgs, usage }: { orgs: Organization[]; usage: Record<strin
   const sum = (k: keyof ReturnType<typeof collegeEconomics>) => rows.reduce((a, r) => a + r.e[k], 0)
   const revenue = sum('revenue')
   const profit = sum('profit')
-  const tone = (m: number) => (m >= 50 ? 'text-[#067647]' : m >= 30 ? 'text-[#b45309]' : 'text-[#d92d20]')
+  const tone = (m: number) => (m >= 50 ? 'text-[#067647]' : m >= 30 ? 'text-[#b45309]' : 'text-[#b42318]')
   return (
     <Card
       title="Profit and costs (yearly estimate)"
@@ -842,7 +842,7 @@ export function SuperOrgs() {
                       </td>
                       <td className="tabular-nums px-2 py-2.5">
                         <span className="block font-semibold text-ink">{u?.joined ?? '…'} joined</span>
-                        <span className={`block text-[11.5px] ${full ? 'text-[#d92d20]' : 'text-ink-mute'}`}>{u?.rostered ?? '…'} / {o.seat_limit ?? '∞'} seats</span>
+                        <span className={`block text-[11.5px] ${full ? 'text-[#b42318]' : 'text-ink-mute'}`}>{u?.rostered ?? '…'} / {o.seat_limit ?? '∞'} seats</span>
                         <span className="block text-[11.5px] text-ink-mute">{u?.onboarded ?? '…'} onboarded</span>
                       </td>
                       <td className="tabular-nums px-2 py-2.5 text-[11.5px] text-ink-soft">
@@ -870,7 +870,7 @@ export function SuperOrgs() {
                       <td className="whitespace-nowrap px-2 py-2.5 text-right text-[12px]">
                         <button onClick={() => navigate(`/admin/students?org=${o.id}`)} className="mr-3 font-semibold text-brand underline">Students</button>
                         <button onClick={() => startEdit(o)} className="mr-3 text-ink-soft underline">Edit</button>
-                        <HoldButton onConfirm={() => remove(o)} holdMs={2000} warning={`Deletes ${o.name}: its roster, drives and admin roles are removed and its students lose access.`} className="rounded px-1 text-[#d92d20] underline">Delete</HoldButton>
+                        <HoldButton onConfirm={() => remove(o)} holdMs={2000} warning={`Deletes ${o.name}: its roster, drives and admin roles are removed and its students lose access.`} className="rounded px-1 text-[#b42318] underline">Delete</HoldButton>
                       </td>
                     </tr>
                   )
@@ -959,7 +959,7 @@ export function SuperAdmins() {
                   {a.full_name && <span className="block truncate text-[12px] text-ink-mute">{a.email}</span>}
                 </span>
                 <span className={`text-[12px] ${a.active ? 'text-[#067647]' : 'text-ink-mute'}`}>{a.active ? 'Active' : 'Invited, not signed up'}</span>
-                <HoldButton onConfirm={() => remove(a)} warning={`${a.email} goes back to being a normal account.`} className="rounded px-1 text-[12px] text-[#d92d20] underline">{a.email === me ? 'Remove me' : 'Remove'}</HoldButton>
+                <HoldButton onConfirm={() => remove(a)} warning={`${a.email} goes back to being a normal account.`} className="rounded px-1 text-[12px] text-[#b42318] underline">{a.email === me ? 'Remove me' : 'Remove'}</HoldButton>
               </div>
             ))}
           </div>
@@ -1112,8 +1112,9 @@ export function AdminClasses() {
                 </thead>
                 <tbody>
                   {gs.map((g) => (
-                    <tr key={g.key} onClick={() => open(g)} tabIndex={0} role="link" aria-label={`Open class ${g.key}`} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(g) } }} className="cursor-pointer border-b border-line/70 tabular-nums transition hover:bg-white/70">
-                      <td className="px-2 py-2.5 font-semibold text-ink">{sectionLabel(g.section)}</td>
+                    <tr key={g.key} onClick={() => open(g)} className="cursor-pointer border-b border-line/70 tabular-nums transition hover:bg-white/70">
+                      {/* A real button keeps the table a table for screen readers; the whole row still opens it on click. */}
+                      <td className="px-2 py-2.5"><button type="button" onClick={(e) => { e.stopPropagation(); open(g) }} className="font-semibold text-ink underline-offset-2 hover:underline">{sectionLabel(g.section)}</button></td>
                       <td className="px-2 py-2.5">{g.rostered}</td>
                       <td className="px-2 py-2.5">{g.joined}<span className="ml-1 text-[11px] text-ink-faint">{g.rostered ? `${Math.round((g.joined / g.rostered) * 100)}%` : ''}</span></td>
                       <td className="px-2 py-2.5">{g.onboarded}</td>

@@ -508,8 +508,9 @@ export default function Landing() {
         {/* marquee */}
         <p className="mb-3 text-center font-mono text-[10.5px] uppercase tracking-[0.18em] text-ink-faint">Every student scored against {RECRUITERS} recruiters</p>
         <div className="relative border-y border-white/60 bg-white/30 py-5 backdrop-blur-md [mask-image:linear-gradient(90deg,transparent,#000_12%,#000_88%,transparent)]">
-          <div className="marquee__track flex w-max gap-10 whitespace-nowrap text-[15px] font-semibold tracking-[-0.01em] text-ink-faint">
-            {[...names, ...names].map((n, i) => <span key={i}>{n}</span>)}
+          <div className="marquee__track flex w-max gap-10 whitespace-nowrap text-[15px] font-semibold tracking-[-0.01em] text-ink-soft">
+            {/* The list runs twice for a seamless loop; screen readers hear it once. */}
+            {[...names, ...names].map((n, i) => <span key={i} aria-hidden={i >= names.length || undefined}>{n}</span>)}
           </div>
         </div>
 

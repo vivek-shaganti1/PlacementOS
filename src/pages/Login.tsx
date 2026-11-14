@@ -6,6 +6,11 @@ import { Aurora } from '../components/Page'
 import { callApi } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import { errMsg, supabase } from '../lib/supabase'
+import { companyCatalog } from '../data/companies'
+import { coreCatalog } from '../data/coreCompanies'
+
+// Every recruiter the engine scores against (software and core), counted from the catalogue.
+const RECRUITERS = companyCatalog.length + coreCatalog.length
 
 type Mode = 'signin' | 'signup' | 'forgot' | 'reset'
 
@@ -122,10 +127,10 @@ export default function Login({ initialMode = 'signin' }: { initialMode?: Mode }
             Know exactly where you stand <span className="italic text-white/70">before</span> the drive opens.
           </p>
           <p className="relative mt-4 max-w-[420px] text-[14px] leading-[1.6] text-white/70">
-            Your academics, resume, GitHub and coding profiles, scored against 66 recruiters, with the next best step for each one.
+            Your academics, resume, GitHub and coding profiles, scored against {RECRUITERS} recruiters, with the next best step for each one.
           </p>
           <div className="relative mt-10 grid grid-cols-3 gap-3">
-            {[['66', 'companies scored'], ['4', 'coding platforms synced'], ['6', 'ATS checks per resume']].map(([n, l], i) => (
+            {[[String(RECRUITERS), 'companies scored'], ['7', 'evidence platforms synced'], ['6', 'ATS checks per resume']].map(([n, l], i) => (
               <motion.div
                 key={l}
                 initial={{ opacity: 0, y: 12 }}
@@ -195,7 +200,7 @@ export default function Login({ initialMode = 'signin' }: { initialMode?: Mode }
 
             <AnimatePresence>
               {error && (
-                <motion.p role="alert" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="rounded-[11px] border border-[#fbd5d1] bg-[#fef3f2]/90 px-3 py-2 text-[12px] text-[#d92d20]">
+                <motion.p role="alert" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="rounded-[11px] border border-[#fbd5d1] bg-[#fef3f2]/90 px-3 py-2 text-[12px] text-[#b42318]">
                   {error}
                 </motion.p>
               )}

@@ -136,7 +136,7 @@ export default function ResumeAnalyzer() {
               {p.resume_name} {p.resume_uploaded_at && `(uploaded ${ago(p.resume_uploaded_at)})`}
               <button onClick={view} className="font-medium text-brand-dark hover:underline">View</button>
               <button onClick={reanalyze} disabled={busy} className="font-medium text-brand-dark hover:underline">Re-analyze</button>
-              <HoldButton onConfirm={remove} disabled={busy} warning="Deletes your uploaded resume and its analysis." className="rounded px-1 font-medium text-[#d92d20] hover:underline">Delete</HoldButton>
+              <HoldButton onConfirm={remove} disabled={busy} warning="Deletes your uploaded resume and its analysis." className="rounded px-1 font-medium text-[#b42318] hover:underline">Delete</HoldButton>
             </span>
           ) : (
             <span className="text-[12.5px] text-ink-faint">No resume uploaded yet. PDF or DOCX, up to 5 MB.</span>
@@ -199,7 +199,7 @@ export default function ResumeAnalyzer() {
               <div className="space-y-3">
                 {a.rewrites.map((r) => (
                   <div key={r.before} className="rounded-[11px] border border-line bg-[#fafbfc] p-3">
-                    <p className="text-[11.5px] text-[#d92d20] line-through">{r.before}</p>
+                    <p className="text-[11.5px] text-[#b42318] line-through">{r.before}</p>
                     <p className="mt-1.5 text-[12px] font-medium text-[#067647]">{r.after}</p>
                   </div>
                 ))}
@@ -276,8 +276,8 @@ export default function ResumeAnalyzer() {
                 <div className="mt-1.5 flex flex-wrap gap-1.5">{jm.matched_skills.map((s) => <span key={s} className={`${chip} border-[#c9f0d9] bg-[#ecfdf3] text-[#067647]`}>{s}</span>)}</div>
               </div>
               <div>
-                <p className="text-[11.5px] font-semibold text-[#d92d20]">Missing ({jm.missing_skills.length})</p>
-                <div className="mt-1.5 flex flex-wrap gap-1.5">{jm.missing_skills.map((s) => <span key={s} className={`${chip} border-[#fbd5d1] bg-[#fef3f2] text-[#d92d20]`}>{s}</span>)}</div>
+                <p className="text-[11.5px] font-semibold text-[#b42318]">Missing ({jm.missing_skills.length})</p>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">{jm.missing_skills.map((s) => <span key={s} className={`${chip} border-[#fbd5d1] bg-[#fef3f2] text-[#b42318]`}>{s}</span>)}</div>
               </div>
             </div>
             {jm.missing_keywords.length > 0 && (

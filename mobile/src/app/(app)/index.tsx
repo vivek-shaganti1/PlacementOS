@@ -31,7 +31,7 @@ export default function Readiness() {
             <Card style={{ alignItems: 'center', paddingVertical: 22 }}>
               <Text style={text.mute}>Placement readiness</Text>
               <Text accessibilityLabel={`Readiness ${readiness} out of 100`} style={{ fontSize: 56, fontWeight: '700', color: colors.ink, letterSpacing: -2 }}>{readiness}</Text>
-              <Text style={text.mute}>Expected CTC ₹{salary.expected.toFixed(1)} LPA</Text>
+              <Text style={text.mute}>{salary.reachable ? `Expected CTC ₹${salary.expected.toFixed(1)} LPA` : 'Expected CTC: shown once a company is within reach'}</Text>
             </Card>
             <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
               {ORDER.map((b) => (

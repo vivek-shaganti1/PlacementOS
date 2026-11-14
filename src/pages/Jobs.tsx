@@ -139,7 +139,7 @@ export default function Jobs() {
                     <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[10.5px]">
                       <span className="rounded-md bg-white/80 px-1.5 py-0.5 text-ink-soft">{ctcText(job)}</span>
                       {job.deadline && <span className="rounded-md bg-white/80 px-1.5 py-0.5 text-ink-soft">Apply by {new Date(job.deadline).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</span>}
-                      {!isOpen(job) && <span className="rounded-md bg-[#fef3f2] px-1.5 py-0.5 text-[#d92d20]">Closed</span>}
+                      {!isOpen(job) && <span className="rounded-md bg-[#fef3f2] px-1.5 py-0.5 text-[#b42318]">Closed</span>}
                       {app && <span className={`rounded-md border px-1.5 py-0.5 font-semibold ${STATUS_META[app.status].cls}`}>{STATUS_META[app.status].label}</span>}
                     </div>
                   </button>
@@ -167,7 +167,7 @@ export default function Jobs() {
                             return (
                               <>
                                 <span className={`rounded-[10px] border px-3 py-1.5 text-[12px] font-semibold ${STATUS_META[app.status].cls}`}>{STATUS_META[app.status].label}</span>
-                                {app.status === 'applied' && <HoldButton onConfirm={() => withdraw(selected.job)} warning={`Withdraws your application to ${selected.job.company}.`} className="btn-glass py-1.5 text-[12px] text-[#d92d20]">Withdraw</HoldButton>}
+                                {app.status === 'applied' && <HoldButton onConfirm={() => withdraw(selected.job)} warning={`Withdraws your application to ${selected.job.company}.`} className="btn-glass py-1.5 text-[12px] text-[#b42318]">Withdraw</HoldButton>}
                               </>
                             )
                           if (!isOpen(selected.job)) return <span className="text-[12px] text-ink-faint">Applications are closed.</span>
@@ -206,7 +206,7 @@ export default function Jobs() {
                       <p className="text-ink-soft">{fit.verdict}</p>
                       <div className="mt-2 flex flex-wrap gap-1.5">
                         {fit.matched_skills.slice(0, 8).map((s) => <span key={s} className="rounded-full border border-[#c9f0d9] bg-[#ecfdf3] px-2 py-0.5 text-[11px] font-semibold text-[#067647]">✓ {s}</span>)}
-                        {fit.missing_skills.slice(0, 8).map((s) => <span key={s} className="rounded-full border border-[#fbd5d1] bg-[#fef3f2] px-2 py-0.5 text-[11px] font-semibold text-[#d92d20]">+ {s}</span>)}
+                        {fit.missing_skills.slice(0, 8).map((s) => <span key={s} className="rounded-full border border-[#fbd5d1] bg-[#fef3f2] px-2 py-0.5 text-[11px] font-semibold text-[#b42318]">+ {s}</span>)}
                       </div>
                       {fit.suggestions.length > 0 && <ul className="mt-2 space-y-1 text-ink-mute">{fit.suggestions.slice(0, 3).map((s) => <li key={s}>→ {s}</li>)}</ul>}
                     </div>

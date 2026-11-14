@@ -143,7 +143,7 @@ function JdViz() {
           <motion.span
             key={t}
             variants={{ hidden: { opacity: 0, scale: 0.8 }, show: { opacity: 1, scale: 1, transition: { delay: 0.2 + i * 0.06, type: 'spring', stiffness: 380, damping: 22 } } }}
-            className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${ok ? 'border-[#c9f0d9] bg-[#ecfdf3] text-[#067647]' : 'border-[#fbd5d1] bg-[#fef3f2] text-[#d92d20]'}`}
+            className={`rounded-full border px-2.5 py-1 text-[11px] font-semibold ${ok ? 'border-[#c9f0d9] bg-[#ecfdf3] text-[#067647]' : 'border-[#fbd5d1] bg-[#fef3f2] text-[#b42318]'}`}
           >
             {ok ? '✓' : '+'} {t}
           </motion.span>

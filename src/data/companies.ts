@@ -16,7 +16,6 @@ const ROLE = 'Software Engineer (SDE)'
 
 function build(seed: Seed): CompanyBase {
   const [avg, min, max] = seed.ctc
-  const m = seed.match
 
   return {
     id: seed.name.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
@@ -30,10 +29,10 @@ function build(seed: Seed): CompanyBase {
     jobType: 'Full Time',
     tenure: 'Permanent',
     batches: '2026, 2027',
-    about:
-      seed.about ??
-      `${seed.name} is a global technology leader focused on building products that change the way billions of people connect, explore, and interact with information.`,
-    careers: seed.careers ?? `https://www.google.com/search?q=${encodeURIComponent(seed.name + ' careers')}`,
+    // No invented descriptions: a company without a written one shows none.
+    about: seed.about ?? '',
+    careers: seed.careers ?? '',
+    provenance: 'typical',
     process: [
       { stage: 'Online Assessment', detail: '2 DSA problems + 20 MCQs on CS fundamentals', duration: '90 min' },
       { stage: 'Technical Interview I', detail: 'Data structures, algorithms, problem solving', duration: '45 min' },
@@ -41,14 +40,9 @@ function build(seed: Seed): CompanyBase {
       { stage: 'Hiring Manager Round', detail: 'Behavioural, ownership and culture fit', duration: '45 min' },
       { stage: 'HR Discussion', detail: 'Compensation, location and offer roll-out', duration: '30 min' },
     ],
-    stats: [
-      { label: 'Applicants last drive', value: `${320 + (m % 7) * 45}` },
-      { label: 'Offers rolled out', value: `${6 + (m % 9)}` },
-      { label: 'Selection ratio', value: `${(1.4 + (m % 5) * 0.6).toFixed(1)}%` },
-      { label: 'Avg. package offered', value: `₹${avg.toFixed(1)} LPA` },
-      { label: 'Highest package', value: `₹${max} LPA` },
-      { label: 'Median interview rounds', value: '4' },
-    ],
+    // Only the hand-entered package range. Applicant counts, offers and selection ratios used to be made up from a
+    // formula here; there is no data behind them, so they are not shown.
+    stats: [{ label: 'Typical fresher CTC', value: `₹${min}–${max} LPA` }],
   }
 }
 
@@ -153,7 +147,7 @@ export const bucketMeta: Record<
     hint: 'Minor gaps to bridge',
     head: 'bg-[#fff8ec] border-[#fbe3bd]',
     ring: 'ring-[#f79009]',
-    text: 'text-[#d97706]',
+    text: 'text-[#b54708]',
     dot: 'bg-[#f79009]',
     more: 'text-ink-mute',
   },
@@ -171,9 +165,9 @@ export const bucketMeta: Record<
     hint: 'Major gaps found',
     head: 'bg-[#fef3f2] border-[#fbd5d1]',
     ring: 'ring-[#f04438]',
-    text: 'text-[#d92d20]',
+    text: 'text-[#b42318]',
     dot: 'bg-[#f04438]',
-    more: 'text-[#d92d20]',
+    more: 'text-[#b42318]',
   },
 }
 
