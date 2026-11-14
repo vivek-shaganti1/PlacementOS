@@ -6,6 +6,7 @@ import { IconArrowRight, IconBookmark, IconBot, IconClose, IconSpark } from './I
 import { useApp } from '../lib/store'
 import { SwapText } from './motion/SwapText'
 import { useDialog } from '../lib/useDialog'
+import { DriveRecord, OpenRoles } from './LiveOpenings'
 
 const TABS = ['Overview', 'Eligibility Criteria', 'Recruitment Process', 'Package'] as const
 type Tab = (typeof TABS)[number]
@@ -135,7 +136,7 @@ export default function CompanyPanel({ company, onClose, overlay }: { company: C
           <>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               {[
-                { k: company.provenance === 'typical' ? 'Typical CTC (unverified)' : 'CTC', v: `₹${company.ctcAvg.toFixed(1)}`, u: 'LPA', s: `Range ${company.ctcMin}–${company.ctcMax} LPA` },
+                { k: company.ctcVerified ? 'CTC (verified)' : company.provenance === 'drive' ? 'CTC' : 'Typical CTC (unverified)', v: `₹${company.ctcAvg.toFixed(1)}`, u: 'LPA', s: `Range ${company.ctcMin}–${company.ctcMax} LPA` },
                 { k: 'Work Location', v: company.location, s: 'On-site' },
                 { k: 'Job Type', v: company.jobType, s: company.tenure },
                 { k: 'Batch', v: company.batches, s: 'Eligible' },
@@ -163,6 +164,14 @@ export default function CompanyPanel({ company, onClose, overlay }: { company: C
                 >
                   {company.careers ? 'Visit careers page' : `Search for ${company.name} careers`} <IconArrowRight className="h-3.5 w-3.5" />
                 </a>
+                {company.provenance === 'verified' && company.sourceUrl && company.lastChecked && (
+                  <p className="mt-2 text-[10.5px] text-ink-faint">
+                    Checked {new Date(company.lastChecked).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })} against{' '}
+                    <a href={company.sourceUrl} target="_blank" rel="noreferrer noopener" className="underline decoration-dotted underline-offset-2 hover:text-ink-mute">
+                      the source
+                    </a>
+                  </p>
+                )}
               </div>
 
               <div className="card p-4">
@@ -181,6 +190,8 @@ export default function CompanyPanel({ company, onClose, overlay }: { company: C
               </div>
             </div>
 
+            <DriveRecord company={company} />
+            <OpenRoles company={company} />
           </>
         )}
 
@@ -217,7 +228,7 @@ export default function CompanyPanel({ company, onClose, overlay }: { company: C
         {tab === 'Recruitment Process' && (
           <div className="card p-4">
             <p className="text-[13px] font-semibold text-ink">Selection Rounds</p>
-            {company.provenance === 'typical' && <p className="mt-1 text-[11.5px] text-ink-mute">The usual process for this kind of company, not confirmed for {company.name}. Your placement cell's drive notice has the real rounds.</p>}
+            {company.provenance !== 'drive' && <p className="mt-1 text-[11.5px] text-ink-mute">The usual process for this kind of company, not confirmed for {company.name}. Your placement cell's drive notice has the real rounds.</p>}
             <ol className="mt-4 space-y-0">
               {company.process.map((s, i) => (
                 <li key={s.stage} className="relative flex gap-3.5 pb-5 last:pb-0">
@@ -237,7 +248,7 @@ export default function CompanyPanel({ company, onClose, overlay }: { company: C
           </div>
         )}
 
-        {tab === 'Package' && company.provenance === 'typical' && (
+        {tab === 'Package' && !company.ctcVerified && company.provenance !== 'drive' && (
           <p className="rounded-[12px] border border-[#fedf89] bg-[#fffaeb] px-3.5 py-2.5 text-[12px] leading-relaxed text-[#93370d]">
             A typical fresher range entered by hand, not verified and not specific to your campus. The package in your college's drive is the one that counts.
           </p>

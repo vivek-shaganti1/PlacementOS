@@ -5,6 +5,15 @@ Semantic versioning; see `docs/ENGINEERING.md` for how releases are made.
 ## Unreleased
 
 ### Added
+- **Live company data.**
+  - Platform admins verify companies in a new Companies page: description, careers page, fresher CTC and the source
+    they checked. Students see "CTC (verified)" with the check date and source. Unverified companies keep the typical
+    figures with their warning.
+  - Company pages show **what happened at the student's own college**: drives, applicants, shortlists and offers.
+    Counts are withheld below three applicants.
+  - Company pages list **open roles live** from the company's public Greenhouse, Lever or Ashby job board.
+  - Campus Jobs has an **off-campus search** (Adzuna, India) once `ADZUNA_APP_ID` and `ADZUNA_APP_KEY` are set in Vercel.
+  - Needs migration `20261116000000_company_catalog.sql`. Until it runs, the app behaves as before.
 - **Download my data** (Settings, every role): one JSON file with everything stored about the account.
 - **Activity log** for placement cells and platform admins: who changed the roster, access, drives and certificates,
   with a filter, search and CSV export.

@@ -74,6 +74,7 @@ Supabase project, do not sign in on previews. To fix it properly:
 | 20261113000000_admin_two_factor | Admin powers need a second factor | 2026-11-12 |
 | 20261114000000_contact_enquiries | Contact form storage and its rate limit | **Pending** |
 | 20261115000000_live_console | Publishes console tables for live updates | **Pending** |
+| 20261116000000_company_catalog | Verified company catalogue, drive statistics | **Pending** |
 
 ## Releases and versions
 
@@ -118,7 +119,7 @@ Supabase project, do not sign in on previews. To fix it properly:
 
 | Thing | Where |
 |---|---|
-| Secrets (Supabase secret key, Groq key, proof secret) | Vercel environment variables only |
+| Secrets (Supabase secret key, Groq key, proof secret, Adzuna keys) | Vercel environment variables only |
 | Backup secrets | GitHub environment `production-backup` (branch `main` only) |
 | Auth settings (sign-up off, redirect URLs, SMTP, MFA) | Supabase dashboard; listed in `testing/RELEASE_RUNBOOK.md` |
 | Test accounts | `tests/e2e/accounts.json`, valid only in a local or CI stack |

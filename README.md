@@ -97,6 +97,7 @@ Names only; `.env.example` lists them. Set real values in `.env.local` and in Ve
 | `GROQ_FALLBACK_MODELS` | Server only, optional | Comma-separated models used when the primary is rate limited, default `openai/gpt-oss-20b,qwen/qwen3.8-27b` |
 | `GITHUB_TOKEN` | Server only, optional | Raises the GitHub rate limit for evidence reads |
 | `CONNECT_PROOF_SECRET` | Server only | Used by `/api/connect` for proof that a student owns an account |
+| `ADZUNA_APP_ID`, `ADZUNA_APP_KEY` | Server only, optional | Off-campus job search on Campus Jobs (`/api/openings`). Free key from developer.adzuna.com; without both, the search stays hidden |
 
 `SIGNUP_VERIFY_EMAIL` no longer exists: self-registration always goes through the emailed link. Remove it if it is still set.
 
