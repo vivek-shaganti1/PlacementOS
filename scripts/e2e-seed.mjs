@@ -52,7 +52,8 @@ with o as (select id from public.organizations where name = ${q(A.college.name)}
 insert into public.org_students (org_id, email, full_name, roll_number, branch, batch, cgpa, backlogs, class_x, class_xii)
 select o.id, v.* from o, (values
   (${q(A.student)}, 'Asha Rao', '22TEC001', 'CSE', '2026', 8.4, 0, 92, 90),
-  (${q(A.newStudent)}, 'Ravi Kumar', '22TEC002', 'ECE', '2026', 7.1, 0, 85, 80)
+  (${q(A.newStudent)}, 'Ravi Kumar', '22TEC002', 'ECE', '2026', 7.1, 0, 85, 80),
+  (${q(A.coreStudent)}, 'Kiran Reddy', '22TEC003', 'Civil Engineering', '2026', 8.0, 0, 88, 86)
 ) as v(email, full_name, roll_number, branch, batch, cgpa, backlogs, class_x, class_xii);
 with o as (select id from public.organizations where name = ${q(A.college.name)})
 insert into public.org_students (org_id, email, full_name, roll_number, branch, batch, cgpa, backlogs, class_x, class_xii)
@@ -65,7 +66,7 @@ select id, ${q(A.recruiter)}, 'Acme Systems', 'Priya Hiring' from public.organiz
 
 // 2. Logins. The database triggers attach each one to its role or roster row, exactly as in production.
 const ids = {}
-for (const [key, email] of Object.entries({ super: A.super, admin: A.admin, recruiter: A.recruiter, student: A.student, otherAdmin: A.otherCollege.admin, otherStudent: A.otherCollege.student })) {
+for (const [key, email] of Object.entries({ super: A.super, admin: A.admin, recruiter: A.recruiter, student: A.student, coreStudent: A.coreStudent, otherAdmin: A.otherCollege.admin, otherStudent: A.otherCollege.student })) {
   ids[key] = await createUser(email)
 }
 
@@ -96,6 +97,12 @@ writeFileSync('tests/e2e/.state/totp.json', JSON.stringify(secrets, null, 2))
 sql(`
 update public.profiles set onboarded_at = now(), target_roles = 'Software Engineer', phone = '9000000001'
  where id in (${q(ids.student)}, ${q(ids.otherStudent)});
+-- A civil engineering student, strong in three of the track's subjects and weak in one, for the core-branch journeys.
+update public.profiles set onboarded_at = now(), target_roles = 'Structural Engineer' where id = ${q(ids.coreStudent)};
+insert into public.user_skills (user_id, skill, level)
+values (${q(ids.coreStudent)}, 'Structural Analysis & Design (IS codes)', 80), (${q(ids.coreStudent)}, 'Structural Software (STAAD / ETABS)', 30),
+       (${q(ids.coreStudent)}, 'AutoCAD & BIM (Revit)', 75), (${q(ids.coreStudent)}, 'Geotechnical & Transportation', 70), (${q(ids.coreStudent)}, 'Aptitude & Reasoning', 80)
+on conflict do nothing;
 insert into public.user_skills (user_id, skill, level)
 values (${q(ids.student)}, 'Python', 80), (${q(ids.student)}, 'React', 70), (${q(ids.student)}, 'SQL', 65), (${q(ids.student)}, 'Data Structures', 75)
 on conflict do nothing;

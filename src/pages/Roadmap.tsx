@@ -1,19 +1,20 @@
+import { useMemo } from 'react'
 import { FeedbackPrompt } from '../components/Feedback'
 import { Card, Page } from '../components/Page'
+import { useProfile } from '../lib/auth'
+import { useCompanies } from '../lib/companies'
+import { roadmapFor } from '../lib/prep'
 import { useApp } from '../lib/store'
-
-const phases = [
-  { title: 'Phase 1 · Advanced DSA', weeks: 'Weeks 1-4', items: ['Graphs: BFS, DFS, Dijkstra, union-find', 'Dynamic programming patterns', 'Tries and segment trees', '150 curated problems'] },
-  { title: 'Phase 2 · System Design', weeks: 'Weeks 5-7', items: ['Scaling fundamentals & CAP', 'Caching, queues, sharding', 'Design: URL shortener, feed, chat', 'Write 3 design docs'] },
-  { title: 'Phase 3 · Projects & Impact', weeks: 'Weeks 8-10', items: ['Ship one distributed-systems project', 'Add metrics and load tests', 'Quantify impact on the resume'] },
-  { title: 'Phase 4 · Interview Loop', weeks: 'Weeks 11-12', items: ['2 mock interviews per week', 'Behavioural story bank', 'Company-specific question sets'] },
-]
 
 export default function Roadmap() {
   const { roadmapDone, toggleRoadmap } = useApp()
+  const profile = useProfile()
+  const { companies } = useCompanies()
+  // Software tracks keep the DSA and system-design plan; every other track gets one built from its own skill gaps.
+  const phases = useMemo(() => roadmapFor(profile, companies), [profile, companies])
   const done = Object.fromEntries(roadmapDone.map((i) => [i, true])) as Record<string, boolean>
   const all = phases.flatMap((p) => p.items)
-  const pct = Math.round((all.filter((i) => done[i]).length / all.length) * 100)
+  const pct = all.length ? Math.round((all.filter((i) => done[i]).length / all.length) * 100) : 0
 
   return (
     <Page title="Learning Roadmap" subtitle="A 12-week plan generated from your skill gaps and target companies.">

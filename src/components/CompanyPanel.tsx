@@ -184,6 +184,11 @@ export default function CompanyPanel({ company, onClose, overlay }: { company: C
           </>
         )}
 
+        {tab === 'Eligibility Criteria' && company.scoredFor && (
+          <p className="rounded-[12px] border border-[#d5cbff] bg-brand-tint px-3.5 py-2.5 text-[12px] leading-relaxed text-ink-soft">
+            Scored on your <b className="text-ink">{company.scoredFor}</b> skills: {company.name} hires for more than one kind of role, and this is the one your track prepares you for.
+          </p>
+        )}
         {tab === 'Eligibility Criteria' && (
           <div className="card overflow-x-auto">
             <div className="grid min-w-[460px] grid-cols-[1.3fr_1fr_1fr_auto] gap-3 border-b border-line bg-[#fafbfc] px-4 py-2.5 text-[11px] font-semibold text-ink-mute">
