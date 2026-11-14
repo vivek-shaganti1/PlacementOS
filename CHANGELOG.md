@@ -20,6 +20,10 @@ Semantic versioning; see `docs/ENGINEERING.md` for how releases are made.
   appear by themselves for placement cells, recruiters and platform admins. A badge shows whether the page is live, a
   toast and a "New" tag mark arriving applications, and pages fall back to a 15-second refresh where the network
   blocks the live connection.
+- **Motion that shows a change:** What-If numbers glide to their new value as a slider moves, the before/after bars
+  slide, and companies that change category arrive and leave in the list. The jobs filter has a sliding pill and rows
+  that enter and leave with the filter. "Show more" in the eligibility stacks grows the extra cards in. Nothing
+  animates on load, and reduced motion swaps values instantly.
 - Landing hero: the eligibility board now plays a live loop. The assistant names a fix, a scan sweeps the board and
   that company moves up a column while readiness and the resume score follow. It also has a cursor spotlight, a tilt
   sheen, depth layers and a turning halo. It pauses off-screen and stays still for reduced motion.
@@ -48,6 +52,8 @@ Semantic versioning; see `docs/ENGINEERING.md` for how releases are made.
   been removed. Company pages now say the CTC range is typical and unverified, the process is a template, and link to a
   careers search when no verified page is recorded. College drives are marked as the college's own data.
 - **Expected CTC** is no longer claimed when no company is within reach; the dashboard and what-if say "Not yet".
+- **What-If levers:** a student far below every requirement was told "Your skills already meet what your target
+  companies ask for". It now says the gaps are still wide and to raise several skills together.
 - **Admin averages:** the average resume score counts only students who have analysed a resume, and labels say what
   each number is measured against.
 - **Sign-in page counts** come from the catalogue itself instead of fixed numbers.

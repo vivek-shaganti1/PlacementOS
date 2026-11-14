@@ -140,7 +140,8 @@ export function Stat({
   label, value, sub, tone, icon, trend, delta, trendColor, onOpen, openLabel,
 }: {
   label: string
-  value: string
+  /** A string, or a node such as <TweenNumber> on pages where the user changes the number themselves. */
+  value: ReactNode
   sub?: string
   tone?: string
   icon?: ReactNode

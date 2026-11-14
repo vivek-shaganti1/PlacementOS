@@ -1,4 +1,4 @@
-import { AnimatePresence, motion } from 'motion/react'
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react'
 import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { Card, Meter, Page, Ring, Stat } from '../components/Page'
@@ -7,6 +7,7 @@ import { callApi } from '../lib/api'
 import { useProfile } from '../lib/auth'
 import { evaluateJob, type JobPosting } from '../lib/eligibility'
 import { ctcText, isOpen, STATUS_META, useJobs } from '../lib/jobs'
+import { motionConfig } from '../lib/motion'
 import { useApp } from '../lib/store'
 import { errMsg, supabase } from '../lib/supabase'
 import { HoldButton } from '../components/HoldButton'
@@ -15,6 +16,7 @@ import { downloadText } from '../lib/csv'
 
 export default function Jobs() {
   const p = useProfile()
+  const reduce = useReducedMotion()
   const { showToast } = useApp()
   const { jobs, applications, loading, reload } = useJobs()
   const [params, setParams] = useSearchParams()
@@ -110,18 +112,26 @@ export default function Jobs() {
           <Card className="self-start">
             <div className="mb-3 flex gap-1.5">
               {(['all', 'eligible', 'applied'] as const).map((f) => (
-                <button key={f} onClick={() => setFilter(f)} className={`rounded-full px-3 py-1 text-[11.5px] font-semibold capitalize transition ${filter === f ? 'bg-brand text-white' : 'bg-white/70 text-ink-soft hover:bg-white'}`}>
-                  {f === 'eligible' ? 'Can apply' : f}
+                <button key={f} onClick={() => setFilter(f)} aria-pressed={filter === f} className={`relative rounded-full px-3 py-1 text-[11.5px] font-semibold capitalize transition-colors ${filter === f ? 'text-white' : 'bg-white/70 text-ink-soft hover:bg-white'}`}>
+                  {/* The active pill slides to the chosen filter, so the eye follows the change. */}
+                  {filter === f && <motion.span layoutId="jobs-filter" aria-hidden className="absolute inset-0 rounded-full bg-brand" transition={reduce ? { duration: 0 } : motionConfig.spring.snappy} />}
+                  <span className="relative">{f === 'eligible' ? 'Can apply' : f}</span>
                 </button>
               ))}
             </div>
             <div className="space-y-2">
+              <AnimatePresence initial={false} mode="popLayout">
               {rows.map(({ job, ev }) => {
                 const app = mine.get(job.id)
                 const active = job.id === selectedId
                 return (
-                  <button
+                  <motion.button
                     key={job.id}
+                    layout={!reduce}
+                    initial={{ opacity: 0, transform: reduce ? 'none' : 'scale(0.98)' }}
+                    animate={{ opacity: 1, transform: 'scale(1)' }}
+                    exit={{ opacity: 0, transition: { duration: 0.16, ease: motionConfig.easing.exit } }}
+                    transition={{ duration: 0.26, ease: motionConfig.easing.smooth }}
                     onClick={() => {
                       setParams({ job: job.id }, { replace: true })
                       // Stacked layout: bring the details into view.
@@ -142,9 +152,10 @@ export default function Jobs() {
                       {!isOpen(job) && <span className="rounded-md bg-[#fef3f2] px-1.5 py-0.5 text-[#b42318]">Closed</span>}
                       {app && <span className={`rounded-md border px-1.5 py-0.5 font-semibold ${STATUS_META[app.status].cls}`}>{STATUS_META[app.status].label}</span>}
                     </div>
-                  </button>
+                  </motion.button>
                 )
               })}
+              </AnimatePresence>
               {rows.length === 0 && <p className="py-6 text-center text-[12px] text-ink-faint">Nothing in this view.</p>}
             </div>
           </Card>
