@@ -75,6 +75,7 @@ export const NAV: Record<AccountRole, Group[]> = {
         { to: '/super/orgs', label: 'Organizations', Icon: IconStacks },
         { to: '/super/admins', label: 'Platform admins', Icon: IconSettings },
         { to: '/super/certifications', label: 'Certifications', Icon: IconAward },
+        { to: '/super/enquiries', label: 'Enquiries', Icon: IconHelp },
       ],
     },
     { label: 'All colleges', items: placementItems },

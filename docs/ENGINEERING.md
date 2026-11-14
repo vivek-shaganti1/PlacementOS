@@ -72,6 +72,7 @@ Supabase project, do not sign in on previews. To fix it properly:
 | 20261110000000_audit_followups | Roster linking, neutral refusals, certificate ownership | 2026-11-11 |
 | 20261112000000_review_followups | File paths, upload rule, indexes, more audit | 2026-11-12 |
 | 20261113000000_admin_two_factor | Admin powers need a second factor | 2026-11-12 |
+| 20261114000000_contact_enquiries | Contact form storage and its rate limit | **Pending** |
 
 ## Releases and versions
 

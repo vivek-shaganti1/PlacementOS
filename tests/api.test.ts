@@ -486,6 +486,37 @@ test('ICS a drive deadline is an all-day event on that date with escaped text', 
   assert.match(ics, /UID:drive-j1@placementiq/)
   assert.ok(ics.startsWith('BEGIN:VCALENDAR\r\n') && ics.endsWith('END:VCALENDAR\r\n'))
   assert.ok(ics.split('\r\n').every((l) => l.length <= 75), 'lines are folded')
+// ------------------------------------------------------------------ contact form
+const { default: contact } = await import('../api/contact')
+const enquiry = { name: 'Dr. Rao', college: 'Test Engineering College', email: 'Rao@TEC.test', phone: '+91 98765 43210', topic: 'Pro plan', message: 'We have 900 students and start in January.' }
+test('CONTACT a valid enquiry is stored through the server function with the caller address', async () => {
+  reply = (c) => (c.url.includes('rpc/contact_submit') ? ok('ok') : undefined)
+  const req = new Request('https://piq.test/api/contact', { method: 'POST', headers: { 'content-type': 'application/json', 'x-forwarded-for': '203.0.113.9, 10.0.0.1', origin: 'https://piq.test' }, body: JSON.stringify(enquiry) })
+  assert.equal((await contact(req)).status, 200)
+  const call = calls.find((c) => c.url.includes('rpc/contact_submit'))!
+  assert.equal(call.body.p_email, 'rao@tec.test')
+  assert.equal(call.body.client_ip, '203.0.113.9')
+  assert.equal(call.body.p_topic, 'Pro plan')
+})
+test('CONTACT bad input is refused before anything is stored', async () => {
+  for (const bad of [{ ...enquiry, email: 'nope' }, { ...enquiry, name: 'x' }, { ...enquiry, message: 'short' }, { ...enquiry, phone: 'call me' }, {}]) {
+    calls = []
+    assert.equal((await contact(post(bad))).status, 422)
+    assert.equal(calls.length, 0)
+  }
+})
+test('CONTACT a bot that fills the hidden field is told "ok" and nothing is stored', async () => {
+  const res = await contact(post({ ...enquiry, website: 'http://spam.example' }))
+  assert.equal(res.status, 200)
+  assert.equal(calls.length, 0)
+})
+test('CONTACT the rate limit answers 429, and another site cannot post the form', async () => {
+  reply = (c) => (c.url.includes('rpc/contact_submit') ? ok('limited') : undefined)
+  assert.equal((await contact(post(enquiry))).status, 429)
+  calls = []
+  const cross = new Request('https://piq.test/api/contact', { method: 'POST', headers: { 'content-type': 'application/json', origin: 'https://evil.example' }, body: JSON.stringify(enquiry) })
+  assert.equal((await contact(cross)).status, 403)
+  assert.equal(calls.length, 0)
 })
 
 // ------------------------------------------------------------------ SEC-05
