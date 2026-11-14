@@ -11,6 +11,9 @@ const url = proxied ? `${window.location.origin}/supabase` : projectUrl
 const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_l4oFZfheVfvTBAfU3t9sRg_AwdkNqse'
 
 export const supabaseConfigured = Boolean(url && key)
+/** The project itself (never the same-origin proxy) and its public key: live updates need a direct WebSocket. */
+export const SUPABASE_PROJECT_URL = projectUrl
+export const SUPABASE_PUBLIC_KEY = key
 
 // Placeholder values keep the module importable when env vars are missing;
 // the app renders a configuration screen instead of calling the API in that case.

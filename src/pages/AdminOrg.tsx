@@ -14,6 +14,7 @@ import { allRows, errMsg, supabase, type Organization } from '../lib/supabase'
 import { plural } from '../lib/format'
 import { HoldButton } from '../components/HoldButton'
 import { parseDelimited } from '../lib/csv'
+import { useLive } from '../lib/live'
 
 type RosterRow = { id: number; email: string; full_name: string; roll_number: string; branch: string; batch: string; section: string; program: string; user_id: string | null; invited_at: string | null; created_at: string }
 type InviteResult = { email: string; status: 'invited' | 'created' | 'existing' | 'failed' | 'saved'; detail?: string; password?: string }
@@ -160,9 +161,10 @@ export function AdminRoster() {
   const [logins, setLogins] = useState(false)
   const [q, setQ] = useState('')
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (quiet?: unknown) => {
     if (!orgId) return
-    setLoading(true)
+    // A live refresh keeps the list on screen; only the first load and explicit reloads show the placeholder.
+    if (quiet !== true) setLoading(true)
     const { data, error } = await allRows<RosterRow>((from, to) => supabase.from('org_students').select('*').eq('org_id', orgId).order('created_at', { ascending: false }).order('id').range(from, to))
     if (error) showToast(errMsg(error))
     setRows(data ?? [])
@@ -171,6 +173,8 @@ export function AdminRoster() {
   useEffect(() => {
     load()
   }, [load])
+  // "Joined" flips by itself when a student registers, and another admin's edits appear without a reload.
+  useLive(['org_students'], () => void load(true))
 
   const parsed = useMemo(() => parseRoster(paste), [paste])
   const [cls, setCls] = useState({ year: 'all', branch: 'all', section: 'all' })
