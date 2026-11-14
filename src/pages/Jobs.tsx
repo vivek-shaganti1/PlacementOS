@@ -10,6 +10,8 @@ import { ctcText, isOpen, STATUS_META, useJobs } from '../lib/jobs'
 import { useApp } from '../lib/store'
 import { errMsg, supabase } from '../lib/supabase'
 import { HoldButton } from '../components/HoldButton'
+import { deadlineIcs } from '../lib/calendar'
+import { downloadText } from '../lib/csv'
 
 export default function Jobs() {
   const p = useProfile()
@@ -180,6 +182,14 @@ export default function Jobs() {
                             </button>
                           )
                         })()}
+                        {selected.job.deadline && isOpen(selected.job) && (
+                          <button
+                            onClick={() => downloadText(`${selected.job.company.replace(/[^\w]+/g, '-').toLowerCase()}-deadline.ics`, deadlineIcs({ ...selected.job, deadline: selected.job.deadline! }, window.location.origin), 'text/calendar')}
+                            className="btn-glass py-1.5 text-[12px]"
+                          >
+                            Add deadline to calendar
+                          </button>
+                        )}
                         <button onClick={() => aiFit(selected.job)} disabled={busy === `fit-${selected.job.id}`} className="btn-glass py-1.5 text-[12px]">
                           {busy === `fit-${selected.job.id}` ? 'Matching resume…' : fit ? 'Re-run AI resume match' : 'AI resume match'}
                         </button>

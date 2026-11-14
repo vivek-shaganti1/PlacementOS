@@ -13,6 +13,7 @@ import { ShowMoreButton, useShowMore } from '../components/ShowMore'
 import { allRows, errMsg, supabase, type Organization } from '../lib/supabase'
 import { plural } from '../lib/format'
 import { HoldButton } from '../components/HoldButton'
+import { parseDelimited } from '../lib/csv'
 
 type RosterRow = { id: number; email: string; full_name: string; roll_number: string; branch: string; batch: string; section: string; program: string; user_id: string | null; invited_at: string | null; created_at: string }
 type InviteResult = { email: string; status: 'invited' | 'created' | 'existing' | 'failed' | 'saved'; detail?: string; password?: string }
@@ -54,9 +55,8 @@ type RosterInput = { email: string; full_name: string; roll_number: string; bran
 
 function parseRoster(text: string): RosterInput[] {
   const num = (v = '') => (v.trim() === '' || !Number.isFinite(Number(v)) ? undefined : Number(v))
-  return text
-    .split(/\r?\n/)
-    .map((line) => line.split(/\t|,/).map((c) => c.trim()))
+  // Quoted cells are honoured, so "Rao, Asha" pasted from a CSV stays one name.
+  return parseDelimited(text)
     .filter((cols) => cols[0] && cols[0].includes('@'))
     .map(([email, full_name = '', roll_number = '', branch = '', batch = '', section = '', cgpa, backlogs, class_x, class_xii]) => ({
       email: email.toLowerCase(), full_name, roll_number, branch, batch, section: section.toUpperCase(),
