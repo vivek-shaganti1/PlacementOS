@@ -13,6 +13,9 @@ Semantic versioning; see `docs/ENGINEERING.md` for how releases are made.
 - **Search for every role:** ⌘K also finds pages, and admins and recruiters now have the search box.
 - **Contact us** replaces "Get started" on the landing page: a form for colleges, stored and rate-limited on the
   server, with an Enquiries page for platform admins. Students still register from the sign-in page.
+- **Mobile app scaffold** (`mobile/`, Expo SDK 58) for iOS and Android: student sign-in, readiness, drives and account,
+  using the website's own scoring code. Includes a release workflow for store builds and over-the-air updates. Not yet
+  in the stores; see `docs/MOBILE.md`.
 - Landing hero: the eligibility board now plays a live loop. The assistant names a fix, a scan sweeps the board and
   that company moves up a column while readiness and the resume score follow. It also has a cursor spotlight, a tilt
   sheen, depth layers and a turning halo. It pauses off-screen and stays still for reduced motion.

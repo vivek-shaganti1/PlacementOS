@@ -89,6 +89,11 @@ Project skills in `.claude/skills/`: `motion-design` (start here), `premium-ui`,
 `page-transitions`, `magnetic-effects`, `parallax`, `particle-effects`, `cursor-effects`, `glassmorphism`,
 `typography-animation`, `performance`, `accessibility`.
 
+## Mobile app
+`mobile/` is a separate Expo (React Native) project that imports the pure logic in `src/lib` and `src/data` listed in
+`mobile/src/lib/shared.ts`. Keep those files free of DOM, `import.meta` and npm imports (`npm run check:shared`). Types go in
+`src/lib/types.ts`. Releases and over-the-air updates: `docs/MOBILE.md`.
+
 ## Process
 Branching, required CI checks, migrations (and the production ledger), releases, rollback and scheduled jobs are in
 `docs/ENGINEERING.md`. Follow it for every change: branch → PR → CI → apply migration in production → merge → post-deploy check.
