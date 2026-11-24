@@ -10,14 +10,12 @@ confirm the live site.
 |---|---|---|---|
 | Local | `npm run dev`, or the full local stack (README, "Everything local") | Your own Supabase, or `supabase start` | Development |
 | CI | `.github/workflows/full-stack.yml`: a throwaway Supabase plus the build served like Vercel | Created and destroyed in each run | Every pull request |
-| Preview | Vercel builds every pull request | **Production** (the `/supabase` proxy and the built-in defaults point there) | Look only, never sign in |
+| Preview | Vercel builds every pull request | None, until a staging project is set for the *Preview* environment | Look only |
 | Production | https://placementiq-os.vercel.app, deployed from `main` | Production Supabase | Students, colleges, recruiters |
 
-The preview row is a known weak spot: a preview is a new build talking to the real database. Until there is a staging
-Supabase project, do not sign in on previews. To fix it properly:
-1. Create a second Supabase project.
-2. Set `VITE_SUPABASE_URL`, `VITE_SUPABASE_PUBLISHABLE_KEY`, `VITE_SUPABASE_DIRECT=true` and the server keys for the
-   *Preview* environment in Vercel.
+Previews cannot reach production: the app, the functions, the proxy and the content security policy each refuse
+(`docs/PRODUCTION_SETTINGS.md`). To make previews usable, create a second Supabase project and set its values for the
+*Preview* environment in Vercel.
 
 ## The flow for every change
 
@@ -75,6 +73,7 @@ Supabase project, do not sign in on previews. To fix it properly:
 | 20261114000000_contact_enquiries | Contact form storage and its rate limit | 2026-11-15 |
 | 20261115000000_live_console | Publishes console tables for live updates | 2026-11-15 |
 | 20261116000000_company_catalog | Verified company catalogue, drive statistics | 2026-11-15 |
+| 20261125000000_checklist_fixes | Set-based visibility, AI daily cap, consent, retention, delete guard | **Pending** |
 
 ## Releases and versions
 
@@ -104,6 +103,7 @@ Supabase project, do not sign in on previews. To fix it properly:
 | Database backup (encrypted, restore-tested) | Nightly, 03:00 IST | Actions; GitHub emails on failure |
 | CI on `main` | Weekly, Mondays | Catches new dependency advisories |
 | Full stack plus live Lighthouse (read-only) | Weekly, Mondays | Actions artifacts |
+| Uptime check (opens an issue) | Every 15 minutes | Issues labelled `site-down` |
 | Dependabot (actions and npm) | Weekly, Mondays 09:00 IST | Pull requests |
 
 ## Two-factor sign-in for admins

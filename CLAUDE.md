@@ -36,7 +36,7 @@ intentional. Priority order: **hierarchy → storytelling → interaction → mo
 | Smooth wheel scrolling (document-scrolling pages only) | Lenis via `SmoothScroll` | app pages |
 | 3D, particles, shader surfaces | React Three Fiber + drei (lazy) | OGL, Vanta |
 | Glows, grain, grids, spotlights | CSS (`src/components/effects`) | WebGL |
-| Motion graphics from designers | `@lottiefiles/dotlottie-react` (lazy, `.lottie` files) | GIF/video loops |
+| Motion graphics from designers | `@lottiefiles/dotlottie-react` (lazy, `.lottie` files; install it with the first file) | GIF/video loops |
 | Live tuning of 3D (dev only) | Leva (`?tune` on the landing page) | production code |
 
 Not installed on purpose: `framer-motion` (Motion is its successor, already used), React Spring and Auto Animate (Motion

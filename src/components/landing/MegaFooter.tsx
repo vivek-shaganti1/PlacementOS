@@ -57,7 +57,7 @@ export function MegaFooter() {
           </div>
           {columns.map((c) => (
             <nav key={c.title} aria-label={c.title}>
-              <p className="font-mono text-[10.5px] uppercase tracking-[0.18em] text-white/35">{c.title}</p>
+              <p className="font-mono text-[10.5px] uppercase tracking-[0.18em] text-white/65">{c.title}</p>
               <ul className="mt-3 space-y-1">
                 {c.links.map(([to, label]) => <li key={label}><FooterLink to={to}>{label}</FooterLink></li>)}
               </ul>
@@ -82,7 +82,7 @@ export function MegaFooter() {
         </motion.p>
       </div>
 
-      <div className="relative mx-auto flex max-w-[1160px] flex-wrap items-center gap-x-6 gap-y-3 border-t border-white/10 px-6 py-6 text-[12px] text-white/45">
+      <div className="relative mx-auto flex max-w-[1160px] flex-wrap items-center gap-x-6 gap-y-3 border-t border-white/10 px-6 py-6 text-[12px] text-white/65">
         <span>© {new Date().getFullYear()} PlacementIQ</span>
         <span className="hidden sm:inline">Built for campus placement season</span>
         <div className="ml-auto flex flex-wrap items-center gap-5">

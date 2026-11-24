@@ -2,13 +2,19 @@ import { createClient } from '@supabase/supabase-js'
 
 // Defaults point at the production project. The publishable key is safe to ship to browsers
 // (RLS protects the data); env vars override these for other environments.
-const projectUrl = import.meta.env.VITE_SUPABASE_URL || 'https://oewjimwozaksyigfyrkz.supabase.co'
+const PRODUCTION = 'https://oewjimwozaksyigfyrkz.supabase.co'
+// A preview is code nobody has reviewed yet, so it may never use the production project: without its own staging project
+// it has no backend at all, and the app shows the "not configured" screen (checklist D-18).
+const preview = import.meta.env.VITE_DEPLOY_ENV === 'preview'
+const chosen = import.meta.env.VITE_SUPABASE_URL || (preview ? '' : PRODUCTION)
+const projectUrl = preview && chosen === PRODUCTION ? '' : chosen
 // In production the browser talks to Supabase through this app's own domain (vercel.json rewrites /supabase/* to the
 // project). Some networks (ISP DNS filters, campus firewalls) block *.supabase.co, which surfaces as "Failed to fetch".
 // VITE_SUPABASE_DIRECT=true turns this off for a preview or staging deployment, whose rewrite must not reach production.
-const proxied = typeof window !== 'undefined' && import.meta.env.PROD && import.meta.env.VITE_SUPABASE_DIRECT !== 'true' && !/^(localhost|127\.0\.0\.1)$/.test(window.location.hostname)
+// A preview's own domain has no proxy (vercel.json limits it to the production domain), so previews call staging directly.
+const proxied = !preview && typeof window !== 'undefined' && import.meta.env.PROD && import.meta.env.VITE_SUPABASE_DIRECT !== 'true' && !/^(localhost|127\.0\.0\.1)$/.test(window.location.hostname)
 const url = proxied ? `${window.location.origin}/supabase` : projectUrl
-const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || 'sb_publishable_l4oFZfheVfvTBAfU3t9sRg_AwdkNqse'
+const key = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || (preview ? '' : 'sb_publishable_l4oFZfheVfvTBAfU3t9sRg_AwdkNqse')
 
 export const supabaseConfigured = Boolean(url && key)
 /** The project itself (never the same-origin proxy) and its public key: live updates need a direct WebSocket. */
@@ -19,7 +25,7 @@ export const SUPABASE_PUBLIC_KEY = key
 // the app renders a configuration screen instead of calling the API in that case.
 export const supabase = createClient(url || 'http://localhost', key || 'missing-key', {
   // Fixed storage key so sessions survive switching between the direct and proxied URL.
-  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: `sb-${new URL(projectUrl).hostname.split('.')[0]}-auth-token` },
+  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, storageKey: `sb-${new URL(projectUrl || 'http://localhost').hostname.split('.')[0]}-auth-token` },
 })
 
 // The row and profile types live in ./types (shared with the API functions and the mobile app); re-exported here so

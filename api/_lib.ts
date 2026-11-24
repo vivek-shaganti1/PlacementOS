@@ -1,4 +1,5 @@
 // Shared helpers for the /api edge functions. Files starting with "_" are not deployed as routes.
+import { scrub } from '../src/lib/scrub'
 import { assembleProfile, RELATED, type RelatedRows } from '../src/lib/profileShape'
 declare const process: { env: Record<string, string | undefined> }
 
@@ -8,6 +9,14 @@ export const SUPABASE_URL = env('VITE_SUPABASE_URL') || env('SUPABASE_URL') || '
 export const SUPABASE_KEY =
   env('VITE_SUPABASE_PUBLISHABLE_KEY') || env('SUPABASE_PUBLISHABLE_KEY') || 'sb_publishable_l4oFZfheVfvTBAfU3t9sRg_AwdkNqse'
 export const GROQ_MODEL = env('GROQ_MODEL') || 'openai/gpt-oss-120b'
+
+/** The production project. Only the production deployment may talk to it (checklist D-18). */
+const PRODUCTION = 'https://oewjimwozaksyigfyrkz.supabase.co'
+/** A preview or staging deployment pointed at the production database refuses to run, instead of touching real records. */
+export const wrongDatabase = () => {
+  const target = env('VERCEL_ENV')
+  return !!target && target !== 'production' && SUPABASE_URL === PRODUCTION
+}
 
 export const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json', 'cache-control': 'no-store' } })
@@ -21,22 +30,66 @@ export class HttpError extends Error {
   }
 }
 
-/** Run a handler, turning thrown HttpErrors into JSON responses. */
+/** One JSON object per line, so logs can be searched by request id, route and status. */
+export const log = (level: 'error' | 'warn' | 'info', event: string, fields: Record<string, unknown> = {}) => {
+  const safe = Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, typeof v === 'string' ? scrub(v, k === 'stack' ? 1500 : 200) : v]))
+  ;(level === 'error' ? console.error : console.log)(JSON.stringify({ level, event, at: new Date().toISOString(), ...safe }))
+}
+
+/** Sends an unexpected server error to Sentry when SENTRY_DSN is set: name, message and stack, scrubbed; nothing else. */
+export async function report(e: unknown, route: string, requestId: string) {
+  const dsn = env('SENTRY_DSN')
+  const m = dsn?.match(/^https:\/\/([0-9a-f]+)@([\w.-]+)\/(\d+)$/)
+  if (!m) return
+  const [, key, host, project] = m
+  const id = crypto.randomUUID().replace(/-/g, '')
+  const err = e instanceof Error ? e : new Error(String(e))
+  const event = {
+    event_id: id, platform: 'javascript', level: 'error', timestamp: Date.now() / 1000, environment: env('VERCEL_ENV') ?? 'local',
+    tags: { route, request_id: requestId },
+    exception: { values: [{ type: err.name, value: scrub(err.message) }] },
+    extra: { stack: scrub(err.stack, 1500) },
+  }
+  const body = `${JSON.stringify({ event_id: id })}\n${JSON.stringify({ type: 'event' })}\n${JSON.stringify(event)}`
+  await fetch(`https://${host}/api/${project}/envelope/?sentry_key=${key}&sentry_version=7`, { method: 'POST', body, signal: timeout(2_000) }).catch(() => undefined)
+}
+
+/** Only a failed network call or an unreadable upstream answer is an outage; any other TypeError is a bug of ours. */
+const isUpstream = (e: unknown) =>
+  (e instanceof TypeError && /fetch failed|failed to fetch|network|load failed|internal error; reference|connection/i.test(e.message)) ||
+  (e instanceof SyntaxError && /JSON/i.test(e.message))
+
+/** Run a handler, turning thrown HttpErrors into JSON responses. Every response carries x-request-id. */
 export const handle = (fn: (req: Request) => Promise<Response>) => async (req: Request) => {
+  const requestId = crypto.randomUUID()
+  const route = new URL(req.url).pathname
+  const done = (res: Response) => {
+    const headers = new Headers(res.headers)
+    headers.set('x-request-id', requestId)
+    return new Response(res.body, { status: res.status, headers })
+  }
+  if (wrongDatabase()) return done(json({ error: 'This preview is not connected to a database.' }, 503))
   try {
-    return await fn(req)
+    return done(await fn(req))
   } catch (e) {
-    if (e instanceof HttpError) return json({ error: e.message }, e.status)
+    if (e instanceof HttpError) {
+      if (e.status >= 500) log('error', 'request', { requestId, route, status: e.status, message: e.message })
+      return done(json({ error: e.message }, e.status))
+    }
     // An upstream that is slow, unreachable or answers garbage is not a bug here; say so with the right status, so
     // clients and monitoring can tell an outage from a defect.
-    const name = (e as { name?: string })?.name
-    if (name === 'TimeoutError' || name === 'AbortError') return json({ error: 'A service we depend on took too long. Try again shortly.' }, 504)
-    if (e instanceof TypeError || e instanceof SyntaxError) {
-      console.error('upstream', name, String((e as Error).message).slice(0, 200))
-      return json({ error: 'A service we depend on is not answering. Try again shortly.' }, 502)
+    const { name, message, stack } = e as Error
+    if (name === 'TimeoutError' || name === 'AbortError') {
+      log('error', 'upstream timeout', { requestId, route, status: 504 })
+      return done(json({ error: 'A service we depend on took too long. Try again shortly.' }, 504))
     }
-    console.error(e)
-    return json({ error: 'Unexpected server error' }, 500)
+    if (isUpstream(e)) {
+      log('error', 'upstream', { requestId, route, status: 502, name, message })
+      return done(json({ error: 'A service we depend on is not answering. Try again shortly.' }, 502))
+    }
+    log('error', 'unexpected', { requestId, route, status: 500, name, message, stack })
+    await report(e, route, requestId)
+    return done(json({ error: 'Unexpected server error', request_id: requestId }, 500))
   }
 }
 
@@ -74,7 +127,7 @@ export async function rest(token: string, path: string, init: RequestInit = {}, 
     } catch {
       /* not JSON */
     }
-    console.error('db', res.status, path.split('?')[0], code, constraint)
+    log('error', 'db', { status: res.status, path: path.split('?')[0], code, constraint })
     throw new HttpError(502, 'The database rejected this request. Try again, or contact your placement cell if it keeps happening.')
   }
   return res
@@ -85,6 +138,8 @@ export async function rest(token: string, path: string, init: RequestInit = {}, 
  * Throws 429 with a readable message once the quota is used up.
  */
 export async function consumeAi(token: string, kind: 'chat' | 'resume' | 'jd_match') {
+  // A switch for the owner: AI_DISABLED=true stops every model call without a deploy of new code.
+  if (env('AI_DISABLED') === 'true') throw new HttpError(503, 'AI features are paused right now. Everything else still works.')
   const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/consume_ai`, {
     signal: timeout(10_000),
     method: 'POST',
@@ -97,7 +152,7 @@ export async function consumeAi(token: string, kind: 'chat' | 'resume' | 'jd_mat
   if (msg.startsWith('AI_QUOTA: ')) throw new HttpError(429, msg.slice('AI_QUOTA: '.length))
   if (res.status === 401) throw new HttpError(401, 'Session expired. Please sign in again.')
   // Anything else is a database message; never pass its wording to the browser.
-  console.error('consume_ai', res.status, msg.slice(0, 200))
+  log('error', 'consume_ai', { status: res.status, message: msg })
   throw new HttpError(403, 'AI is not available for this account.')
 }
 
@@ -208,6 +263,18 @@ export async function refundAi(userId: string) {
   }).catch(() => undefined)
 }
 
+/** What the model call cost, for the spend report. Never blocks or fails the answer. */
+async function recordTokens(userId: string, total: number) {
+  const key = env('SUPABASE_SECRET_KEY')
+  if (!key) return
+  await fetch(`${SUPABASE_URL}/rest/v1/rpc/record_ai_tokens`, {
+    signal: timeout(2_000),
+    method: 'POST',
+    headers: { apikey: key, authorization: `Bearer ${key}`, 'content-type': 'application/json' },
+    body: JSON.stringify({ target: userId, total: Math.round(total) }),
+  }).catch(() => undefined)
+}
+
 type ChatMessage = { role: 'system' | 'user' | 'assistant'; content: string }
 
 /** Models tried in order. Each Groq model has its own per-minute token budget, so falling back on 429 multiplies capacity. */
@@ -217,7 +284,8 @@ export const MODELS = [GROQ_MODEL, ...(env('GROQ_FALLBACK_MODELS') ?? 'openai/gp
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
-export async function groq(messages: ChatMessage[], opts: { json?: boolean; maxTokens?: number; temperature?: number } = {}) {
+export async function groq(messages: ChatMessage[], opts: { json?: boolean; maxTokens?: number; temperature?: number; user?: string } = {}) {
+  if (env('AI_DISABLED') === 'true') throw new HttpError(503, 'AI features are paused right now. Everything else still works.')
   const key = env('GROQ_API_KEY')
   if (!key) throw new HttpError(503, 'The AI is not available right now.')
   let lastStatus = 0
@@ -241,7 +309,7 @@ export async function groq(messages: ChatMessage[], opts: { json?: boolean; maxT
         }),
       }).catch((e: unknown) => {
         // A timeout on one model moves on to the next instead of failing the whole request.
-        console.error('Groq fetch', model, e instanceof Error ? e.name : 'error')
+        log('error', 'groq fetch', { model, name: e instanceof Error ? e.name : 'error' })
         return null
       })
       if (!res) {
@@ -249,7 +317,8 @@ export async function groq(messages: ChatMessage[], opts: { json?: boolean; maxT
         break
       }
       if (res.ok) {
-        const data = (await res.json()) as { choices?: { message?: { content?: string } }[] }
+        const data = (await res.json()) as { choices?: { message?: { content?: string } }[]; usage?: { total_tokens?: number } }
+        if (opts.user && data.usage?.total_tokens) await recordTokens(opts.user, data.usage.total_tokens)
         // Some models wrap reasoning in <think> tags; never show that to users.
         const content = data.choices?.[0]?.message?.content?.replace(/<think>[\s\S]*?<\/think>/g, '').trim()
         if (content) return content
@@ -257,8 +326,8 @@ export async function groq(messages: ChatMessage[], opts: { json?: boolean; maxT
         break
       }
       lastStatus = res.status
-      const detail = (await res.text()).slice(0, 300)
-      console.error('Groq error', model, res.status, detail)
+      const detail = await res.text()
+      log('error', 'groq', { model, status: res.status, message: detail })
       // Rate limited: wait briefly if the reset is imminent, otherwise move to the next model.
       const wait = Number(res.headers.get('retry-after') ?? '0')
       if (res.status === 429 && attempt === 0 && wait > 0 && wait <= 3) {

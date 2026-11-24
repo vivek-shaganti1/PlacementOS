@@ -3,12 +3,12 @@
 // random password per person instead of emailing), people: [{ email, full_name?, roll_number?, branch?, batch? }] }
 // The caller must be the super admin or an admin of org_id. Roster rows are written as the caller (RLS applies);
 // only the invite email itself uses the secret key, which never leaves the server.
-import { bearer, env, handle, HttpError, json, rest, SUPABASE_URL, timeout, tokenClaims, tokenSubject } from './_lib'
+import { bearer, env, handle, HttpError, json, log, rest, SUPABASE_URL, timeout, tokenClaims, tokenSubject } from './_lib'
 
 export const config = { runtime: 'edge' }
 
 type Person = { email: string; full_name?: string; roll_number?: string; branch?: string; batch?: string; section?: string; program?: string; company?: string; cgpa?: unknown; backlogs?: unknown; class_x?: unknown; class_xii?: unknown }
-type Result = { email: string; status: 'invited' | 'created' | 'existing' | 'failed' | 'saved'; detail?: string; password?: string }
+type Result = { email: string; status: 'invited' | 'created' | 'existing' | 'failed' | 'saved' | 'retry'; detail?: string; password?: string }
 
 const EMAIL = /^[^@\s]+@[^@\s]+\.[^@\s]+$/
 const clip = (v: unknown, n: number) => String(v ?? '').trim().slice(0, n)
@@ -39,7 +39,7 @@ async function sendInvite(email: string, fullName: string, redirectTo: string): 
   const msg = body.msg ?? body.message ?? `HTTP ${res.status}`
   if (/already been registered|already registered|email_exists/i.test(msg + (body.error_code ?? ''))) return { email, status: 'existing', detail: 'Already has an account.' }
   if (res.status === 429) return { email, status: 'failed', detail: 'Email rate limit reached. Configure custom SMTP in Supabase to send more invites.' }
-  console.error('invite', res.status, body.error_code ?? '')
+  log('error', 'invite', { status: res.status, code: body.error_code ?? '' })
   return { email, status: 'failed', detail: 'The invite could not be sent. Try again, or create a login instead.' }
 }
 
@@ -102,7 +102,7 @@ async function createLogin(email: string, fullName: string, orgId: string): Prom
   const body = (await res.json().catch(() => ({}))) as { msg?: string; error_code?: string; message?: string }
   const msg = body.msg ?? body.message ?? `HTTP ${res.status}`
   if (/already been registered|already registered|email_exists/i.test(msg + (body.error_code ?? ''))) return { email, status: 'existing', detail: 'Already has an account.' }
-  console.error('create login', res.status, body.error_code ?? '')
+  log('error', 'create login', { status: res.status, code: body.error_code ?? '' })
   return { email, status: 'failed', detail: 'The login could not be created. Try again, or send an email invite instead.' }
 }
 
@@ -156,6 +156,8 @@ export default handle(async (req) => {
   const logins = body.logins === true
   // Platform admins hold every college's data: they must accept an emailed invite, never a password set by someone else.
   if (logins && role === 'platform_admin') throw new HttpError(422, 'Platform admins must be invited by email, not created with a temporary password.')
+  // The same for college admins: whoever knew the password could sign in first and enroll their own authenticator.
+  if (logins && role === 'org_admin') throw new HttpError(422, 'College admins must be invited by email, not created with a temporary password.')
   const redirectTo = `${new URL(req.url).origin}/reset-password`
   // Logins are created directly, each with its own random password; otherwise an invite email is sent.
   // A login created with a password the caller knows must only ever reach this college's own people. An email that is
@@ -174,6 +176,25 @@ export default handle(async (req) => {
     return createLogin(p.email, p.full_name, orgId)
   }
   const results: Result[] = []
+  // Created logins exist only in this response, so the function must answer before the platform ends it. Work stops at
+  // the deadline and the rest come back as 'retry'; the browser sends those again.
+  const deadline = Date.now() + 17_000
+  const RETRY = (email: string): Result => ({ email, status: 'retry', detail: 'Not started yet; sending again.' })
+  const WORKERS = 5
+  /** Runs `fn` for each person, five at a time, keeping the order of the list. */
+  const all = async <T extends { email: string }>(list: T[], fn: (p: T) => Promise<Result>): Promise<Result[]> => {
+    const out: Result[] = new Array(list.length)
+    let next = 0
+    await Promise.all(
+      Array.from({ length: Math.min(WORKERS, list.length) }, async () => {
+        while (next < list.length) {
+          const i = next++
+          out[i] = Date.now() > deadline ? RETRY(list[i].email) : await each(list[i].email, () => fn(list[i]))
+        }
+      }),
+    )
+    return out
+  }
   // One person's failure is reported for that person; it never aborts the batch. That matters most for created logins,
   // whose passwords exist only in this response: losing the response would lock those people out.
   const each = async (email: string, fn: () => Promise<Result>): Promise<Result> => {
@@ -221,17 +242,17 @@ export default handle(async (req) => {
         }
       }
     }
-    for (const p of accepted.filter((x) => !unsaved.has(x.email))) {
-      const r: Result = body.send === false ? { email: p.email, status: 'saved' } : await each(p.email, () => provision(p))
-      results.push(r)
+    results.push(...(await all(accepted.filter((x) => !unsaved.has(x.email)), async (p) => {
+      const r: Result = body.send === false ? { email: p.email, status: 'saved' } : await provision(p)
       // Only a marker for the roster screen; if it fails the person still has their invite or password.
       if (r.status === 'invited' || r.status === 'created')
         await rest(token, `org_students?org_id=eq.${orgId}&email=eq.${encodeURIComponent(p.email)}`, {
           method: 'PATCH',
           body: JSON.stringify({ invited_at: new Date().toISOString() }),
           headers: { prefer: 'return=minimal' },
-        }).catch((e) => console.error('invited_at', e instanceof HttpError ? e.status : 'network'))
-    }
+        }).catch((e) => log('warn', 'invited_at', { status: e instanceof HttpError ? e.status : 0 }))
+      return r
+    })))
   } else if (role === 'recruiter') {
     if (people.some((p) => !p.company)) throw new HttpError(422, 'Enter the company each recruiter hires for.')
     // The recruiter record is written as the caller (RLS: placement cell of this college); it allowlists the email.
@@ -240,16 +261,13 @@ export default handle(async (req) => {
       body: JSON.stringify(people.map((p) => ({ org_id: orgId, email: p.email, company: p.company, full_name: p.full_name }))),
       headers: { prefer: 'return=minimal,resolution=merge-duplicates' },
     })
-    for (const p of people) {
-      const r = await each(p.email, () => provision(p))
-      if (r.status !== 'existing') {
-        results.push(r)
-        continue
-      }
+    results.push(...(await all(people, async (p) => {
+      const r = await provision(p)
+      if (r.status !== 'existing') return r
       // An account that never proved its mailbox here is not linked, so say what actually happened.
       const [row] = (await (await rest(token, `org_recruiters?org_id=eq.${orgId}&email=eq.${encodeURIComponent(p.email)}&select=user_id`)).json()) as { user_id: string | null }[]
-      results.push(row?.user_id ? { ...r, detail: 'Existing account; recruiter access granted.' } : { email: p.email, status: 'failed', detail: 'This account was created elsewhere and has not confirmed its email, so it was not given access.' })
-    }
+      return row?.user_id ? { ...r, detail: 'Existing account; recruiter access granted.' } : { email: p.email, status: 'failed' as const, detail: 'This account was created elsewhere and has not confirmed its email, so it was not given access.' }
+    })))
   } else if (role === 'platform_admin') {
     for (const p of people) {
       results.push(await each(p.email, async () => {

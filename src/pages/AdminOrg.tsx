@@ -17,7 +17,7 @@ import { parseDelimited } from '../lib/csv'
 import { useLive } from '../lib/live'
 
 type RosterRow = { id: number; email: string; full_name: string; roll_number: string; branch: string; batch: string; section: string; program: string; user_id: string | null; invited_at: string | null; created_at: string }
-type InviteResult = { email: string; status: 'invited' | 'created' | 'existing' | 'failed' | 'saved'; detail?: string; password?: string }
+type InviteResult = { email: string; status: 'invited' | 'created' | 'existing' | 'failed' | 'saved' | 'retry'; detail?: string; password?: string }
 type AdminRow = { email: string; user_id: string | null; full_name: string; joined: boolean }
 
 function Denied({ what }: { what: string }) {
@@ -69,7 +69,7 @@ function parseRoster(text: string): RosterInput[] {
 
 function ResultList({ results }: { results: InviteResult[] }) {
   if (!results.length) return null
-  const label: Record<InviteResult['status'], string> = { invited: 'Invite sent', created: 'Login created', existing: 'Already registered', failed: 'Failed', saved: 'Saved, no email sent' }
+  const label: Record<InviteResult['status'], string> = { invited: 'Invite sent', created: 'Login created', existing: 'Already registered', failed: 'Failed', saved: 'Saved, no email sent', retry: 'Not finished' }
   const made = results.filter((r) => r.password)
   // The passwords exist only here, once: the server keeps none of them in readable form.
   const download = () => {
@@ -199,10 +199,20 @@ export function AdminRoster() {
       // The server takes 50 people per call, so a long paste goes in batches. What was already saved stays visible if one fails.
       const done: InviteResult[] = []
       try {
-        for (let i = 0; i < people.length; i += 50) {
-          const { results } = await callApi<{ results: InviteResult[] }>('admin', { action: 'invite', org_id: orgId, role: 'student', people: people.slice(i, i + 50), send, logins: send && logins })
-          done.push(...(results ?? []))
+        // Creating logins is slower, so those go in smaller groups. Anyone the server did not reach in time comes back as
+        // 'retry' and is sent again; their login does not exist yet, so no password is lost.
+        let queue = people
+        let stalled = 0
+        const size = send && logins ? 20 : 50
+        while (queue.length) {
+          const group = queue.slice(0, size)
+          const { results } = await callApi<{ results: InviteResult[] }>('admin', { action: 'invite', org_id: orgId, role: 'student', people: group, send, logins: send && logins })
+          const again = new Set((results ?? []).filter((r) => r.status === 'retry').map((r) => r.email))
+          done.push(...(results ?? []).filter((r) => r.status !== 'retry'))
           setResults([...done])
+          stalled = again.size === group.length ? stalled + 1 : 0
+          if (stalled > 2) throw new Error('The server is too slow to create logins right now.')
+          queue = [...group.filter((p) => again.has(p.email.toLowerCase())), ...queue.slice(size)]
         }
       } catch (e) {
         load()
@@ -440,7 +450,6 @@ export function AdminTeam() {
   const [email, setEmail] = useState('')
   const [busy, setBusy] = useState(false)
   const [results, setResults] = useState<InviteResult[]>([])
-  const [logins, setLogins] = useState(false)
 
   const load = useCallback(async () => {
     if (!orgId) return
@@ -459,7 +468,7 @@ export function AdminTeam() {
     if (!email.trim()) return showToast('Enter an email address first.')
     setBusy(true)
     try {
-      const { results } = await callApi<{ results: InviteResult[] }>('admin', { action: 'invite', org_id: orgId, role: 'org_admin', people: [{ email: email.trim() }], logins })
+      const { results } = await callApi<{ results: InviteResult[] }>('admin', { action: 'invite', org_id: orgId, role: 'org_admin', people: [{ email: email.trim() }] })
       setResults(results ?? [])
       setEmail('')
       load()
@@ -487,8 +496,7 @@ export function AdminTeam() {
           <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" aria-label="Admin email" placeholder={`placement@${org?.email_domains[0] ?? 'college.edu'}`} className="field" />
           <button disabled={busy || !orgId} className="btn-primary shrink-0">Add and invite</button>
         </form>
-        <div className="mt-3"><LoginMethod logins={logins} setLogins={setLogins} /></div>
-        <p className="mt-2 text-[12px] text-ink-mute">Existing accounts get access immediately. New addresses get an invite email, or a login with its own random password.</p>
+        <p className="mt-2 text-[12px] text-ink-mute">Existing accounts get access immediately. New addresses get an invite email: admins always choose their own password from their own mailbox.</p>
         <ResultList results={results} />
       </Card>
 
@@ -639,7 +647,6 @@ export function SuperOrgs() {
   const [f, setF] = useState(blankOrg)
   const [busy, setBusy] = useState(false)
   const [results, setResults] = useState<InviteResult[]>([])
-  const [logins, setLogins] = useState(false)
 
   const loadUsage = useCallback(async () => {
     const { data, error } = await supabase.rpc('org_usage')
@@ -714,7 +721,7 @@ export function SuperOrgs() {
     const fresh = admins.filter((x) => !editing?.admin_emails.includes(x))
     if (fresh.length) {
       try {
-        const { results } = await callApi<{ results: InviteResult[] }>('admin', { action: 'invite', org_id: res.data.id, role: 'org_admin', people: fresh.map((email) => ({ email })), logins })
+        const { results } = await callApi<{ results: InviteResult[] }>('admin', { action: 'invite', org_id: res.data.id, role: 'org_admin', people: fresh.map((email) => ({ email })) })
         setResults(results ?? [])
       } catch (err) {
         showToast(`College saved, but invites failed: ${errMsg(err)}`)
@@ -769,7 +776,6 @@ export function SuperOrgs() {
               {input('admin_emails', 'Placement cell email(s)', 'placement@anurag.edu.in, tpo@gmail.com')}
               {input('email_domains', 'Student email domain (optional, checks roster emails)', 'anurag.edu.in')}
             </div>
-            <div className="mt-3"><LoginMethod logins={logins} setLogins={setLogins} /></div>
           </div>
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <label className="block">
@@ -801,7 +807,7 @@ export function SuperOrgs() {
           </div>
           {input('notes', 'Notes', 'Contact person, payment terms…')}
           <div className="flex gap-2">
-            <button disabled={busy} className="btn-primary">{busy ? 'Saving…' : editing ? 'Save changes' : logins ? 'Create college and its login' : 'Create college and invite admins'}</button>
+            <button disabled={busy} className="btn-primary">{busy ? 'Saving…' : editing ? 'Save changes' : 'Create college and invite admins'}</button>
             {editing && <button type="button" onClick={() => startEdit(null)} className="btn-glass">Cancel</button>}
           </div>
         </form>

@@ -5,6 +5,9 @@ Semantic versioning; see `docs/ENGINEERING.md` for how releases are made.
 ## Unreleased
 
 ### Added
+- **Checklist review (23 Nov):** error reports through Sentry with personal data removed (off until a DSN is set), a
+  15-minute uptime check and backup alerts as GitHub issues, consent and age at set-up, a platform-wide daily AI cap and
+  off switch, token counts, data retention, an API description checked in CI, a local load test, a signed-in ZAP scan.
 - **Live company data.**
   - Platform admins verify companies in a new Companies page: description, careers page, fresher CTC and the source
     they checked. Students see "CTC (verified)" with the check date and source. Unverified companies keep the typical
@@ -57,6 +60,17 @@ Semantic versioning; see `docs/ENGINEERING.md` for how releases are made.
 - The CSV export opens correctly in Excel.
 
 ### Fixed
+- **Admin console at scale:** reading 5,000 students' skills took 21.9 s (Postgres cancels at 8 s); it takes 33 ms.
+- **Resume score** is computed from the stored file on the server; text sent by the browser is ignored.
+- **Password reset:** a stolen session could mark itself as needing a new password and then set one.
+- **College admins** can no longer be created with a password the creator knows.
+- **Bulk logins** answer before the server's time limit and hand back whoever was not reached, so no password is lost.
+- **AI actions** are given back when the prompt cannot be built or the result cannot be saved.
+- **Previews** cannot reach the production database.
+- An active college can no longer be deleted; audit entries lose grades when an account is deleted; AI months follow
+  India time; parallel sign-ups cannot pass the per-address limit; our own bugs answer 500, not 502.
+- Personal documents are no longer tracked in this public repository (history still holds them).
+- Vite 5 → 6; `npm audit` reports nothing.
 - **Company data honesty:** the catalogue's applicant, offer, selection-ratio and round counts were invented and have
   been removed. Company pages now say the CTC range is typical and unverified, the process is a template, and link to a
   careers search when no verified page is recorded. College drives are marked as the college's own data.

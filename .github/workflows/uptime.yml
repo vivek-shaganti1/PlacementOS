@@ -1,0 +1,39 @@
+name: Uptime
+# Loads the public page and the health check, which reads the database and the sign-in service. Read-only, no secrets.
+# After a second failed try it opens an issue (GitHub emails the owner) and closes it when the site is back.
+on:
+  schedule:
+    - cron: '7,22,37,52 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: uptime
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ github.token }}
+      SITE: https://placementiq-os.vercel.app
+    steps:
+      - name: Check the site, then report
+        run: |
+          probe() {
+            curl -fsS -m 20 -o /dev/null "$SITE/" && curl -fsS -m 20 "$SITE/api/health" | grep -q '"ok":true'
+          }
+          up=no
+          if probe; then up=yes; else sleep 60; if probe; then up=yes; fi; fi
+          R="--repo $GITHUB_REPOSITORY"
+          open=$(gh issue list $R --label site-down --state open --json number -q '.[0].number')
+          if [ "$up" = yes ]; then
+            [ -z "$open" ] || gh issue close "$open" $R --comment "The site and its database answer again."
+            exit 0
+          fi
+          gh label create site-down $R --color B42318 2>/dev/null || true
+          [ -n "$open" ] || gh issue create $R --label site-down --title "PlacementIQ is down" --body "The page or its health check failed twice. Run: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          exit 1

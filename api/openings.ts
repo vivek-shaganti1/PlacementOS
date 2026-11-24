@@ -9,7 +9,7 @@
 // Only fixed hosts are ever called, with a validated board name or a cleaned search, so this cannot be pointed at
 // anything else. Answers are cached in memory for 30 minutes (job boards change slowly, and Adzuna's free tier is
 // rate limited) and the browser may reuse one for 15.
-import { bearer, env, handle, HttpError, json, rest, timeout, tokenSubject } from './_lib'
+import { bearer, env, handle, HttpError, json, log, rest, timeout, tokenSubject } from './_lib'
 
 export const config = { runtime: 'edge' }
 
@@ -82,7 +82,7 @@ async function adzuna(q: string, where: string): Promise<{ total: number; jobs: 
   if (where) params.set('where', where)
   const res = await fetch(`https://api.adzuna.com/v1/api/jobs/in/search/1?${params}`, { signal: timeout(8_000), headers: { accept: 'application/json' } })
   if (res.status === 401 || res.status === 403) {
-    console.error('adzuna', res.status)
+    log('error', 'adzuna', { status: res.status })
     throw new HttpError(503, 'Off-campus search is not available right now.')
   }
   if (!res.ok) throw new HttpError(502, 'The job search service is not answering right now. Try again shortly.')
