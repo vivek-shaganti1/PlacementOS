@@ -1,5 +1,6 @@
 // Reads the text of a resume on the server, from the stored file. Runs on the edge runtime: no Node APIs.
-import { extractText as pdfText, getDocumentProxy } from 'unpdf'
+// Prebuilt and self-contained (scripts/vendor-pdf.mjs); see there for why.
+import { extractText as pdfText, getDocumentProxy, Inflate } from './_vendor/pdf'
 
 export const fileKind = (b: Uint8Array): 'pdf' | 'docx' | null =>
   String.fromCharCode(...b.subarray(0, 5)) === '%PDF-' ? 'pdf' : b[0] === 0x50 && b[1] === 0x4b && b[2] === 0x03 && b[3] === 0x04 ? 'docx' : null
@@ -36,19 +37,16 @@ async function zipEntry(b: Uint8Array, name: string): Promise<Uint8Array | null>
     const raw = b.slice(start, start + packed)
     if (method === 0) return raw.subarray(0, MAX_XML)
     if (method !== 8) return null
-    const reader = new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw')).getReader()
+    // Inflated in pieces, so a file that expands enormously is stopped early. Plain JavaScript on purpose: the edge
+    // runtime has no DecompressionStream.
     const parts: Uint8Array[] = []
     let size = 0
-    for (;;) {
-      const { done, value } = await reader.read()
-      if (done) break
-      parts.push(value)
-      size += value.length
-      if (size > MAX_XML) {
-        await reader.cancel()
-        throw new Error('document too large')
-      }
-    }
+    const inflate = new Inflate((part) => {
+      size += part.length
+      if (size > MAX_XML) throw new Error('document too large')
+      parts.push(part)
+    })
+    for (let i = 0; i < raw.length; i += 16_384) inflate.push(raw.subarray(i, i + 16_384), i + 16_384 >= raw.length)
     const out = new Uint8Array(size)
     let o = 0
     for (const p of parts) {
