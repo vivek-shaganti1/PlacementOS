@@ -23,12 +23,12 @@ export function Rise({ children, className }: { children: ReactNode; className?:
   return <motion.div variants={reduce ? still : reveal} className={className}>{children}</motion.div>
 }
 
-/** "03 One platform, four desks" and the headline under it. `accent` is set in the serif. */
-export function Heading({ n, label, children, body }: { n: string; label: string; children: ReactNode; body?: ReactNode }) {
+/** "03 One platform, four desks" and the headline under it; `serif` for the questions. */
+export function Heading({ n, label, children, body, serif = false }: { n: string; label: string; children: ReactNode; body?: ReactNode; serif?: boolean }) {
   return (
     <Rise>
       <p className="label-mono"><b>{n}</b> {label}</p>
-      <h2 className="mt-3 max-w-[860px] text-[clamp(2.1rem,1.4rem+2.4vw,3.6rem)] font-semibold leading-[1.06] tracking-[-0.04em] text-ink">{children}</h2>
+      <h2 className={`mt-3 max-w-[900px] text-ink ${serif ? 'font-display text-[clamp(2.4rem,1.6rem+3.2vw,4.6rem)] leading-[1.02] tracking-[-0.015em]' : 'text-[clamp(2.1rem,1.4rem+2.4vw,3.6rem)] font-semibold leading-[1.06] tracking-[-0.04em]'}`}>{children}</h2>
       {body && <p className="mt-4 max-w-[660px] text-[16px] leading-[1.6] text-ink-soft">{body}</p>}
     </Rise>
   )

@@ -6,7 +6,7 @@ import { useLenis } from '../motion/SmoothScroll'
 import { openContact } from './ContactDialog'
 
 const columns: { title: string; links: [string, string][] }[] = [
-  { title: 'Product', links: [['#try', 'Try it'], ['#roles', 'For colleges'], ['#how', 'How it works'], ['#pricing', 'Pricing']] },
+  { title: 'Product', links: [['#try', 'Try it'], ['#people', 'Who it’s for'], ['#how', 'How it works'], ['#pricing', 'Pricing']] },
   { title: 'Platform', links: [['/login', 'Sign in'], ['/login', 'Placement cell login'], ['/login', 'Recruiter login']] },
   { title: 'Trust', links: [['/security', 'Security'], ['/privacy', 'Privacy policy'], ['/terms', 'Terms of use'], ['/privacy#contact', 'Contact']] },
 ]

@@ -13,7 +13,7 @@ export function Plans() {
   const [n, setN] = useState(1000)
   return (
     <>
-      <Heading n="05" label="Pricing" body="Each college gets its own private placement cell, its own roster and its own drives. Only students your college adds can sign in.">
+      <Heading n="07" label="Pricing" body="Each college gets its own private placement cell, its own roster and its own drives. Only students your college adds can sign in.">
         Colleges subscribe. <Accent>Students never pay.</Accent>
       </Heading>
       <Rise>

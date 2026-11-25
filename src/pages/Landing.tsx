@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { Logo, LogoMark } from '../components/Logo'
 import { SkipLink } from '../components/SkipLink'
 import { ContactDialog, openContact } from '../components/landing/ContactDialog'
+import { Desks } from '../components/landing/Desks'
 import { Faq } from '../components/landing/Faq'
 import { HowItWorks } from '../components/landing/HowItWorks'
 import { LiquidGlass } from '../components/landing/LiquidGlass'
@@ -11,6 +12,7 @@ import { MegaFooter } from '../components/landing/MegaFooter'
 import { Plans } from '../components/landing/Plans'
 import { Roles, WhoSees } from '../components/landing/Roles'
 import { Accent, Heading, Rise, Section } from '../components/landing/Section'
+import { Season } from '../components/landing/Season'
 import { Stage } from '../components/landing/Stage'
 import { TryIt } from '../components/landing/TryIt'
 import { Aurora } from '../components/effects/Aurora'
@@ -34,7 +36,7 @@ function Nav() {
             <span className="hidden min-[420px]:block"><Logo size={30} tagline={false} /></span>
           </Link>
           <nav aria-label="Main" className="flex items-center gap-0.5">
-            {[['#try', 'Try it'], ['#roles', 'For colleges'], ['#how', 'How it works'], ['#pricing', 'Pricing']].map(([h, l]) => (
+            {[['#try', 'Try it'], ['#people', 'Who it’s for'], ['#how', 'How it works'], ['#pricing', 'Pricing']].map(([h, l]) => (
               <a key={h} href={h} className="hidden rounded-full px-3.5 py-2 text-[14px] font-medium text-ink hover:bg-white/60 lg:block">{l}</a>
             ))}
             <Link to="/login" className="whitespace-nowrap rounded-full px-3 py-2 text-[14px] font-medium text-ink hover:bg-white/60 sm:px-3.5">Sign in</Link>
@@ -109,13 +111,23 @@ export default function Landing() {
 
           <Section id="roles" className="py-20">
             <Roles />
+          </Section>
+
+          <Section id="people" className="py-20">
+            <Heading n="04" label="Who it’s for" serif body="Everyone gets their own view. Where it stops matters as much as what it shows.">Who is it for, and who sees what?</Heading>
+            <Desks />
             <WhoSees />
           </Section>
 
           <Section id="how" className="py-20">
-            <Rise><p className="label-mono"><b>04</b> How it works</p></Rise>
+            <Rise><p className="label-mono"><b>05</b> How it works</p></Rise>
             <TextReveal className="mt-3 max-w-[960px] text-[clamp(2.1rem,1.4rem+2.4vw,3.6rem)] font-semibold leading-[1.06] tracking-[-0.04em] text-ink">From sign-up to offer, in four moves.</TextReveal>
             <HowItWorks />
+          </Section>
+
+          <Section id="season" className="py-20">
+            <Heading n="06" label="A placement season" serif body="Three kinds of people, one shared picture. Nobody keeps their own spreadsheet.">How does a season run?</Heading>
+            <Season />
           </Section>
 
           <Section id="pricing" className="py-20">
@@ -123,7 +135,7 @@ export default function Landing() {
           </Section>
 
           <Section id="questions" className="py-20">
-            <Heading n="06" label="Questions">What else do colleges <Accent>ask?</Accent></Heading>
+            <Heading n="08" label="Questions">What else do colleges <Accent>ask?</Accent></Heading>
             <Faq />
           </Section>
 

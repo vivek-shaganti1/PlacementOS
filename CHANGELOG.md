@@ -7,7 +7,7 @@ Semantic versioning; see `docs/ENGINEERING.md` for how releases are made.
 ### Added
 - **New landing page.** It opens with the question students ask and answers it by running the real eligibility engine in the
   visitor's browser: change a sample student's marks and skills, see which companies open, why, and the one change that
-  moves the most. Then why it exists, one platform for four kinds of people, how it works in four moves, and plans with a
+  moves the most. Then why it exists, what each kind of person sees, how it works in four moves, how a season runs, and plans with a
   price worked out for the college's size, in glass over the aurora. Behind it, one
   WebGL scene: a flowing gradient, glass that refracts it, and the mark in liquid metal (notices in
   `THIRD_PARTY_NOTICES.md`). Phones, reduced motion, weak or lost GPUs get the same page with a still backdrop, and the
