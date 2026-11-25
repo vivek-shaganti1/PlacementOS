@@ -1,5 +1,12 @@
 # PlacementIQ mobile app (iOS and Android)
 
+> **Paused (25 Nov 2026).** Every file and folder stays as it is, but nothing builds, checks or releases the app: the CI
+> `mobile` job and the release workflow are off, and Dependabot opens no update pull requests for it. The website never
+> included it (`.vercelignore`). **To resume:** set the repository variable `MOBILE_ENABLED` to `true`, set
+> `open-pull-requests-limit` for `/mobile` back to 3 in `.github/dependabot.yml`, and run `npx expo install --fix` in
+> `mobile/`. The shared scoring code is still kept free of web-only imports (`npm run check:shared`), so it can be picked
+> up again.
+
 The app lives in `mobile/`. It is built with React Native through Expo (SDK 58) and shares its scoring logic with the
 website. It is a separate project with its own `package.json`, so nothing in it can affect the website's build or deploy.
 

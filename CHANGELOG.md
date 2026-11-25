@@ -42,6 +42,8 @@ Semantic versioning; see `docs/ENGINEERING.md` for how releases are made.
 - `docs/ENGINEERING.md`, a pull request template and this changelog.
 
 ### Changed
+- **Mobile app paused.** `mobile/` is unchanged, but CI, releases and update pull requests for it are off until it is resumed
+  (`docs/MOBILE.md`). Dependabot no longer proposes React, React Three Fiber and Vite majors one at a time; they cannot install.
 - Fonts are self-hosted (no requests to Google) and the main ones are preloaded.
 - `@supabase/supabase-js` 2.117.2 → 2.119.0.
 - Days count in India time for practice streaks and daily snapshots.

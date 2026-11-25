@@ -35,6 +35,8 @@ permissions:
 
 jobs:
   release:
+    # Paused with the rest of the mobile app; see docs/MOBILE.md.
+    if: vars.MOBILE_ENABLED == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     environment: mobile-release

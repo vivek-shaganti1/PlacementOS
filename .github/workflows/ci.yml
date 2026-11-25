@@ -39,8 +39,11 @@ jobs:
         run: npm audit --audit-level=high || echo "::warning::Development dependencies have high advisories"
         continue-on-error: true
 
+  # Paused: the mobile app (Expo) is not being worked on. Its files stay in mobile/. To resume, set the repository variable
+  # MOBILE_ENABLED to true (Settings, Secrets and variables, Actions, Variables). See docs/MOBILE.md.
   mobile:
     name: mobile (typecheck, doctor, bundle)
+    if: vars.MOBILE_ENABLED == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     defaults:

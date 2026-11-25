@@ -29,7 +29,8 @@ updates:
       day: monday
       time: '09:00'
       timezone: Asia/Kolkata
-    open-pull-requests-limit: 3
+    # Paused with the mobile app (docs/MOBILE.md); back to 3 to resume. Security updates still arrive.
+    open-pull-requests-limit: 0
     groups:
       # Expo packages move together with the SDK; upgrade those with `npx expo install --fix`, not one by one.
       mobile-minor-and-patch:
@@ -64,5 +65,19 @@ updates:
         update-types: [version-update:semver-major, version-update:semver-minor]
       - dependency-name: '@types/three'
         update-types: [version-update:semver-major, version-update:semver-minor]
+      # These majors only install together (React 19 needs fiber 9 and drei 10; Vite 8 needs a newer plugin-react). Proposed
+      # one at a time they cannot even be installed, so every check and the Vercel preview fails. Upgrade each set by hand.
+      - dependency-name: react
+        update-types: [version-update:semver-major]
+      - dependency-name: react-dom
+        update-types: [version-update:semver-major]
+      - dependency-name: '@types/react*'
+        update-types: [version-update:semver-major]
+      - dependency-name: '@react-three/*'
+        update-types: [version-update:semver-major]
+      - dependency-name: vite
+        update-types: [version-update:semver-major]
+      - dependency-name: '@vitejs/plugin-react'
+        update-types: [version-update:semver-major]
     commit-message:
       prefix: 'deps'
