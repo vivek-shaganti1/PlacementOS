@@ -3,7 +3,7 @@ export const SITE_URL = 'https://placementiq-os.vercel.app'
 export const SITE_NAME = 'PlacementIQ'
 
 const DEFAULT_DESCRIPTION =
-  'PlacementIQ scores your profile against every campus recruiter, parses your resume, syncs your coding profiles and tells you exactly what to fix next.'
+  'Will this company take me? PlacementIQ answers that for every student and every company, says what to fix next, and runs the whole placement season for colleges.'
 
 type PublicPage = { title: string; description: string; indexable?: boolean }
 

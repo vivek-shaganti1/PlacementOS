@@ -5,6 +5,12 @@ Semantic versioning; see `docs/ENGINEERING.md` for how releases are made.
 ## Unreleased
 
 ### Added
+- **New landing page.** It opens with the question students ask and answers it by running the real eligibility engine in the
+  visitor's browser: change a sample student's marks and skills, see which companies open, why, and the one change that
+  moves the most. Then how a season runs, who sees what, and a price worked out for the college's size. Behind it, one
+  WebGL scene: a flowing gradient, glass that refracts it, and the mark in liquid metal (notices in
+  `THIRD_PARTY_NOTICES.md`). Phones, reduced motion, weak or lost GPUs get the same page with a still backdrop, and the
+  background can be paused.
 - **Checklist review (23 Nov):** error reports through Sentry with personal data removed (off until a DSN is set), a
   15-minute uptime check and backup alerts as GitHub issues, consent and age at set-up, a platform-wide daily AI cap and
   off switch, token counts, data retention, an API description checked in CI, a local load test, a signed-in ZAP scan.
@@ -60,6 +66,9 @@ Semantic versioning; see `docs/ENGINEERING.md` for how releases are made.
 - The CSV export opens correctly in Excel.
 
 ### Fixed
+- **Landing claims that were not true or not checkable** are gone: "parsed in your browser" (it is on the server), a
+  hard-coded test count, response times, "most chosen", a named college with a plan, recruiters posting drives, and a
+  question box that only led to the sign-in page.
 - **Landing page without WebGL:** where the browser cannot create a WebGL context (blocked GPU, old driver), the whole page
   was replaced by the error screen. It now asks first, and a 3D failure falls back to the static glow.
 - **Admin console at scale:** reading 5,000 students' skills took 21.9 s (Postgres cancels at 8 s); it takes 33 ms.

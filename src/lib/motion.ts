@@ -62,14 +62,18 @@ export function useMotionTier(): MotionTier {
 let webglChecked: boolean | null = null
 /**
  * Whether the browser can really create a WebGL 2 context (what three.js needs). The device tier alone cannot tell: a
- * blocked GPU, an old driver or a locked-down computer says no. Asked once, and the test context is released at once.
+ * blocked GPU, an old driver or a locked-down computer says no, and so does a machine that would draw in software (the
+ * browser reports a "major performance caveat", or names a software renderer), where a full-screen scene would make the page slow. Asked once, and the
+ * test context is released at once.
  */
 export function canUseWebGL(): boolean {
   if (webglChecked !== null) return webglChecked
   if (typeof document === 'undefined') return false
   try {
-    const gl = document.createElement('canvas').getContext('webgl2')
-    webglChecked = !!gl
+    const gl = document.createElement('canvas').getContext('webgl2', { failIfMajorPerformanceCaveat: true })
+    const info = gl?.getExtension('WEBGL_debug_renderer_info')
+    const renderer = gl && info ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL)) : ''
+    webglChecked = !!gl && !/swiftshader|llvmpipe|softpipe|software|basic render/i.test(renderer)
     gl?.getExtension('WEBGL_lose_context')?.loseContext()
   } catch {
     webglChecked = false

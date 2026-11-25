@@ -2,11 +2,11 @@ import { motion, useReducedMotion } from 'motion/react'
 import { type PointerEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { LogoMark } from '../Logo'
-import { useLenis } from '../motion'
+import { useLenis } from '../motion/SmoothScroll'
 import { openContact } from './ContactDialog'
 
 const columns: { title: string; links: [string, string][] }[] = [
-  { title: 'Product', links: [['#features', 'Features'], ['#roles', 'For colleges'], ['#how', 'How it works'], ['#pricing', 'Pricing']] },
+  { title: 'Product', links: [['#try', 'Try it'], ['#season', 'How it works'], ['#people', 'Who it’s for'], ['#pricing', 'Pricing']] },
   { title: 'Platform', links: [['/login', 'Sign in'], ['/login', 'Placement cell login'], ['/login', 'Recruiter login']] },
   { title: 'Trust', links: [['/security', 'Security'], ['/privacy', 'Privacy policy'], ['/terms', 'Terms of use'], ['/privacy#contact', 'Contact']] },
 ]
@@ -41,7 +41,7 @@ export function MegaFooter() {
       <div aria-hidden className="pointer-events-none absolute inset-0 [background:radial-gradient(60%_50%_at_20%_0%,oklch(0.45_0.2_285/.35),transparent_70%),radial-gradient(50%_45%_at_90%_10%,oklch(0.6_0.13_200/.22),transparent_70%)]" />
       <div aria-hidden className="mega-footer__grain pointer-events-none absolute inset-0" />
 
-      <div className="relative mx-auto max-w-[1160px] px-6 pt-20">
+      <div className="relative mx-auto max-w-[1240px] px-6 pt-20">
         <div className="grid grid-cols-2 gap-10 md:grid-cols-[1.4fr_1fr_1fr_1fr]">
           <div className="col-span-2 md:col-span-1">
             <div className="flex items-center gap-3">
@@ -52,12 +52,12 @@ export function MegaFooter() {
               Placement intelligence for colleges and students: a reason for every company, and the next step to take.
             </p>
             <button type="button" onClick={() => openContact()} className="mt-6 inline-flex h-[44px] items-center gap-2 rounded-full bg-white px-5 text-[13px] font-semibold text-[#0d0a24] shadow-[0_10px_30px_rgba(142,245,217,.15)] transition hover:bg-[#f1edff] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8ef5d9]">
-              Contact us <span className="kbd kbd-light hidden sm:inline-grid">C</span>
+              Contact us
             </button>
           </div>
           {columns.map((c) => (
             <nav key={c.title} aria-label={c.title}>
-              <p className="font-mono text-[10.5px] uppercase tracking-[0.18em] text-white/65">{c.title}</p>
+              <p className="text-[13px] font-medium text-white/65">{c.title}</p>
               <ul className="mt-3 space-y-1">
                 {c.links.map(([to, label]) => <li key={label}><FooterLink to={to}>{label}</FooterLink></li>)}
               </ul>
@@ -76,13 +76,12 @@ export function MegaFooter() {
           transition={{ duration: 1.1, ease: [0.16, 1, 0.3, 1] }}
           className="wordmark__text relative text-center font-semibold leading-[0.8] tracking-[-0.07em]"
         >
-          <span className="wordmark__outline">PlacementIQ</span>
           <span className="wordmark__fill">PlacementIQ</span>
           <span className="wordmark__light">PlacementIQ</span>
         </motion.p>
       </div>
 
-      <div className="relative mx-auto flex max-w-[1160px] flex-wrap items-center gap-x-6 gap-y-3 border-t border-white/10 px-6 py-6 text-[12px] text-white/65">
+      <div className="relative mx-auto flex max-w-[1240px] flex-wrap items-center gap-x-6 gap-y-3 border-t border-white/10 px-6 py-6 text-[12px] text-white/65">
         <span>© {new Date().getFullYear()} PlacementIQ</span>
         <span className="hidden sm:inline">Built for campus placement season</span>
         <div className="ml-auto flex flex-wrap items-center gap-5">
