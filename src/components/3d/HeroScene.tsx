@@ -145,17 +145,19 @@ function Stage({ params, full, paused, onReady, onSlow }: { params: HeroParams; 
       ready.current = true
       onReady?.()
     }
-    // Two seconds in a row under 30 frames a second (a weak GPU, whatever its name): hand back to the still backdrop.
-    // Gaps over a quarter of a second are the tab being hidden or the page busy, not this scene.
+    // Three seconds in a row under 24 frames a second (a weak GPU, whatever its name): hand back to the still backdrop.
+    // Browsers also slow a page down on purpose: to 30 in power saving, and to a trickle in a hidden tab or a covered
+    // window. Neither is this scene's doing, so hidden time starts the count again and long gaps are left out.
     const q = pace.current
-    if (delta < 0.25) {
+    if (document.visibilityState === 'hidden') q.frames = q.time = q.slow = 0
+    else if (delta < 0.25) {
       q.frames++
       q.time += delta
     }
     if (q.time >= 1) {
-      q.slow = q.frames / q.time < 30 ? q.slow + 1 : 0
+      q.slow = q.frames / q.time < 24 ? q.slow + 1 : 0
       q.frames = q.time = 0
-      if (q.slow >= 2) onSlow?.()
+      if (q.slow >= 3) onSlow?.()
     }
   }, 1)
 
