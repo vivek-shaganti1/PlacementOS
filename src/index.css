@@ -324,6 +324,11 @@ button, [role='button'], [role='tab'] { -webkit-user-select: none; user-select: 
 .lq-silk--2 { background: radial-gradient(90% 120% at 100% 0%, #45b8f7, transparent 70%), radial-gradient(70% 90% at 0% 100%, #f7f8fd, transparent 75%), linear-gradient(160deg, #cfe9ff, #bff5e6); }
 .lq-silk--3 { background: radial-gradient(90% 120% at 100% 0%, #6fe3c6, transparent 70%), radial-gradient(70% 90% at 0% 100%, #f7f8fd, transparent 75%), linear-gradient(160deg, #d6f7ec, #ffdcc7); }
 
+/* The closing panel: silk and pleats on the right, melting into the page under the words on the left. */
+.lq-closing { background: radial-gradient(40% 70% at 96% 0%, #ffc2a1, transparent 70%), radial-gradient(44% 70% at 66% 108%, #8ef5d9, transparent 72%), radial-gradient(50% 90% at 100% 70%, #4cc3f8, transparent 74%), linear-gradient(120deg, #e9e4ff 30%, #8d72ff); -webkit-mask-image: linear-gradient(90deg, transparent 3%, oklch(0 0 0 / .4) 34%, #000 66%); mask-image: linear-gradient(90deg, transparent 3%, oklch(0 0 0 / .4) 34%, #000 66%); }
+.lq-closing::before { content: ''; position: absolute; inset: 0; opacity: .5; background: repeating-radial-gradient(130% 190% at -10% 130%, oklch(1 0 0 / .5) 0 1.5px, transparent 4px 15px); -webkit-mask-image: linear-gradient(200deg, #000, transparent 75%); mask-image: linear-gradient(200deg, #000, transparent 75%); }
+@media (max-width: 767px) { .lq-closing { -webkit-mask-image: linear-gradient(180deg, oklch(0 0 0 / .25) 40%, #000 92%); mask-image: linear-gradient(180deg, oklch(0 0 0 / .25) 40%, #000 92%); } }
+
 /* The landing page has a dozen glass panels over the aurora. Blurring a backdrop that is already a blur is invisible but
    redone every frame for each panel, and on a computer drawing without a GPU it stops the page from drawing at all. Here
    the aurora is drawn soft (gradients instead of an 80px blur) and the panels are plainly translucent. Only the nav, which
