@@ -46,12 +46,12 @@
     "@types/three": "0.170.0",
     "@vitejs/plugin-react": "^4.3.2",
     "autoprefixer": "^10.4.20",
-    "esbuild": "0.21.5",
+    "esbuild": "0.28.2",
     "leva": "0.10.1",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.13",
     "typescript": "^5.6.2",
-    "vite": "^5.4.8"
+    "vite": "^8.3.8"
   },
   "engines": {
     "node": ">=20"
