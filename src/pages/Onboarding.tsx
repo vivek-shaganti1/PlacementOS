@@ -317,7 +317,7 @@ export default function Onboarding() {
             </motion.div>
           </AnimatePresence>
 
-          {error && <p role="alert" className="mt-5 rounded-[12px] border border-[#fbd5d1] bg-[#fef3f2]/90 px-3 py-2 text-[12px] text-[#d92d20]">{error}</p>}
+          {error && <p role="alert" className="mt-5 rounded-[12px] border border-[#fbd5d1] bg-[#fef3f2]/90 px-3 py-2 text-[12px] text-[#b42318]">{error}</p>}
 
           <div className="mt-6 flex flex-wrap items-center gap-3">
             {step > 0 && (

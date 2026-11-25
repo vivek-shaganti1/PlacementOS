@@ -2,7 +2,7 @@
 // link previews and the first paint; the browser app replaces this HTML once it has loaded.
 import type { ReactElement } from 'react'
 import { renderToString } from 'react-dom/server'
-import { StaticRouter } from 'react-router-dom/server'
+import { StaticRouter } from 'react-router-dom'
 import Landing from './pages/Landing'
 import Legal from './pages/Legal'
 

@@ -62,7 +62,7 @@ export default function Dashboard() {
           <div className="pointer-events-none absolute -bottom-24 left-20 h-60 w-60 rounded-full bg-[oklch(0.75_0.12_200)] opacity-25 blur-[80px]" />
           <div className="relative flex flex-col items-center gap-5 text-center sm:flex-row sm:gap-7 sm:text-left">
             <div className="rounded-full bg-white/95 p-2 shadow-[0_10px_40px_rgba(0,0,0,.25)]">
-              <Ring value={readiness} size={132} stroke={11} label="Readiness" sub={prev !== null ? `${readiness - prev >= 0 ? '+' : ''}${readiness - prev} vs yesterday` : 'Product-track companies'} />
+              <Ring value={readiness} size={132} stroke={11} label="Readiness" sub={prev !== null ? `${readiness - prev >= 0 ? '+' : ''}${readiness - prev} vs yesterday` : 'Your track\'s companies'} />
             </div>
             <div className="flex-1">
               <p className="flex items-center justify-center gap-2 font-mono text-[10.5px] font-medium uppercase tracking-[0.16em] text-white/55 sm:justify-start">
@@ -85,7 +85,8 @@ export default function Dashboard() {
             </div>
           </div>
           {/* Where all tracked companies sit today, as one bar. */}
-          <button onClick={() => navigate('/eligibility')} className="relative mt-6 block w-full text-left sm:mt-auto sm:pt-6" aria-label="Open eligibility stacks">
+          <button onClick={() => navigate('/eligibility')} className="relative mt-6 block w-full text-left sm:mt-auto sm:pt-6">
+            <span className="sr-only">Open eligibility stacks</span>
             <div className="flex h-2.5 overflow-hidden rounded-full bg-white/10">
               {counts.map(({ b, n }) => (
                 <span key={b} style={{ width: `${(n / Math.max(1, companies.length)) * 100}%`, background: STATUS[b] }} className="h-full first:rounded-l-full last:rounded-r-full" />
@@ -106,7 +107,7 @@ export default function Dashboard() {
         <div className="grid grid-cols-2 gap-3">
           <Stat label="Eligible companies" value={`${counts[0].n}`} sub={`of ${companies.length} tracked`} tone="text-[#067647]" trend={snapshots.map((x) => x.eligible)} trendColor="#12b76a" delta={snapshots.length > 1 ? counts[0].n - snapshots[snapshots.length - 2].eligible : null} onOpen={() => navigate('/eligibility')} />
           <Stat label="Applications" value={`${applications.filter((a) => a.user_id === student.id).length + applied.length}`} sub={`Campus drives + tracked · ${saved.length} shortlisted`} onOpen={() => navigate('/applications')} />
-          <Stat label="Expected CTC" value={salary.expected ? `₹${salary.expected.toFixed(1)} LPA` : 'n/a'} sub={salary.expected ? `Likely ₹${salary.low}–${salary.high} LPA · best ₹${salary.bestRealistic} LPA` : 'Complete your profile'} tone="text-[#067647]" onOpen={() => navigate('/what-if')} openLabel="Try a what-if on your expected CTC" />
+          <Stat label="Expected CTC" value={salary.reachable && salary.expected ? `₹${salary.expected.toFixed(1)} LPA` : 'Not yet'} sub={!salary.reachable ? 'Shown once a company is within reach' : salary.bestRealistic ? `Likely ₹${salary.low}–${salary.high} LPA · best ₹${salary.bestRealistic} LPA` : `Likely ₹${salary.low}–${salary.high} LPA`} tone="text-[#067647]" onOpen={() => navigate('/what-if')} openLabel="Try a what-if on your expected CTC" />
           <Stat label="Interview readiness" value={`${interview.score}`} sub={`Work on ${interview.weakest.join(' and ')}`} tone="text-brand-dark" onOpen={() => navigate('/mock-interviews')} />
           <Stat label="Profile strength" value={`${strength}%`} sub="Completeness & verification" tone="text-brand-dark" trend={snapshots.map((x) => x.avg_skill)} onOpen={() => navigate('/profile')} />
           <Stat label="Roadmap tasks" value={`${roadmapDone.length}`} sub="completed so far" onOpen={() => navigate('/roadmap')} />
@@ -151,7 +152,7 @@ export default function Dashboard() {
                   {app ? (
                     <span className={`rounded-md border px-1.5 py-0.5 text-[10.5px] font-semibold ${STATUS_META[app.status].cls}`}>{STATUS_META[app.status].label}</span>
                   ) : (
-                    <span className={`text-[11px] font-medium ${ev.eligibleToApply ? 'text-[#067647]' : 'text-[#d92d20]'}`}>{ev.eligibleToApply ? 'You can apply' : 'Not eligible'}</span>
+                    <span className={`text-[11px] font-medium ${ev.eligibleToApply ? 'text-[#067647]' : 'text-[#b42318]'}`}>{ev.eligibleToApply ? 'You can apply' : 'Not eligible'}</span>
                   )}
                 </p>
               </button>

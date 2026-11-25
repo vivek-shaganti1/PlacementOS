@@ -12,6 +12,7 @@ const RECRUITERS = companyCatalog.length + coreCatalog.length
 import { Glow } from '../components/effects'
 import { CursorFollower, Magnetic, ScrollHighlight, ScrollProgress, SmoothScroll, TextReveal } from '../components/motion'
 import { intensity, useMotionTier } from '../lib/motion'
+import { usePauseOffscreen } from '../lib/pauseOffscreen'
 import { usd, PLANS } from '../lib/pricing'
 import { ContactDialog, openContact } from '../components/landing/ContactDialog'
 import { Features } from '../components/landing/Features'
@@ -440,10 +441,13 @@ export default function Landing() {
   const idle = useIdle()
   const names = companyCatalog.map((c) => c.name)
   const tier = useMotionTier()
+  // Decorative loops only run while they are on screen.
+  const page = useRef<HTMLDivElement>(null)
+  usePauseOffscreen(page, '.gradient-border, .trust-grid, .wordmark__fill, .prism, .marquee__track, .hero-halo, .float-y, .pulse-dot')
 
   return (
     <SmoothScroll>
-    <div className="relative min-h-[calc(100svh/var(--z))] overflow-x-hidden">
+    <div ref={page} className="relative min-h-[calc(100svh/var(--z))] overflow-x-hidden">
       <SkipLink />
       <Aurora />
       <CursorFollower />
@@ -504,8 +508,9 @@ export default function Landing() {
         {/* marquee */}
         <p className="mb-3 text-center font-mono text-[10.5px] uppercase tracking-[0.18em] text-ink-faint">Every student scored against {RECRUITERS} recruiters</p>
         <div className="relative border-y border-white/60 bg-white/30 py-5 backdrop-blur-md [mask-image:linear-gradient(90deg,transparent,#000_12%,#000_88%,transparent)]">
-          <div className="marquee__track flex w-max gap-10 whitespace-nowrap text-[15px] font-semibold tracking-[-0.01em] text-ink-faint">
-            {[...names, ...names].map((n, i) => <span key={i}>{n}</span>)}
+          <div className="marquee__track flex w-max gap-10 whitespace-nowrap text-[15px] font-semibold tracking-[-0.01em] text-ink-soft">
+            {/* The list runs twice for a seamless loop; screen readers hear it once. */}
+            {[...names, ...names].map((n, i) => <span key={i} aria-hidden={i >= names.length || undefined}>{n}</span>)}
           </div>
         </div>
 
