@@ -28,7 +28,7 @@
       "headers": [
         {
           "key": "Content-Security-Policy",
-          "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https://oewjimwozaksyigfyrkz.supabase.co https://avatars.githubusercontent.com; connect-src 'self' https://oewjimwozaksyigfyrkz.supabase.co; worker-src 'self' blob:; frame-src 'none'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests"
+          "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data: blob: https://oewjimwozaksyigfyrkz.supabase.co https://avatars.githubusercontent.com; connect-src 'self' https://oewjimwozaksyigfyrkz.supabase.co wss://oewjimwozaksyigfyrkz.supabase.co; worker-src 'self' blob:; frame-src 'none'; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'; upgrade-insecure-requests"
         },
         {
           "key": "X-Frame-Options",

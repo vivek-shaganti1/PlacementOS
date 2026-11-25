@@ -39,6 +39,7 @@ export function AdminOverview() {
   if (!isAdmin) return <Denied />
   const students = rows.filter((r) => !r.isAdmin || r.profile.onboarded_at)
   const onboarded = students.filter((r) => r.profile.onboarded_at).length
+  const analysed = students.filter((r) => r.resume !== null)
   const avg = (f: (r: StudentRow) => number) => (students.length ? Math.round(students.reduce((a, r) => a + f(r), 0) / students.length) : 0)
   const bands = [
     { band: '0-39', n: students.filter((r) => r.readiness < 40).length },
@@ -56,8 +57,9 @@ export function AdminOverview() {
     <Page title="Placement cell" subtitle="Live view of every student, drive and application." wide>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5">
         <Stat label="Students" value={`${students.length}`} sub={`${onboarded} completed onboarding`} />
-        <Stat label="Avg. readiness" value={`${avg((r) => r.readiness)}`} sub="Product-track companies" tone="text-brand-dark" />
-        <Stat label="Avg. resume score" value={`${avg((r) => r.resume ?? 0)}`} sub="Across analyzed resumes" />
+        <Stat label="Avg. readiness" value={`${avg((r) => r.readiness)}`} sub="Each student's own track" tone="text-brand-dark" />
+        {/* Only students with an analysed resume count; with none, there is no average to show. */}
+        <Stat label="Avg. resume score" value={analysed.length ? `${Math.round(analysed.reduce((a, r) => a + (r.resume ?? 0), 0) / analysed.length)}` : '—'} sub={analysed.length ? `Across ${analysed.length} analysed resume${analysed.length === 1 ? '' : 's'}` : 'No resumes analysed yet'} />
         <Stat label="Open drives" value={`${jobs.filter(isOpen).length}`} sub={`${jobs.length} posted in total`} />
         <Stat label="Offers" value={`${applications.filter((a) => a.status === 'offer').length}`} sub={plural(applications.length, 'application')} tone="text-[#067647]" />
       </div>
@@ -85,7 +87,7 @@ export function AdminOverview() {
                 <span className="block truncate text-[11px] text-ink-mute">{r.profile.branch || '—'} · {r.profile.batch || '—'} · CGPA {r.profile.cgpa || '—'}</span>
               </span>
               <span className="hidden text-[12px] text-ink-mute sm:inline">Readiness {r.readiness}</span>
-              <span className="w-[48px] text-right text-[14px] font-semibold text-brand-dark sm:w-[70px]">{r.score}</span>
+              <span className="w-[48px] text-right sm:w-[70px]"><span className="block text-[14px] font-semibold text-brand-dark">{r.score}</span><span className="block text-[10px] text-ink-faint">Rank score</span></span>
             </div>
           ))}
           {!students.length && <p className="py-6 text-center text-[12px] text-ink-faint">{loading ? 'Loading…' : 'No students have signed up yet.'}</p>}
@@ -208,7 +210,7 @@ function EvidencePanel({ p }: { p: StudentRow['profile'] }) {
               {c.status === 'pending' && (
                 <span className="ml-auto flex gap-2">
                   <button onClick={() => review(c.id, true)} className="rounded-md bg-[#12b76a] px-2.5 py-1 text-[11px] font-semibold text-white">Confirm</button>
-                  <button onClick={() => review(c.id, false)} className="rounded-md border border-line px-2.5 py-1 text-[11px] font-medium text-[#d92d20]">Reject</button>
+                  <button onClick={() => review(c.id, false)} className="rounded-md border border-line px-2.5 py-1 text-[11px] font-medium text-[#b42318]">Reject</button>
                 </span>
               )}
             </div>
@@ -555,7 +557,7 @@ export function AdminStudents() {
           <span>{shown.length.toLocaleString('en-US')} of {plural(rows.length, 'student')}</span>
           {filtersOn && <button onClick={clearFilters} className="font-semibold text-brand-dark hover:underline">Clear filters</button>}
         </div>
-        {error && <p className="mt-3 text-[12px] text-[#d92d20]">{error}</p>}
+        {error && <p className="mt-3 text-[12px] text-[#b42318]">{error}</p>}
         <div className="mt-3 space-y-2 md:hidden">
           {page.visible.map((r) => (
             <button key={r.profile.id} onClick={() => setOpen(r)} className="flex w-full items-center gap-3 rounded-[14px] border border-white/80 bg-white/70 p-3 text-left">
@@ -802,6 +804,27 @@ export function AdminJobs() {
   const [mode, setMode] = useState<'list' | 'new' | 'edit'>('list')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const selected = jobs.find((j) => j.id === selectedId) ?? jobs[0] ?? null
+
+  // Applications that arrive while this page is open are announced and marked "New" for a while.
+  const known = useRef<Set<string> | null>(null)
+  const [fresh, setFresh] = useState<Set<string>>(new Set())
+  useEffect(() => {
+    const ids = new Set(applications.map((a) => `${a.job_id}:${a.user_id}`))
+    // The first non-empty answer is the baseline, not news.
+    if (!known.current) {
+      if (jobs.length || applications.length) known.current = ids
+      return
+    }
+    const added = applications.filter((a) => !known.current!.has(`${a.job_id}:${a.user_id}`))
+    known.current = ids
+    if (!added.length) return
+    const company = (id: string) => jobs.find((j) => j.id === id)?.company ?? 'a drive'
+    showToast(added.length === 1 ? `New application to ${company(added[0].job_id)}.` : `${added.length} new applications.`)
+    setFresh((old) => new Set([...old, ...added.map((a) => `${a.job_id}:${a.user_id}`)]))
+    const t = window.setTimeout(() => setFresh(new Set()), 20_000)
+    return () => window.clearTimeout(t)
+  }, [applications, jobs, showToast])
+
   if (!isAdmin && !isRecruiter) return <Denied />
 
   const applicants = selected
@@ -863,7 +886,7 @@ export function AdminJobs() {
                     <p className="text-[13px] font-semibold text-ink">{j.company}</p>
                     <p className="text-[11.5px] text-ink-mute">{j.role}</p>
                     <p className="mt-1.5 flex gap-1.5 text-[10.5px]">
-                      <span className={`rounded-md px-1.5 py-0.5 font-semibold ${j.status === 'open' ? 'bg-[#ecfdf3] text-[#067647]' : j.status === 'draft' ? 'bg-white text-ink-mute' : 'bg-[#fef3f2] text-[#d92d20]'}`}>{j.status}</span>
+                      <span className={`rounded-md px-1.5 py-0.5 font-semibold ${j.status === 'open' ? 'bg-[#ecfdf3] text-[#067647]' : j.status === 'draft' ? 'bg-white text-ink-mute' : 'bg-[#fef3f2] text-[#b42318]'}`}>{j.status}</span>
                       <span className="rounded-md bg-white px-1.5 py-0.5 text-ink-soft">{n} applicant{n === 1 ? '' : 's'}</span>
                     </p>
                   </button>
@@ -885,7 +908,7 @@ export function AdminJobs() {
                   </div>
                   <button onClick={() => setMode('edit')} className="btn-glass py-1.5 text-[12px]">Edit</button>
                   <button onClick={() => toggle(selected)} className="btn-glass py-1.5 text-[12px]">{selected.status === 'open' ? 'Close' : 'Open'}</button>
-                  <HoldButton onConfirm={() => remove(selected)} holdMs={2000} warning={`Deletes the ${selected.company} drive and all its applications. This cannot be undone.`} className="btn-glass py-1.5 text-[12px] text-[#d92d20]">Delete</HoldButton>
+                  <HoldButton onConfirm={() => remove(selected)} holdMs={2000} warning={`Deletes the ${selected.company} drive and all its applications. This cannot be undone.`} className="btn-glass py-1.5 text-[12px] text-[#b42318]">Delete</HoldButton>
                 </div>
                 <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
                   <Stat label="Applicants" value={`${applicants.length}`} />
@@ -903,6 +926,7 @@ export function AdminJobs() {
                   {applicants.map(({ a, r, ev }, idx) => (
                     <div key={a.user_id} className="flex flex-wrap items-center gap-x-3 gap-y-2 py-2.5">
                       <span className="w-6 text-[12px] font-semibold text-ink-faint">{idx + 1}</span>
+                      {fresh.has(`${a.job_id}:${a.user_id}`) && <span className="rounded-full bg-brand px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">New</span>}
                       <Avatar src={r?.profile.avatar_url ?? undefined} name={r?.profile.full_name || 'Student'} size={30} />
                       <span className="min-w-[140px] flex-1">
                         <button type="button" onClick={() => r && setOpenRow(r)} className="block truncate text-left text-[13px] font-semibold text-ink hover:underline">{r?.profile.full_name ?? 'Student'}</button>

@@ -62,11 +62,12 @@ const placementItems = [
   { to: '/admin/roster', label: 'Roster', Icon: IconFileText },
   { to: '/admin/jobs', label: 'Job postings', Icon: IconDrives },
   { to: '/admin/team', label: 'Admins & recruiters', Icon: IconUser },
+  { to: '/admin/activity', label: 'Activity log', Icon: IconFileText },
 ]
 
 const accountItem = { to: '/settings', label: 'Settings', Icon: IconSettings }
 
-const NAV: Record<AccountRole, Group[]> = {
+export const NAV: Record<AccountRole, Group[]> = {
   super: [
     {
       label: 'Platform',
@@ -74,6 +75,7 @@ const NAV: Record<AccountRole, Group[]> = {
         { to: '/super/orgs', label: 'Organizations', Icon: IconStacks },
         { to: '/super/admins', label: 'Platform admins', Icon: IconSettings },
         { to: '/super/certifications', label: 'Certifications', Icon: IconAward },
+        { to: '/super/enquiries', label: 'Enquiries', Icon: IconHelp },
       ],
     },
     { label: 'All colleges', items: placementItems },
