@@ -32,7 +32,7 @@ function Stage({ params, full, paused, onReady, onSlow }: { params: HeroParams; 
   const groundUniforms = useMemo(() => ({ uTime: { value: 0 }, uStrength: { value: 1 }, uColorA: { value: new Color() }, uColorB: { value: new Color() }, uColorC: { value: new Color() }, uColorD: { value: new Color() } }), [])
   const passUniforms = useMemo(
     () => ({
-      uMap: { value: target.texture }, uResolution: { value: new Vector2(1, 1) }, uTime: { value: 0 }, uScroll: { value: 0 }, uPaper: { value: new Color() },
+      uMap: { value: target.texture }, uResolution: { value: new Vector2(1, 1) }, uTime: { value: 0 }, uScroll: { value: 0 }, uText: { value: 0 }, uPaper: { value: new Color() },
       uCount: { value: 0 }, uRect: { value: Array.from({ length: MAX_PANES }, () => new Vector4()) }, uStyle: { value: Array.from({ length: MAX_PANES }, () => new Vector2()) },
       uDrop: { value: new Vector3() }, uMark: { value: new Vector3() },
     }),
@@ -53,12 +53,12 @@ function Stage({ params, full, paused, onReady, onSlow }: { params: HeroParams; 
   }, [params, groundUniforms, passUniforms])
 
   // The elements the stage draws for, found once and again when the page's structure changes.
-  const els = useRef<{ panes: HTMLElement[]; mark: HTMLElement | null; demo: HTMLElement | null }>({ panes: [], mark: null, demo: null })
+  const els = useRef<{ panes: HTMLElement[]; mark: HTMLElement | null; demo: HTMLElement | null; text: HTMLElement | null }>({ panes: [], mark: null, demo: null, text: null })
   useEffect(() => {
     const root = gl.domElement.closest<HTMLElement>('[data-stage-root]')
     if (!root) return
     const find = () => {
-      els.current = { panes: [...root.querySelectorAll<HTMLElement>('[data-lq]')], mark: root.querySelector<HTMLElement>('[data-lq-mark]'), demo: root.querySelector<HTMLElement>('[data-lq-demo]') }
+      els.current = { panes: [...root.querySelectorAll<HTMLElement>('[data-lq]')], mark: root.querySelector<HTMLElement>('[data-lq-mark]'), demo: root.querySelector<HTMLElement>('[data-lq-demo]'), text: root.querySelector<HTMLElement>('[data-lq-text]') }
     }
     find()
     const mo = new MutationObserver(find)
@@ -117,6 +117,9 @@ function Stage({ params, full, paused, onReady, onSlow }: { params: HeroParams; 
     const m = els.current.mark?.getBoundingClientRect()
     if (m && m.bottom > box.top && m.top < box.bottom) u.uMark.value.set(m.left - box.left + m.width / 2, box.height - (m.top - box.top + m.height / 2), m.width)
     else u.uMark.value.z = 0
+
+    const text = els.current.text?.getBoundingClientRect()
+    u.uText.value = text ? box.height - (text.bottom - box.top) : 0
 
     const demo = els.current.demo?.getBoundingClientRect()
     u.uScroll.value = demo ? Math.max(0, Math.min(1, 1 - (demo.top - box.top) / (box.height * 0.85))) : 0

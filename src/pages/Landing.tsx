@@ -85,7 +85,7 @@ export default function Landing() {
                 {/* Text and actions are there from the first paint; nothing above the fold animates in. */}
                 <div>
                   <h1 className="max-w-[760px] font-display text-[clamp(3.4rem,1.6rem+7vw,7.6rem)] leading-[0.95] tracking-[-0.025em] text-ink">Will this company take me?</h1>
-                  <p className="mt-6 max-w-[540px] text-[clamp(1.06rem,1rem+0.3vw,1.25rem)] leading-[1.55] text-ink">
+                  <p data-lq-text className="mt-6 max-w-[540px] text-[clamp(1.06rem,1rem+0.3vw,1.25rem)] leading-[1.55] text-ink">
                     PlacementIQ answers that for every student and every company, and says what to fix when the answer is not yet. Colleges run their whole placement season on it.
                   </p>
                   <div className="mt-8 flex flex-wrap items-center gap-3">

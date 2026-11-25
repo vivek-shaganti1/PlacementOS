@@ -69,6 +69,7 @@ uniform vec2 uResolution;          // CSS pixels
 uniform float uTime;
 uniform float uScroll;             // 0 in the hero, 1 in the demo
 uniform vec3 uPaper;
+uniform float uText;               // bottom of the hero text (CSS pixels, y up)
 uniform int uCount;
 uniform vec4 uRect[${MAX_PANES}];  // centre xy, half size xy (CSS pixels, y up)
 uniform vec2 uStyle[${MAX_PANES}]; // corner radius, whiteness
@@ -151,7 +152,7 @@ void main(){
   float x = px.x / uResolution.x, y = px.y / uResolution.y;
   float clear = (1.0 - smoothstep(0.18, 0.66, x + (0.5 - y) * 0.10)) * 0.93;
   // Below the two-column width the words sit at the top and run the full width, so that is where it opens up.
-  if (uResolution.x < 1024.0) clear = smoothstep(0.42, 0.66, y - x * 0.06) * 0.93;
+  if (uResolution.x < 1024.0) clear = smoothstep(uText - 170.0, uText - 10.0, px.y) * 0.93;
   clear = max(clear, (1.0 - smoothstep(0.0, 0.34, y)) * 0.80);
   clear = mix(clear, 0.74, uScroll);
   vec3 col = mix(bg, uPaper, clear);
