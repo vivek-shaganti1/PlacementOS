@@ -8,7 +8,7 @@
     "render": "remotion render src/index.ts PlacementIQFilm out/placementiq-film.mp4"
   },
   "dependencies": {
-    "@remotion/cli": "^4.0.532",
+    "@remotion/cli": "^4.0.543",
     "@remotion/google-fonts": "^4.0.532",
     "playwright": "^1.57.0",
     "react": "^18.3.1",
