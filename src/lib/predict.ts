@@ -21,6 +21,12 @@ export type SalaryPrediction = {
   bestRealistic: number
   /** Companies that contribute most to the estimate. */
   drivers: { name: string; ctc: number; weight: number; bucket: Bucket }[]
+  /**
+   * How many companies the student is at least "Can become" for. When it is 0 the only weights left are the 1% given to
+   * companies out of reach, and `expected` is just the catalogue's average package: a number about the companies, not
+   * about the student. Screens show "not yet" instead.
+   */
+  reachable: number
 }
 
 const weightOf = (c: Company) => OFFER_WEIGHT[c.bucket] * (c.match / 100)
@@ -49,6 +55,7 @@ export function predictSalary(companies: Company[]): SalaryPrediction {
   const expected = total ? items.reduce((a, x) => a + x.v * x.w, 0) / total : 0
   const reachable = items.filter((x) => x.c.bucket === 'eligible' || x.c.bucket === 'nearly')
   return {
+    reachable: items.filter((x) => x.c.bucket !== 'notEligible').length,
     expected: Math.round(expected * 10) / 10,
     low: weightedQuantile(items, 0.25),
     high: weightedQuantile(items, 0.75),

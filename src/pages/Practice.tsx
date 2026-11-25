@@ -190,7 +190,7 @@ export default function Practice() {
           <p className="text-[12.5px] text-ink-soft">{current.q}</p>
           <div className="mt-3 space-y-2">
             {current.options.map((o, i) => {
-              const state = picked === null ? '' : i === current.answer ? 'border-[#c9f0d9] bg-[#ecfdf3] text-[#067647]' : picked === i ? 'border-[#fbd5d1] bg-[#fef3f2] text-[#d92d20]' : ''
+              const state = picked === null ? '' : i === current.answer ? 'border-[#c9f0d9] bg-[#ecfdf3] text-[#067647]' : picked === i ? 'border-[#fbd5d1] bg-[#fef3f2] text-[#b42318]' : ''
               return (
                 <button key={o} onClick={() => pick(i)} className={`block w-full rounded-[9px] border px-3 py-2 text-left text-[12.5px] transition ${state || 'border-line text-ink-soft hover:bg-[#f7f8fa]'}`}>
                   {o}

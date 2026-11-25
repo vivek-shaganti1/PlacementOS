@@ -308,7 +308,7 @@ export function evaluateJob(job: JobPosting, p: StudentLike & { branch?: string;
   const base: CompanyBase = {
     id: job.id, name: job.company, role: job.role, brand: '#6d4aff', ctcAvg: Number(job.ctc_max ?? job.ctc_min ?? 0),
     ctcMin: Number(job.ctc_min ?? 0), ctcMax: Number(job.ctc_max ?? 0), location: job.location, jobType: job.job_type,
-    tenure: '', batches: job.batches.join(', '), about: '', careers: '', process: [], stats: [],
+    tenure: '', batches: job.batches.join(', '), about: '', careers: '', process: [], stats: [], provenance: 'drive',
   }
   const requirements: Requirements = {
     minCgpa: Number(job.min_cgpa), maxBacklogs: job.max_backlogs, minClassX: Number(job.min_class_x), minClassXII: Number(job.min_class_xii),

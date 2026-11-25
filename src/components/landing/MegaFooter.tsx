@@ -3,10 +3,11 @@ import { type PointerEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { LogoMark } from '../Logo'
 import { useLenis } from '../motion'
+import { openContact } from './ContactDialog'
 
 const columns: { title: string; links: [string, string][] }[] = [
   { title: 'Product', links: [['#features', 'Features'], ['#roles', 'For colleges'], ['#how', 'How it works'], ['#pricing', 'Pricing']] },
-  { title: 'Platform', links: [['/signup', 'Create an account'], ['/login', 'Sign in'], ['/login', 'Placement cell login'], ['/login', 'Recruiter login']] },
+  { title: 'Platform', links: [['/login', 'Sign in'], ['/login', 'Placement cell login'], ['/login', 'Recruiter login']] },
   { title: 'Trust', links: [['/security', 'Security'], ['/privacy', 'Privacy policy'], ['/terms', 'Terms of use'], ['/privacy#contact', 'Contact']] },
 ]
 
@@ -50,9 +51,9 @@ export function MegaFooter() {
             <p className="mt-4 max-w-[320px] text-[13.5px] leading-[1.65] text-white/55">
               Placement intelligence for colleges and students: a reason for every company, and the next step to take.
             </p>
-            <Link to="/signup" className="mt-6 inline-flex h-[44px] items-center gap-2 rounded-full bg-white px-5 text-[13px] font-semibold text-[#0d0a24] shadow-[0_10px_30px_rgba(142,245,217,.15)] transition hover:bg-[#f1edff] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8ef5d9]">
-              Start free <span className="kbd kbd-light hidden sm:inline-grid">G</span>
-            </Link>
+            <button type="button" onClick={() => openContact()} className="mt-6 inline-flex h-[44px] items-center gap-2 rounded-full bg-white px-5 text-[13px] font-semibold text-[#0d0a24] shadow-[0_10px_30px_rgba(142,245,217,.15)] transition hover:bg-[#f1edff] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#8ef5d9]">
+              Contact us <span className="kbd kbd-light hidden sm:inline-grid">C</span>
+            </button>
           </div>
           {columns.map((c) => (
             <nav key={c.title} aria-label={c.title}>

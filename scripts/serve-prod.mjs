@@ -33,7 +33,11 @@ const vercel = JSON.parse(readFileSync('vercel.json', 'utf8'))
 const pattern = (source) => new RegExp('^' + source.replace(/:(\w+)\*/g, '(?<$1>.*)') + '$')
 // Served over plain http locally, so the CSP's upgrade-insecure-requests (right for production) is dropped here;
 // otherwise WebKit rewrites every request to https and fails.
-const local = (v) => v.split(PROD_SUPABASE).join(supabaseUrl).replace(/;\s*upgrade-insecure-requests/, '')
+const local = (v) =>
+  v
+    .split(PROD_SUPABASE.replace('https:', 'wss:')).join(supabaseUrl.replace(/^http/, 'ws'))
+    .split(PROD_SUPABASE).join(supabaseUrl)
+    .replace(/;\s*upgrade-insecure-requests/, '')
 const rewrites = vercel.rewrites.map((r) => ({ re: pattern(r.source), destination: r.destination }))
 const headerRules = vercel.headers.map((h) => ({ re: pattern(h.source), headers: h.headers.map((x) => [x.key, local(x.value)]) }))
 

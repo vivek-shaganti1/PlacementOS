@@ -62,11 +62,12 @@ const placementItems = [
   { to: '/admin/roster', label: 'Roster', Icon: IconFileText },
   { to: '/admin/jobs', label: 'Job postings', Icon: IconDrives },
   { to: '/admin/team', label: 'Admins & recruiters', Icon: IconUser },
+  { to: '/admin/activity', label: 'Activity log', Icon: IconFileText },
 ]
 
 const accountItem = { to: '/settings', label: 'Settings', Icon: IconSettings }
 
-const NAV: Record<AccountRole, Group[]> = {
+export const NAV: Record<AccountRole, Group[]> = {
   super: [
     {
       label: 'Platform',
@@ -74,6 +75,7 @@ const NAV: Record<AccountRole, Group[]> = {
         { to: '/super/orgs', label: 'Organizations', Icon: IconStacks },
         { to: '/super/admins', label: 'Platform admins', Icon: IconSettings },
         { to: '/super/certifications', label: 'Certifications', Icon: IconAward },
+        { to: '/super/enquiries', label: 'Enquiries', Icon: IconHelp },
       ],
     },
     { label: 'All colleges', items: placementItems },
@@ -137,7 +139,7 @@ export default function Sidebar({ open, onChat, mobile, onClose }: { open: boole
         </nav>
 
         {role === 'student' && <div className="p-2.5">
-          <div className="gradient-border rounded-[18px]">
+          <div className="gradient-border gradient-border--still rounded-[18px]">
             <div className="glass-dark rounded-[18px] p-3.5 text-white">
               <div className="flex items-center gap-2">
                 <span className="grid h-7 w-7 place-items-center rounded-lg bg-white/15">
