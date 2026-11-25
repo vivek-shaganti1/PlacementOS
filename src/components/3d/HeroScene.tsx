@@ -32,7 +32,7 @@ function Stage({ params, full, paused, onReady, onSlow }: { params: HeroParams; 
   const groundUniforms = useMemo(() => ({ uTime: { value: 0 }, uStrength: { value: 1 }, uColorA: { value: new Color() }, uColorB: { value: new Color() }, uColorC: { value: new Color() }, uColorD: { value: new Color() } }), [])
   const passUniforms = useMemo(
     () => ({
-      uMap: { value: target.texture }, uResolution: { value: new Vector2(1, 1) }, uTime: { value: 0 }, uScroll: { value: 0 }, uText: { value: 0 }, uPaper: { value: new Color() },
+      uMap: { value: target.texture }, uResolution: { value: new Vector2(1, 1) }, uTime: { value: 0 }, uScroll: { value: 0 }, uText: { value: 0 }, uFade: { value: -1e4 }, uPaper: { value: new Color() },
       uCount: { value: 0 }, uRect: { value: Array.from({ length: MAX_PANES }, () => new Vector4()) }, uStyle: { value: Array.from({ length: MAX_PANES }, () => new Vector2()) },
       uDrop: { value: new Vector3() }, uMark: { value: new Vector3() },
     }),
@@ -53,12 +53,12 @@ function Stage({ params, full, paused, onReady, onSlow }: { params: HeroParams; 
   }, [params, groundUniforms, passUniforms])
 
   // The elements the stage draws for, found once and again when the page's structure changes.
-  const els = useRef<{ panes: HTMLElement[]; mark: HTMLElement | null; demo: HTMLElement | null; text: HTMLElement | null }>({ panes: [], mark: null, demo: null, text: null })
+  const els = useRef<{ panes: HTMLElement[]; mark: HTMLElement | null; demo: HTMLElement | null; text: HTMLElement | null; root: HTMLElement | null }>({ panes: [], mark: null, demo: null, text: null, root: null })
   useEffect(() => {
     const root = gl.domElement.closest<HTMLElement>('[data-stage-root]')
     if (!root) return
     const find = () => {
-      els.current = { panes: [...root.querySelectorAll<HTMLElement>('[data-lq]')], mark: root.querySelector<HTMLElement>('[data-lq-mark]'), demo: root.querySelector<HTMLElement>('[data-lq-demo]'), text: root.querySelector<HTMLElement>('[data-lq-text]') }
+      els.current = { panes: [...root.querySelectorAll<HTMLElement>('[data-lq]')], mark: root.querySelector<HTMLElement>('[data-lq-mark]'), demo: root.querySelector<HTMLElement>('[data-lq-demo]'), text: root.querySelector<HTMLElement>('[data-lq-text]'), root }
     }
     find()
     const mo = new MutationObserver(find)
@@ -121,6 +121,10 @@ function Stage({ params, full, paused, onReady, onSlow }: { params: HeroParams; 
     const text = els.current.text?.getBoundingClientRect()
     u.uText.value = text ? box.height - (text.bottom - box.top) : 0
 
+    // Where the stage ends on the page, so it can melt into the aurora (in the shader: a CSS mask would be redone every frame).
+    const end = els.current.root?.getBoundingClientRect()
+    u.uFade.value = end ? box.height - (end.bottom - box.top) : -1e4
+
     const demo = els.current.demo?.getBoundingClientRect()
     u.uScroll.value = demo ? Math.max(0, Math.min(1, 1 - (demo.top - box.top) / (box.height * 0.85))) : 0
 
@@ -148,12 +152,12 @@ function Stage({ params, full, paused, onReady, onSlow }: { params: HeroParams; 
       ready.current = true
       onReady?.()
     }
-    // Three seconds in a row under 24 frames a second (a weak GPU, whatever its name): hand back to the still backdrop.
-    // Browsers also slow a page down on purpose: to 30 in power saving, and to a trickle in a hidden tab or a covered
-    // window. Neither is this scene's doing, so hidden time starts the count again and long gaps are left out.
+    // Under 24 frames a second for three seconds, or a few frames so slow each takes a second (a weak GPU, whatever its
+    // name): hand back to the still backdrop. Browsers also slow a page down on purpose, to 30 in power saving and to a
+    // trickle in a hidden tab; hidden time starts the count again, and one long gap alone (a busy page, a lid) is let pass.
     const q = pace.current
     if (document.visibilityState === 'hidden') q.frames = q.time = q.slow = 0
-    else if (delta < 0.25) {
+    else {
       q.frames++
       q.time += delta
     }

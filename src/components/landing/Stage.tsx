@@ -71,9 +71,11 @@ export function Stage({ children }: { children: ReactNode }) {
   return (
     <div data-stage-root data-stage={live ? 'live' : 'still'} className="relative">
       {/* The outer box ends with the stage, so the sticky backdrop leaves with it instead of spilling into the next section. */}
-      <div aria-hidden className="lq-fade pointer-events-none absolute inset-0 z-0">
+      <div aria-hidden className="pointer-events-none absolute inset-0 z-0">
+        <div className="lq-fade absolute inset-0">
+          <div className="lq-still sticky top-0 h-[calc(100svh/var(--z))] w-full" />
+        </div>
         <div className="sticky top-0 h-[calc(100svh/var(--z))] w-full overflow-hidden">
-          <div className="lq-still absolute inset-0" />
           {can && (
             <ErrorBoundary fallback={<Still onMount={still} />}>
               <Suspense fallback={null}>
