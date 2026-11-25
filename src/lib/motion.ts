@@ -84,7 +84,7 @@ function drawsFast(gl: WebGL2RenderingContext): boolean {
     return performance.now() - t
   }
   draw() // the first draw includes compiling
-  return Math.min(draw(), draw(), draw()) < 9
+  return Math.min(draw(), draw(), draw()) < 12
 }
 
 let webglChecked: boolean | null = null
@@ -99,7 +99,7 @@ export function canUseWebGL(): boolean {
   if (typeof document === 'undefined') return false
   try {
     const canvas = document.createElement('canvas')
-    canvas.width = canvas.height = 256
+    canvas.width = canvas.height = 512
     const gl = canvas.getContext('webgl2', { failIfMajorPerformanceCaveat: true })
     const info = gl?.getExtension('WEBGL_debug_renderer_info')
     const renderer = gl && info ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL)) : ''
