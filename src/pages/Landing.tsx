@@ -141,18 +141,13 @@ export default function Landing() {
 
           <Section id="closing" className="pb-28 pt-12">
             <Rise>
-              <div className="gradient-border rounded-[36px]">
-                <div className="glass-strong relative overflow-hidden rounded-[36px] px-6 py-20 text-center sm:px-14 sm:py-24">
-                  <div aria-hidden className="prism opacity-70" />
-                  <LogoMark size={64} className="relative mx-auto" />
-                  <h2 className="relative mx-auto mt-7 max-w-[760px] text-[clamp(2.3rem,1.4rem+3vw,4rem)] font-semibold leading-[1.04] tracking-[-0.042em] text-ink">
-                    Walk into every drive <Accent>prepared.</Accent>
-                  </h2>
-                  <p className="relative mx-auto mt-5 max-w-[540px] text-[17px] leading-[1.6] text-ink">Tell us your college and how many students you have. You can run one batch free for 30 days first.</p>
-                  <div className="relative mt-9 flex flex-wrap justify-center gap-3">
-                    <button type="button" onClick={() => openContact()} className="lq-btn">Bring it to your college</button>
-                    <Link to="/login" className="lq-btn lq-btn--quiet">Sign in</Link>
-                  </div>
+              <div className="relative overflow-hidden rounded-[36px] px-6 py-20 sm:px-14 sm:py-28">
+                <div aria-hidden className="lq-closing absolute inset-0 rounded-[36px]" />
+                <h2 className="relative max-w-[760px] font-display text-[clamp(2.6rem,1.6rem+4.4vw,5.4rem)] leading-[0.98] tracking-[-0.02em] text-ink">Ready when your season is?</h2>
+                <p className="relative mt-5 max-w-[520px] text-[17px] leading-[1.6] text-ink">Tell us your college and how many students you have. You can run one batch free for 30 days first.</p>
+                <div className="relative mt-8 flex flex-wrap gap-3">
+                  <button type="button" onClick={() => openContact()} className="lq-btn">Bring it to your college</button>
+                  <Link to="/login" className="lq-btn lq-btn--quiet">Sign in</Link>
                 </div>
               </div>
             </Rise>
