@@ -71,6 +71,7 @@ The older jsonb columns on `profiles` (`skills`, `projects`, …) are deprecated
 | `POST /api/resume` | `analyze` a resume's extracted text, or `match` it against a job description |
 | `POST /api/connect` | Sync or disconnect any of the seven evidence platforms, or add an NPTEL or GATE credential |
 | `POST /api/signup` | Student self-registration through an emailed link |
+| `POST /api/contact` | The landing page's Contact us form: validated, rate-limited and stored for platform admins (no sign-in) |
 | `POST /api/admin` | Account creation and invitations for placement cells and platform admins |
 | `POST /api/password` | Replace a temporary password (signed in with it, or from a reset email); only the server can clear the must-change flag |
 | `POST /api/account` | Delete your own account: login, profile, files and roster link (the email must be typed to confirm) |

@@ -34,6 +34,11 @@ export type CompanyBase = {
   careers: string
   process: { stage: string; detail: string; duration: string }[]
   stats: { label: string; value: string }[]
+  /**
+   * Where the details come from. 'typical': hand-entered typical figures (fresher CTC range, a process template for
+   * this kind of company) with no source behind them; shown with that warning. 'drive': a drive the college posted, the real data.
+   */
+  provenance: 'typical' | 'drive'
 }
 
 export type Company = CompanyBase & {
@@ -44,4 +49,6 @@ export type Company = CompanyBase & {
   breakdown: { academic: number; skills: number; experience: number; projects: number }
   criteria: Criterion[]
   gaps: { skill: string; have: number; need: number }[]
+  /** Set when the student was scored on their own track's skills at this company (the track's label, for example "Electric vehicles"). */
+  scoredFor?: string
 }

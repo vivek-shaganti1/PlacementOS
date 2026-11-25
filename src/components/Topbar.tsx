@@ -8,6 +8,11 @@ import { Logo, LogoMark } from './Logo'
 import { IconBell, IconChevronDown, IconMenu, IconSearch } from './Icons'
 import { HOME, useAuth, useProfile } from '../lib/auth'
 import { useApp } from '../lib/store'
+import { NAV } from './Sidebar'
+
+type Hit =
+  | { kind: 'page'; id: string; name: string; group: string; Icon: (p: { className?: string }) => JSX.Element }
+  | { kind: 'company'; id: string; name: string; company: ReturnType<typeof useCompanies>['companies'][number] }
 
 export default function Topbar({ onToggleSidebar, sidebarOpen }: { onToggleSidebar: () => void; sidebarOpen?: boolean }) {
   const [q, setQ] = useState('')
@@ -53,15 +58,20 @@ export default function Topbar({ onToggleSidebar, sidebarOpen }: { onToggleSideb
     return () => document.removeEventListener('mousedown', close)
   }, [])
 
-  const results = q.trim()
-    ? companies.filter((c) => (c.name + ' ' + c.role).toLowerCase().includes(q.trim().toLowerCase())).slice(0, 6)
+  // One search for everything this account can open: its pages first, then (for students) companies.
+  const term = q.trim().toLowerCase()
+  const results: Hit[] = term
+    ? [
+        ...NAV[role].flatMap((g) => g.items.map((it) => ({ kind: 'page' as const, id: it.to, name: it.label, group: g.label, Icon: it.Icon }))).filter((p) => `${p.name} ${p.group}`.toLowerCase().includes(term)).slice(0, 4),
+        ...(isStudent ? companies.filter((c) => (c.name + ' ' + c.role).toLowerCase().includes(term)).slice(0, 6).map((c) => ({ kind: 'company' as const, id: c.id, name: c.name, company: c })) : []),
+      ]
     : []
   const [active, setActive] = useState(0)
   useEffect(() => setActive(0), [q])
-  const pick = (id: string) => {
+  const pick = (hit: Hit) => {
     setQ('')
     search.current?.blur()
-    navigate(`/eligibility?company=${id}`)
+    navigate(hit.kind === 'page' ? hit.id : `/eligibility?company=${hit.id}`)
   }
 
   return (
@@ -75,9 +85,10 @@ export default function Topbar({ onToggleSidebar, sidebarOpen }: { onToggleSideb
         }
       }}
       className="glass relative z-30 mx-2 mt-2 flex h-[58px] shrink-0 items-center gap-2 rounded-[18px] px-2.5 sm:mx-3 sm:mt-3 sm:h-[62px] sm:gap-4 sm:rounded-[20px] sm:px-4">
-      <button onClick={() => navigate(HOME[role])} className="shrink-0 text-left lg:w-[206px]" aria-label="PlacementIQ home">
+      <button onClick={() => navigate(HOME[role])} className="shrink-0 text-left lg:w-[206px]">
         <span className="sm:hidden"><LogoMark size={34} /></span>
         <span className="hidden sm:block"><Logo size={34} /></span>
+        <span className="sr-only">, home</span>
       </button>
 
       <button
@@ -90,8 +101,7 @@ export default function Topbar({ onToggleSidebar, sidebarOpen }: { onToggleSideb
       </button>
 
       <div className="flex-1 md:hidden" />
-      {!isStudent && <div className="hidden flex-1 md:block" />}
-      <div className={`relative mx-auto hidden w-full max-w-[512px] ${isStudent ? 'md:block' : ''}`}>
+      <div className="relative mx-auto hidden w-full max-w-[512px] md:block">
         <IconSearch className="pointer-events-none absolute left-3.5 top-1/2 h-[15px] w-[15px] -translate-y-1/2 text-ink-faint" />
         <input
           ref={search}
@@ -107,11 +117,11 @@ export default function Topbar({ onToggleSidebar, sidebarOpen }: { onToggleSideb
               setActive((i) => (i - 1 + results.length) % results.length)
             } else if (e.key === 'Enter') {
               e.preventDefault()
-              pick(results[Math.min(active, results.length - 1)].id)
+              pick(results[Math.min(active, results.length - 1)])
             }
           }}
-          placeholder="Search companies, roles…"
-          aria-label="Search companies"
+          placeholder={isStudent ? 'Search companies, roles, pages…' : 'Go to a page…'}
+          aria-label={isStudent ? 'Search companies and pages' : 'Search pages'}
           role="combobox"
           aria-expanded={results.length > 0}
           aria-controls="search-results"
@@ -122,7 +132,7 @@ export default function Topbar({ onToggleSidebar, sidebarOpen }: { onToggleSideb
         <kbd className="kbd kbd-light pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 px-1.5">⌘K</kbd>
         {/* Typing drives this list, so it appears and updates instantly: keyboard-initiated UI never animates. */}
         {results.length > 0 && (
-          <div id="search-results" role="listbox" aria-label="Companies" className="glass-strong absolute left-0 right-0 top-[48px] overflow-hidden rounded-[16px] py-1.5">
+          <div id="search-results" role="listbox" aria-label="Search results" className="glass-strong absolute left-0 right-0 top-[48px] overflow-hidden rounded-[16px] py-1.5">
             {results.map((c, i) => (
               <button
                 key={c.id}
@@ -133,13 +143,23 @@ export default function Topbar({ onToggleSidebar, sidebarOpen }: { onToggleSideb
                 // mousedown would blur the input first; prevent that, then act on click (which keyboards fire too).
                 onMouseDown={(e) => e.preventDefault()}
                 onMouseEnter={() => setActive(i)}
-                onClick={() => pick(c.id)}
+                onClick={() => pick(c)}
                 className={`flex w-full items-center gap-3 px-3.5 py-2 text-left ${i === active ? 'bg-brand-tint' : ''}`}
               >
-                <CompanyLogo company={c} size={20} />
-                <span className="text-[13px] font-medium text-ink">{c.name}</span>
-                <span className="text-[12px] text-ink-faint">{c.role}</span>
-                <span className="ml-auto text-[12px] font-semibold text-ink-mute">{c.match}%</span>
+                {c.kind === 'page' ? (
+                  <>
+                    <span className="grid h-5 w-5 place-items-center text-brand-dark"><c.Icon className="h-4 w-4" /></span>
+                    <span className="text-[13px] font-medium text-ink">{c.name}</span>
+                    <span className="ml-auto text-[11.5px] text-ink-faint">Page · {c.group}</span>
+                  </>
+                ) : (
+                  <>
+                    <CompanyLogo company={c.company} size={20} />
+                    <span className="text-[13px] font-medium text-ink">{c.name}</span>
+                    <span className="text-[12px] text-ink-faint">{c.company.role}</span>
+                    <span className="ml-auto text-[12px] font-semibold text-ink-mute">{c.company.match}%</span>
+                  </>
+                )}
               </button>
             ))}
           </div>
@@ -187,7 +207,8 @@ export default function Topbar({ onToggleSidebar, sidebarOpen }: { onToggleSideb
                   onClick={() => {
                     if (!n.read) markRead(n.id)
                     setOpenBell(false)
-                    if (n.link) navigate(n.link)
+                    // Only paths inside the app: never another site, whatever ends up in a notification.
+                    if (n.link && /^\/(?![\\/])/.test(n.link)) navigate(n.link)
                   }}
                   className={`flex w-full items-start gap-2 border-b border-line px-4 py-2.5 text-left text-[12.5px] last:border-0 hover:bg-brand-tint ${n.read ? 'text-ink-faint' : 'text-ink-soft'}`}
                 >
@@ -205,7 +226,6 @@ export default function Topbar({ onToggleSidebar, sidebarOpen }: { onToggleSideb
         <button
           id="menu-btn"
           onClick={() => { setOpenMenu((v) => !v); setOpenBell(false) }}
-          aria-label="Account menu"
           aria-haspopup="true"
           aria-expanded={openMenu}
           className="flex min-w-0 items-center gap-2.5 rounded-[14px] py-1 pl-1 pr-2 transition-colors hover:bg-white/80"
@@ -216,6 +236,7 @@ export default function Topbar({ onToggleSidebar, sidebarOpen }: { onToggleSideb
             <p className="truncate text-[11px] text-ink-faint">{role === 'super' ? 'Platform admin' : role === 'org' ? 'Placement cell' : role === 'recruiter' ? 'Recruiter' : profile.meta}</p>
           </div>
           <IconChevronDown className="hidden h-4 w-4 text-ink-faint sm:block" />
+          <span className="sr-only">, account menu</span>
         </button>
         <AnimatePresence>
         {openMenu && (
@@ -242,7 +263,7 @@ export default function Topbar({ onToggleSidebar, sidebarOpen }: { onToggleSideb
             ))}
             <button
               onClick={() => { setOpenMenu(false); signOut() }}
-              className={`block w-full px-4 ${isStudent ? 'mt-1 border-t border-line' : ''} py-2 text-left text-[13px] text-[#d92d20] hover:bg-[#fef3f2]`}
+              className={`block w-full px-4 ${isStudent ? 'mt-1 border-t border-line' : ''} py-2 text-left text-[13px] text-[#b42318] hover:bg-[#fef3f2]`}
             >
               Sign out
             </button>
