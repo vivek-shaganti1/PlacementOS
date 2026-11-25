@@ -26,7 +26,8 @@ intentional. Priority order: **hierarchy → storytelling → interaction → mo
 - The signed-in app is a working tool: quick, quiet motion (entrances, feedback, transitions). The landing page is where
   cinematic scroll, 3D and cursor effects live.
 - Create an original visual language on the existing system (glass over aurora, violet/sky/mint, Geist + Instrument Serif).
-  Do not copy another site.
+  Do not copy another site. The landing page is the liquid stage (hero and demo), then numbered sections of glass over
+  the aurora: Geist headlines with one Instrument Serif accent. No invented figures; examples say so.
 
 ## Library ownership (one owner per job)
 | Job | Use | Not |
@@ -54,7 +55,9 @@ app has its own token system, components and icon set; adding them would create 
   `CursorFollower`, `SmoothScroll`/`useLenis`.
 - Effects (`src/components/effects`): `Aurora`, `Glow`, `Noise`, `Grid`, `Spotlight`, `Distortion` (lazy WebGL).
 - 3D (`src/components/3d`): `Scene` (the only Canvas wrapper), `GradientSphere`, `ParticleField`, `FloatingObject`,
-  `InteractiveModel`, `HeroScene` and `DistortionImage` (lazy default exports), `shaders/*`.
+  `InteractiveModel`, `HeroScene` and `DistortionImage` (lazy default exports), `shaders/*`. `HeroScene` is the landing's
+  liquid stage: one Canvas draws the flowing surface, the glass behind every `data-lq` element and the metal mark
+  (`data-lq-mark`); `.lq` is the CSS look everywhere the stage does not run. `components/landing/Stage.tsx` decides.
 - APIs: `<Reveal direction="up" delay={0.2} duration={0.8}>`, `<Magnetic strength={0.25}>`, `<Parallax speed={0.4}>`.
 
 ## Rules for every animation

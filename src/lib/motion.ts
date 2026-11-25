@@ -59,6 +59,58 @@ export function useMotionTier(): MotionTier {
 }
 
 /** Per-tier intensity knobs used by the motion, effects and 3D components. */
+/**
+ * Draws a tiny, heavy square a few times and waits for the pixels: about a millisecond on any GPU, tens of milliseconds
+ * when the CPU is doing the drawing. Needed because Safari's engine reports the same renderer name either way.
+ */
+function drawsFast(gl: WebGL2RenderingContext): boolean {
+  const shader = (type: number, source: string) => {
+    const s = gl.createShader(type)!
+    gl.shaderSource(s, source)
+    gl.compileShader(s)
+    return s
+  }
+  const program = gl.createProgram()!
+  gl.attachShader(program, shader(gl.VERTEX_SHADER, '#version 300 es\nvoid main(){vec2 p=vec2((gl_VertexID<<1)&2,gl_VertexID&2);gl_Position=vec4(p*2.-1.,0,1);}'))
+  gl.attachShader(program, shader(gl.FRAGMENT_SHADER, '#version 300 es\nprecision highp float;out vec4 o;void main(){float a=0.;for(int i=0;i<60;i++)a+=sin(gl_FragCoord.x*.01+float(i)+a);o=vec4(a);}'))
+  gl.linkProgram(program)
+  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) return false
+  gl.useProgram(program)
+  const px = new Uint8Array(4)
+  const draw = () => {
+    const t = performance.now()
+    gl.drawArrays(gl.TRIANGLES, 0, 3)
+    gl.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, px)
+    return performance.now() - t
+  }
+  draw() // the first draw includes compiling
+  return Math.min(draw(), draw(), draw()) < 12
+}
+
+let webglChecked: boolean | null = null
+/**
+ * Whether the browser can really create a WebGL 2 context (what three.js needs). The device tier alone cannot tell: a
+ * blocked GPU, an old driver or a locked-down computer says no, and so does a machine that would draw in software (the
+ * browser reports a "major performance caveat", names a software renderer, or is timed and found slow), where a full-screen scene would make the page slow. Asked once, and the
+ * test context is released at once.
+ */
+export function canUseWebGL(): boolean {
+  if (webglChecked !== null) return webglChecked
+  if (typeof document === 'undefined') return false
+  try {
+    const canvas = document.createElement('canvas')
+    canvas.width = canvas.height = 512
+    const gl = canvas.getContext('webgl2', { failIfMajorPerformanceCaveat: true })
+    const info = gl?.getExtension('WEBGL_debug_renderer_info')
+    const renderer = gl && info ? String(gl.getParameter(info.UNMASKED_RENDERER_WEBGL)) : ''
+    webglChecked = !!gl && !/swiftshader|llvmpipe|softpipe|software|basic render/i.test(renderer) && drawsFast(gl)
+    gl?.getExtension('WEBGL_lose_context')?.loseContext()
+  } catch {
+    webglChecked = false
+  }
+  return webglChecked
+}
+
 export const intensity: Record<MotionTier, { distance: number; parallax: number; particles: number; dpr: [number, number]; cursor: boolean; webgl: boolean }> = {
   full: { distance: 1, parallax: 1, particles: 1, dpr: [1, 2], cursor: true, webgl: true },
   'reduced-desktop': { distance: 0.8, parallax: 0.6, particles: 0.4, dpr: [1, 1.25], cursor: true, webgl: true },
