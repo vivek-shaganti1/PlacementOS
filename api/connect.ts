@@ -301,7 +301,8 @@ const PROOF_WHERE: Record<string, string> = {
 
 /** A code tied to this student, platform and handle. Nothing is stored; the same inputs always give the same code. */
 async function proofCode(userId: string, platform: string, handleName: string) {
-  const secret = env('CONNECT_PROOF_SECRET') || env('SUPABASE_SECRET_KEY')
+  // Its own secret: the database key must never double as a signing key, so either can be rotated alone.
+  const secret = env('CONNECT_PROOF_SECRET')
   if (!secret) throw new HttpError(503, 'Connecting accounts is not available right now.')
   const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'])
   const mac = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`${userId}:${platform}:${handleName.toLowerCase()}`))

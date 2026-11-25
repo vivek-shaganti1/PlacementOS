@@ -59,6 +59,24 @@ export function useMotionTier(): MotionTier {
 }
 
 /** Per-tier intensity knobs used by the motion, effects and 3D components. */
+let webglChecked: boolean | null = null
+/**
+ * Whether the browser can really create a WebGL 2 context (what three.js needs). The device tier alone cannot tell: a
+ * blocked GPU, an old driver or a locked-down computer says no. Asked once, and the test context is released at once.
+ */
+export function canUseWebGL(): boolean {
+  if (webglChecked !== null) return webglChecked
+  if (typeof document === 'undefined') return false
+  try {
+    const gl = document.createElement('canvas').getContext('webgl2')
+    webglChecked = !!gl
+    gl?.getExtension('WEBGL_lose_context')?.loseContext()
+  } catch {
+    webglChecked = false
+  }
+  return webglChecked
+}
+
 export const intensity: Record<MotionTier, { distance: number; parallax: number; particles: number; dpr: [number, number]; cursor: boolean; webgl: boolean }> = {
   full: { distance: 1, parallax: 1, particles: 1, dpr: [1, 2], cursor: true, webgl: true },
   'reduced-desktop': { distance: 0.8, parallax: 0.6, particles: 0.4, dpr: [1, 1.25], cursor: true, webgl: true },

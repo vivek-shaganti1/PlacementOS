@@ -2,7 +2,7 @@
 // Visitors are signed out, so the enquiry is stored through public.contact_submit with the server's key; that function
 // rate-limits per email and per network address. Nothing is emailed from here: platform admins read enquiries in the
 // console. `website` is a field people never see; a filled one marks an automated submission.
-import { env, handle, HttpError, json, SUPABASE_URL, timeout } from './_lib'
+import { env, handle, HttpError, json, log, SUPABASE_URL, timeout } from './_lib'
 
 export const config = { runtime: 'edge' }
 
@@ -40,7 +40,7 @@ export default handle(async (req) => {
     body: JSON.stringify({ p_name: name, p_college: college, p_email: email, p_phone: phone, p_topic: topic, p_message: message, client_ip: ip }),
   })
   if (!res.ok) {
-    console.error('contact', res.status)
+    log('error', 'contact', { status: res.status })
     throw new HttpError(503, 'The contact form is not available right now. Please try again later.')
   }
   if ((await res.json()) !== 'ok') throw new HttpError(429, 'We already have a few messages from you. We will reply to those first.')

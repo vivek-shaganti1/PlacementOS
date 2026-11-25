@@ -145,3 +145,9 @@ playwright-report/
 .lighthouseci/
 zap-report/
 tests/e2e/.state/
+
+# Papers and presentations name real students (emails, roll numbers); this repository is public.
+docs/paper/
+docs/presentation/
+docs/iomp/
+private-docs/

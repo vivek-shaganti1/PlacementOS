@@ -13,6 +13,7 @@ concurrency:
 
 permissions:
   contents: read
+  issues: write
 
 jobs:
   backup:
@@ -22,6 +23,8 @@ jobs:
     env:
       SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
       BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+      BACKUP_S3_BUCKET: ${{ vars.BACKUP_S3_BUCKET }}
+      BACKUP_S3_ENDPOINT: ${{ vars.BACKUP_S3_ENDPOINT }}
     steps:
       - name: Secrets are set
         run: |
@@ -43,3 +46,20 @@ jobs:
           path: ${{ runner.temp }}/backup/
           retention-days: 30
           if-no-files-found: error
+      - name: Copy outside GitHub (S3 or R2, when configured)
+        if: ${{ env.BACKUP_S3_BUCKET != '' }}
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.BACKUP_S3_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_S3_SECRET }}
+          AWS_DEFAULT_REGION: auto
+        run: aws s3 cp "$RUNNER_TEMP/backup/" "s3://$BACKUP_S3_BUCKET/database/" --recursive --endpoint-url "$BACKUP_S3_ENDPOINT"
+      - name: Tell someone when a backup fails
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          open=$(gh issue list --repo "$GITHUB_REPOSITORY" --label backup-failed --state open --json number -q '.[0].number')
+          note="The database backup failed: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          gh label create backup-failed --repo "$GITHUB_REPOSITORY" --color B42318 2>/dev/null || true
+          if [ -n "$open" ]; then gh issue comment "$open" --repo "$GITHUB_REPOSITORY" --body "$note"
+          else gh issue create --repo "$GITHUB_REPOSITORY" --label backup-failed --title "Database backup is failing" --body "$note"; fi

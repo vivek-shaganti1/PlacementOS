@@ -1,10 +1,12 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
+import { reportError } from '../lib/monitoring'
 
 /**
  * Catches render errors so a bug in one page or panel shows a recoverable message instead of a blank screen.
- * `resetKey` (for example the route) clears the error when it changes.
+ * `resetKey` (for example the route) clears the error when it changes. `fallback` replaces the message where the content is
+ * decoration (a 3D scene): the page carries on and nothing is said.
  */
-export class ErrorBoundary extends Component<{ children: ReactNode; resetKey?: string; compact?: boolean }, { error: Error | null }> {
+export class ErrorBoundary extends Component<{ children: ReactNode; resetKey?: string; compact?: boolean; fallback?: ReactNode }, { error: Error | null }> {
   state = { error: null as Error | null }
 
   static getDerivedStateFromError(error: Error) {
@@ -13,6 +15,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode; resetKey?: s
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error('PlacementIQ render error', error, info.componentStack)
+    reportError(error, this.props.resetKey ?? (this.props.compact ? 'panel' : 'page'))
   }
 
   componentDidUpdate(prev: { resetKey?: string }) {
@@ -21,6 +24,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode; resetKey?: s
 
   render() {
     if (!this.state.error) return this.props.children
+    if (this.props.fallback !== undefined) return this.props.fallback
     return (
       <div role="alert" className={this.props.compact ? 'p-4' : 'grid min-h-[calc(60vh/var(--z))] flex-1 place-items-center p-6'}>
         <div className="card max-w-[440px] p-6 text-left">

@@ -2,6 +2,8 @@
 # Replays every migration on a throwaway Postgres and runs the access-control suites. Never touches a real project.
 # Local: starts a temporary cluster (needs postgres binaries). CI: set PGHOST/PGPORT/PGUSER and an empty database.
 set -euo pipefail
+# Without a locale, Postgres on macOS refuses to start.
+export LC_ALL="${LC_ALL:-C}"
 root="$(cd "$(dirname "$0")/.." && pwd)"
 db="${TEST_DB:-placementiq_test}"
 if [ -z "${PGHOST:-}" ]; then

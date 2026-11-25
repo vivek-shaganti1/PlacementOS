@@ -63,16 +63,18 @@ export default handle(async (req) => {
   if (!messages.length || messages[messages.length - 1].role !== 'user') throw new HttpError(400, 'No question provided')
 
   const profile = await loadStudent(token)
+  // Built before the action is charged: a profile that cannot be turned into a prompt must not cost the student anything.
+  // Hard ceiling: everything above is already clipped, this keeps one action one small model call whatever the data.
+  const system = systemPrompt(profile).slice(0, 16_000)
   await consumeAi(token, 'chat')
   const content = await groq(
     [
-      // Hard ceiling: everything above is already clipped, this keeps one action one small model call whatever the data.
-      { role: 'system', content: systemPrompt(profile).slice(0, 16_000) },
+      { role: 'system', content: system },
       // Earlier replies come from the browser, so they are passed back as quoted context inside user turns rather than
       // as assistant messages: a client cannot forge what the assistant "already said" to steer it.
       ...messages.map((m) => ({ role: 'user' as const, content: m.role === 'bot' ? `(Your earlier reply, for context:)\n${m.text}` : m.text })),
     ],
-    { maxTokens: 900, temperature: 0.5 },
+    { maxTokens: 900, temperature: 0.5, user: profile.id },
   ).catch(async (e: unknown) => {
     await refundAi(profile.id)
     throw e
