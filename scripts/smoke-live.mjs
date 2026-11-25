@@ -72,6 +72,11 @@ for (const route of ['admin', 'resume', 'account', 'password', 'connect', 'chat'
   })
 }
 
+await check('/api/contact validates before storing', async () => {
+  const r = await get('/api/contact', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' })
+  must(r.status === 422, `status ${r.status}`)
+})
+
 for (const [ok, name, detail] of results) console.log(`${ok ? 'ok  ' : 'FAIL'} ${name}${detail ? ` (${detail})` : ''}`)
 const failed = results.filter(([ok]) => !ok).length
 console.log(`\n${results.length - failed} of ${results.length} checks passed on ${base}`)

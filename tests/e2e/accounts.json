@@ -1,11 +1,21 @@
 {
   "_note": "Synthetic accounts for the throwaway local Supabase in CI and local runs only (scripts/e2e-seed.mjs). Never valid anywhere else.",
   "password": "Local-e2e-only-2026!",
-  "college": { "name": "Test Engineering College", "short_name": "TEC", "domain": "tec.test" },
+  "college": {
+    "name": "Test Engineering College",
+    "short_name": "TEC",
+    "domain": "tec.test"
+  },
   "super": "platform.admin@piq.test",
   "admin": "placement.cell@tec.test",
   "recruiter": "hiring@acme.test",
   "student": "asha.rao@tec.test",
   "newStudent": "ravi.kumar@tec.test",
-  "otherCollege": { "name": "Other Institute of Technology", "domain": "oit.test", "admin": "cell@oit.test", "student": "meera.iyer@oit.test" }
+  "otherCollege": {
+    "name": "Other Institute of Technology",
+    "domain": "oit.test",
+    "admin": "cell@oit.test",
+    "student": "meera.iyer@oit.test"
+  },
+  "coreStudent": "kiran.reddy@tec.test"
 }

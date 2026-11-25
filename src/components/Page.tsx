@@ -3,6 +3,7 @@ import { useEffect, useRef, type PointerEvent, type ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
 import { useAuth } from '../lib/auth'
 import { navMeta } from './Sidebar'
+import { LiveBadge } from './LiveBadge'
 
 export { Aurora } from './effects/Aurora'
 
@@ -50,6 +51,7 @@ export function Page({ title, accent, subtitle, children, wide, actions }: { tit
             </h1>
             {subtitle && <p className="mt-1 max-w-[680px] text-[13px] text-ink-mute">{subtitle}</p>}
           </div>
+          <LiveBadge />
           {actions}
         </div>
         <div className="mt-6 space-y-4">{children}</div>
@@ -138,7 +140,8 @@ export function Stat({
   label, value, sub, tone, icon, trend, delta, trendColor, onOpen, openLabel,
 }: {
   label: string
-  value: string
+  /** A string, or a node such as <TweenNumber> on pages where the user changes the number themselves. */
+  value: ReactNode
   sub?: string
   tone?: string
   icon?: ReactNode
@@ -173,7 +176,7 @@ export function Stat({
         {/* App numbers render final immediately: counting up from 0 on load briefly shows wrong values. */}
         <p className={`text-[26px] font-semibold leading-none tracking-[-0.035em] tabular-nums ${tone ?? 'text-ink'}`}>{value}</p>
         {delta !== undefined && delta !== null && delta !== 0 && (
-          <span className={`rounded-full px-1.5 py-0.5 font-mono text-[10.5px] font-medium ${delta > 0 ? 'bg-[#ecfdf3] text-[#067647]' : 'bg-[#fef3f2] text-[#d92d20]'}`}>
+          <span className={`rounded-full px-1.5 py-0.5 font-mono text-[10.5px] font-medium ${delta > 0 ? 'bg-[#ecfdf3] text-[#067647]' : 'bg-[#fef3f2] text-[#b42318]'}`}>
             {delta > 0 ? '+' : ''}
             {delta}
           </span>

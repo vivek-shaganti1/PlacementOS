@@ -102,7 +102,7 @@ export default function SkillGap() {
             <div key={g.skill} className="flex items-center gap-3 py-2.5">
               <span className="flex-1 text-[12.5px] font-medium text-ink">{g.skill}</span>
               <span className="text-[11.5px] text-ink-mute">{g.have}% → {g.need}%</span>
-              <span className="w-[64px] rounded-md border border-[#fbe3bd] bg-[#fff8ec] py-[3px] text-center text-[11px] font-semibold text-[#d97706]">
+              <span className="w-[64px] rounded-md border border-[#fbe3bd] bg-[#fff8ec] py-[3px] text-center text-[11px] font-semibold text-[#b54708]">
                 +{g.need - g.have}
               </span>
             </div>
