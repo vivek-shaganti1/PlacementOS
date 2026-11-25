@@ -69,6 +69,7 @@ uniform vec2 uResolution;          // CSS pixels
 uniform float uTime;
 uniform float uScroll;             // 0 in the hero, 1 in the demo
 uniform vec3 uPaper;
+uniform float uFade;               // bottom of the stage (CSS pixels, y up)
 uniform float uText;               // bottom of the hero text (CSS pixels, y up)
 uniform int uCount;
 uniform vec4 uRect[${MAX_PANES}];  // centre xy, half size xy (CSS pixels, y up)
@@ -209,5 +210,6 @@ void main(){
 
   // Grain hides banding on wide smooth gradients.
   float grain = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453) - 0.5;
-  gl_FragColor = vec4(col + grain * 0.018, 1.0);
+  float alpha = smoothstep(0.0, 260.0, px.y - uFade);
+  gl_FragColor = vec4((col + grain * 0.018) * alpha, alpha);
 }`
