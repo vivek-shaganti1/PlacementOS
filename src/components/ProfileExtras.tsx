@@ -186,7 +186,7 @@ export function ConnectedAccounts({ p }: { p: Profile }) {
                       )}
                     </div>
                     <button onClick={() => sync(key, username)} disabled={!!busy} className={btnGhost}>{busy === key ? 'Checking…' : proven ? 'Sync' : 'Prove it'}</button>
-                    <button onClick={() => sync(key, null)} disabled={!!busy} className="text-[11px] text-ink-faint hover:text-[#d92d20]">Disconnect</button>
+                    <button onClick={() => sync(key, null)} disabled={!!busy} className="text-[11px] text-ink-faint hover:text-[#b42318]">Disconnect</button>
                   </>
                 ) : (
                   <form
@@ -257,7 +257,7 @@ export function VerifiedSkills({ p }: { p: Profile }) {
             <div key={n} className="grid grid-cols-[1.4fr_60px_60px] items-center gap-2 py-2 text-[12px] sm:grid-cols-[1.4fr_70px_70px_2fr]">
               <span className="font-medium text-ink">{n}</span>
               <span className="text-ink-mute">{cur}%</span>
-              <span className={`font-semibold ${v.level >= cur ? 'text-[#067647]' : 'text-[#d97706]'}`}>{v.level}%</span>
+              <span className={`font-semibold ${v.level >= cur ? 'text-[#067647]' : 'text-[#b54708]'}`}>{v.level}%</span>
               <span className="col-span-3 truncate text-[11px] text-ink-faint sm:col-span-1" title={v.sources.join(' · ')}>{v.sources.join(' · ')}</span>
             </div>
           )
@@ -328,7 +328,7 @@ export function Achievements({ p }: { p: Profile }) {
               <p className="text-[12.5px] font-semibold text-ink">{a.title} {a.date && <span className="font-normal text-ink-faint">· {a.date}</span>}</p>
               {a.detail && <p className="text-[11.5px] text-ink-mute">{a.detail}</p>}
             </div>
-            <button onClick={() => save(p.achievements.filter((_, j) => j !== i), 'Removed.')} className="text-[11px] text-ink-faint opacity-0 focus-visible:opacity-100 [@media(hover:none)]:opacity-100 hover:text-[#d92d20] group-hover:opacity-100">Remove</button>
+            <button onClick={() => save(p.achievements.filter((_, j) => j !== i), 'Removed.')} className="text-[11px] text-ink-faint opacity-0 focus-visible:opacity-100 [@media(hover:none)]:opacity-100 hover:text-[#b42318] group-hover:opacity-100">Remove</button>
           </div>
         ))}
         {p.achievements.length === 0 && <p className="py-2 text-[12px] text-ink-faint">Add hackathon wins, contest ranks, club roles, publications…</p>}
@@ -464,7 +464,7 @@ export function Credentials({ p }: { p: Profile }) {
               <span className={`rounded-full border px-2 py-0.5 text-[10.5px] font-medium ${statusChip[c.status]}`}>
                 {c.status === 'verified' ? 'Confirmed by placement cell' : c.status === 'pending' ? 'Awaiting placement cell' : 'Rejected'}
               </span>
-              <button onClick={() => remove(c.id)} className="ml-auto text-[11px] text-ink-faint hover:text-[#d92d20]">Remove</button>
+              <button onClick={() => remove(c.id)} className="ml-auto text-[11px] text-ink-faint hover:text-[#b42318]">Remove</button>
             </div>
           ))}
         </div>

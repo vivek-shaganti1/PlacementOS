@@ -13,7 +13,8 @@
     "test:pgtap": "supabase test db supabase/tests/pgtap",
     "test:e2e": "playwright test",
     "stack:seed": "node scripts/e2e-seed.mjs",
-    "stack:serve": "node scripts/serve-prod.mjs"
+    "stack:serve": "node scripts/serve-prod.mjs",
+    "check:shared": "node scripts/check-shared.mjs"
   },
   "dependencies": {
     "@fontsource-variable/geist": "5.3.0",
@@ -33,11 +34,12 @@
     "postprocessing": "6.36.4",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-router-dom": "^6.26.2",
+    "react-router-dom": "7.18.5",
     "recharts": "3.10.1",
     "three": "0.170.0"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
     "@playwright/test": "1.64.1",
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.1",

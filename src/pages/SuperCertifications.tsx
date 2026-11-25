@@ -121,7 +121,7 @@ export default function SuperCertifications() {
                   <td className="px-2 py-2.5"><Switch on={p.partnered} label={`${p.name} is a partner`} disabled={!live || busy} onChange={() => run(() => supabase.from('cert_providers').update({ partnered: !p.partnered }).eq('id', p.id), p.partnered ? `${p.name} is no longer marked as a partner.` : `${p.name} marked as a partner.`)} /></td>
                   <td className="px-2 py-2.5 text-right">
                     {live && (
-                      <HoldButton onConfirm={() => run(() => supabase.from('cert_providers').delete().eq('id', p.id), `${p.name} removed.`)} warning={`Removes ${p.name} and its ${plural(countFor(p.id), 'course')}.`} className="rounded px-1 text-[12px] text-[#d92d20] underline">
+                      <HoldButton onConfirm={() => run(() => supabase.from('cert_providers').delete().eq('id', p.id), `${p.name} removed.`)} warning={`Removes ${p.name} and its ${plural(countFor(p.id), 'course')}.`} className="rounded px-1 text-[12px] text-[#b42318] underline">
                         Remove
                       </HoldButton>
                     )}
@@ -181,7 +181,7 @@ export default function SuperCertifications() {
                   <td className="px-2 py-2.5"><Switch on={c.enabled} label={`${c.title} enabled`} disabled={!live || busy} onChange={() => run(() => supabase.from('cert_courses').update({ enabled: !c.enabled }).eq('id', c.id), c.enabled ? 'Course hidden from students.' : 'Course shown to students.')} /></td>
                   <td className="px-2 py-2.5 text-right">
                     {live && (
-                      <HoldButton onConfirm={() => run(() => supabase.from('cert_courses').delete().eq('id', c.id), 'Course removed.')} warning={`Removes ${c.title} from recommendations.`} className="rounded px-1 text-[12px] text-[#d92d20] underline">
+                      <HoldButton onConfirm={() => run(() => supabase.from('cert_courses').delete().eq('id', c.id), 'Course removed.')} warning={`Removes ${c.title} from recommendations.`} className="rounded px-1 text-[12px] text-[#b42318] underline">
                         Remove
                       </HoldButton>
                     )}

@@ -6,6 +6,7 @@ import { coreSkills, trackReadiness } from './predict'
 import { assembleProfile, RELATED, type RelatedRows } from './profileShape'
 import { allRows, supabase, type Credential, type Organization, type Profile, errMsg } from './supabase'
 import { trustedProfile } from './trust'
+import { useLive } from './live'
 
 export type StudentRow = {
   profile: Profile
@@ -98,6 +99,9 @@ export function useStudents() {
   useEffect(() => {
     reload()
   }, [reload])
+  // A student joining (their roster row links) or a certificate being confirmed changes the ranking. This reload reads
+  // every student, so bursts are batched.
+  useLive(['org_students', 'credentials'], reload, { debounceMs: 2500 })
 
   return { rows, loading, error, reload }
 }
