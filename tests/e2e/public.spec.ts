@@ -128,5 +128,5 @@ test('the landing page stands still for visitors who ask for less motion', async
   await page.waitForTimeout(3_500)
   await expect(page.locator('canvas')).toHaveCount(0)
   await expect(page.locator('[data-stage]')).toHaveAttribute('data-stage', 'still')
-  await expect(page.locator('#season h3').last()).toBeAttached()
+  await expect(page.locator('#how h3').last()).toBeAttached()
 })

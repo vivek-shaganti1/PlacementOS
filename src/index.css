@@ -317,13 +317,21 @@ button, [role='button'], [role='tab'] { -webkit-user-select: none; user-select: 
   }
 }
 
-/* The stage's silk, still: its colours and its pleats (wide arcs), for panels further down the page. */
-.lq-silk { position: relative; isolation: isolate; }
-.lq-silk::before { content: ''; position: absolute; inset: 0; z-index: -1; opacity: .5; background: repeating-radial-gradient(130% 190% at -10% 130%, oklch(1 0 0 / .5) 0 1.5px, transparent 4px 15px); -webkit-mask-image: linear-gradient(200deg, #000, transparent 75%); mask-image: linear-gradient(200deg, #000, transparent 75%); }
-.lq-silk--1 { background: radial-gradient(90% 120% at 100% 0%, #8f76ff, transparent 70%), radial-gradient(70% 90% at 0% 100%, #f7f8fd, transparent 75%), linear-gradient(160deg, #cdbfff, #bfe4ff); }
-.lq-silk--2 { background: radial-gradient(90% 120% at 100% 0%, #45b8f7, transparent 70%), radial-gradient(70% 90% at 0% 100%, #f7f8fd, transparent 75%), linear-gradient(160deg, #cfe9ff, #bff5e6); }
-.lq-silk--3 { background: radial-gradient(90% 120% at 100% 0%, #6fe3c6, transparent 70%), radial-gradient(70% 90% at 0% 100%, #f7f8fd, transparent 75%), linear-gradient(160deg, #d6f7ec, #ffdcc7); }
-.lq-silk--4 { background: linear-gradient(90deg, #f7f8fd 4%, oklch(0.98 0.008 285 / .7) 34%, transparent 66%), radial-gradient(40% 70% at 96% 0%, #ffc2a1, transparent 70%), radial-gradient(44% 70% at 66% 108%, #8ef5d9, transparent 72%), radial-gradient(50% 90% at 100% 70%, #4cc3f8, transparent 74%), linear-gradient(120deg, #e9e4ff, #8d72ff); }
+/* The liquid stage melts into the aurora below it instead of ending on a line. */
+.lq-fade { -webkit-mask-image: linear-gradient(#000 calc(100% - 260px), transparent); mask-image: linear-gradient(#000 calc(100% - 260px), transparent); }
+.hairline-grid {
+  background-image: linear-gradient(oklch(0.6 0.05 285 / .08) 1px, transparent 1px), linear-gradient(90deg, oklch(0.6 0.05 285 / .08) 1px, transparent 1px);
+  background-size: 56px 56px;
+}
+/* Small labels sit straight on the aurora here, so they are a step darker and larger than in the app. */
+.landing .label-mono { color: #45405e; font-size: 12px; }
+.landing .label-mono > b { color: #4527c9; font-weight: 600; }
+/* The brand gradient, dark enough to pass 3:1 as display text over the aurora and the prism. */
+.lq-accent { background: linear-gradient(100deg, oklch(0.46 0.25 285), oklch(0.52 0.2 260) 55%, oklch(0.53 0.11 215)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.plan-tint { background: radial-gradient(90% 60% at 0% 20%, oklch(0.96 0.05 75 / .8), transparent 70%), radial-gradient(90% 60% at 60% 100%, oklch(0.94 0.07 195 / .9), transparent 72%), radial-gradient(80% 60% at 100% 40%, oklch(0.94 0.05 290 / .9), transparent 70%), oklch(1 0 0 / .86); }
+.role-progress { width: 100%; transform: scaleX(0); transform-origin: left; animation-name: role-fill; animation-timing-function: linear; animation-fill-mode: forwards; }
+@keyframes role-fill { to { transform: scaleX(1); } }
+[data-motion='paused'] :is(.aurora__blob, .prism, .role-progress, .wordmark__fill), [data-motion='paused'] .gradient-border::before { animation-play-state: paused !important; }
 
 .lq-nav { position: relative; background: oklch(1 0 0 / .64); -webkit-backdrop-filter: blur(16px) saturate(160%); backdrop-filter: blur(16px) saturate(160%); box-shadow: inset 0 0 0 1px oklch(1 0 0 / .55), inset 0 1.5px 0 oklch(1 0 0 / .95), inset 0 -1px 0 oklch(0.4 0.1 285 / .08), var(--shadow-2); }
 

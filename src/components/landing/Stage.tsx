@@ -53,6 +53,11 @@ export function Stage({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!can) setLive(false)
   }, [can])
+  // Everything else that loops (the aurora, the prism, the roles tabs) follows the same switch.
+  useEffect(() => {
+    document.documentElement.dataset.motion = paused ? 'paused' : 'on'
+    return () => void delete document.documentElement.dataset.motion
+  }, [paused])
   const toggle = () =>
     setPaused((p) => {
       try {
@@ -66,7 +71,7 @@ export function Stage({ children }: { children: ReactNode }) {
   return (
     <div data-stage-root data-stage={live ? 'live' : 'still'} className="relative">
       {/* The outer box ends with the stage, so the sticky backdrop leaves with it instead of spilling into the next section. */}
-      <div aria-hidden className="pointer-events-none absolute inset-0 z-0">
+      <div aria-hidden className="lq-fade pointer-events-none absolute inset-0 z-0">
         <div className="sticky top-0 h-[calc(100svh/var(--z))] w-full overflow-hidden">
           <div className="lq-still absolute inset-0" />
           {can && (
@@ -79,9 +84,7 @@ export function Stage({ children }: { children: ReactNode }) {
         </div>
       </div>
       <div className="relative z-10">{children}</div>
-      {/* The colour settles into the plain reading page below. */}
-      <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-40 bg-gradient-to-b from-transparent to-[var(--paper)]" />
-      {live && (
+      {tier !== 'none' && (
         <div className="absolute inset-x-0 top-[80px] z-20 mx-auto flex max-w-[1240px] justify-end px-5 sm:px-6">
           <button type="button" onClick={toggle} aria-pressed={paused} className="rounded-full bg-white/55 px-3 py-1.5 text-[12.5px] font-medium text-ink hover:bg-white">
             {paused ? 'Play background' : 'Pause background'}

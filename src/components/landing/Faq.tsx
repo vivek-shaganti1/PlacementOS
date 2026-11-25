@@ -9,10 +9,10 @@ const faqs: [string, string][] = [
 
 export function Faq() {
   return (
-    <div className="mt-10 border-t border-line">
+    <div className="glass mt-10 rounded-[28px] px-6 sm:px-8">
       {faqs.map(([q, a]) => (
-        <details key={q} className="group border-b border-line">
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-6 py-5 font-display text-[clamp(1.35rem,1.15rem+0.7vw,1.7rem)] leading-[1.2] text-ink [&::-webkit-details-marker]:hidden">
+        <details key={q} className="group border-b border-line last:border-0">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-6 py-5 text-[17px] font-semibold leading-[1.3] tracking-[-0.02em] text-ink [&::-webkit-details-marker]:hidden">
             {q}
             <span aria-hidden className="text-[24px] font-sans font-light text-ink-mute transition-transform duration-200 group-open:rotate-45">+</span>
           </summary>

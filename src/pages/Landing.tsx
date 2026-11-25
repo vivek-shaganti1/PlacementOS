@@ -1,25 +1,27 @@
-import { motion, useReducedMotion } from 'motion/react'
-import { useRef, type ReactNode } from 'react'
+import { useRef } from 'react'
 import { Link } from 'react-router-dom'
 import { Logo, LogoMark } from '../components/Logo'
 import { SkipLink } from '../components/SkipLink'
 import { ContactDialog, openContact } from '../components/landing/ContactDialog'
-import { Desks } from '../components/landing/Desks'
 import { Faq } from '../components/landing/Faq'
+import { HowItWorks } from '../components/landing/HowItWorks'
 import { LiquidGlass } from '../components/landing/LiquidGlass'
+import { Manifesto } from '../components/landing/Manifesto'
 import { MegaFooter } from '../components/landing/MegaFooter'
 import { Plans } from '../components/landing/Plans'
-import { Season } from '../components/landing/Season'
+import { Roles, WhoSees } from '../components/landing/Roles'
+import { Accent, Heading, Rise, Section } from '../components/landing/Section'
 import { Stage } from '../components/landing/Stage'
 import { TryIt } from '../components/landing/TryIt'
+import { Aurora } from '../components/effects/Aurora'
 import { SmoothScroll } from '../components/motion/SmoothScroll'
-import { motionConfig } from '../lib/motion'
+import { TextReveal } from '../components/motion/TextReveal'
 import { usePauseOffscreen } from '../lib/pauseOffscreen'
 
 /**
  * The landing page explains PlacementIQ to people who have never heard of it: the question a student asks, the real
- * engine answering it, how a season runs, who sees what, and what it costs. Type carries the meaning: questions people
- * ask are in Instrument Serif, the answers in Geist.
+ * engine answering it, why it exists, what each person sees, how it works and what it costs. The hero and demo stand on the
+ * liquid stage; everything below is glass over the aurora.
  */
 
 function Nav() {
@@ -32,7 +34,7 @@ function Nav() {
             <span className="hidden min-[420px]:block"><Logo size={30} tagline={false} /></span>
           </Link>
           <nav aria-label="Main" className="flex items-center gap-0.5">
-            {[['#try', 'Try it'], ['#season', 'How it works'], ['#people', 'Who it’s for'], ['#pricing', 'Pricing']].map(([h, l]) => (
+            {[['#try', 'Try it'], ['#roles', 'For colleges'], ['#how', 'How it works'], ['#pricing', 'Pricing']].map(([h, l]) => (
               <a key={h} href={h} className="hidden rounded-full px-3.5 py-2 text-[14px] font-medium text-ink hover:bg-white/60 lg:block">{l}</a>
             ))}
             <Link to="/login" className="whitespace-nowrap rounded-full px-3 py-2 text-[14px] font-medium text-ink hover:bg-white/60 sm:px-3.5">Sign in</Link>
@@ -44,24 +46,6 @@ function Nav() {
   )
 }
 
-function Section({ id, ask, answer, children, className }: { id: string; ask: string; answer: string; children: ReactNode; className?: string }) {
-  const reduce = useReducedMotion()
-  return (
-    <section id={id} className={`relative mx-auto max-w-[1240px] px-5 sm:px-6 ${className ?? ''}`}>
-      <motion.div
-        initial={reduce ? false : { opacity: 0, y: motionConfig.distance.md }}
-        whileInView={{ opacity: 1, y: 0 }}
-        viewport={{ once: true, margin: '-60px' }}
-        transition={{ duration: motionConfig.duration.normal, ease: motionConfig.easing.dramatic }}
-      >
-        <h2 className="max-w-[900px] font-display text-[clamp(2.4rem,1.6rem+3.2vw,4.6rem)] leading-[1.02] tracking-[-0.015em] text-ink">{ask}</h2>
-        <p className="mt-4 max-w-[620px] text-[17px] leading-[1.6] text-ink-soft">{answer}</p>
-      </motion.div>
-      {children}
-    </section>
-  )
-}
-
 const people = [
   ['Students', 'see which companies they can apply to, and what to fix for the rest.'],
   ['Placement cells', 'see who qualifies for every drive, by branch and section.'],
@@ -70,11 +54,13 @@ const people = [
 
 export default function Landing() {
   const page = useRef<HTMLDivElement>(null)
-  usePauseOffscreen(page, '.wordmark__fill')
+  // Decorative loops only run while they are on screen.
+  usePauseOffscreen(page, '.wordmark__fill, .prism, .gradient-border')
   return (
     <SmoothScroll>
       <div ref={page} className="landing relative min-h-[calc(100svh/var(--z))] overflow-x-clip">
         <SkipLink />
+        <Aurora />
         <Nav />
         {!import.meta.env.SSR && <ContactDialog />}
 
@@ -108,38 +94,57 @@ export default function Landing() {
             </section>
 
             <div data-lq-demo>
-              <Section id="try" ask="Try it. Move anything." answer="Change the marks and skills of a sample student. Every company is checked again, as you move." className="pb-28 pt-20">
+              <Section id="try" className="pb-60 pt-20">
+                <Heading n="01" label="Try it" body="Change the marks and skills of a sample student. Every company is checked again as you move.">
+                  Try it. <Accent>Move anything.</Accent>
+                </Heading>
                 <TryIt />
               </Section>
             </div>
           </Stage>
 
-          <Section id="season" ask="How does a season run?" answer="Three kinds of people, one shared picture. Nobody keeps their own spreadsheet." className="py-24">
-            <Season />
+          <Section id="why" className="pb-16">
+            <Manifesto />
           </Section>
 
-          <Section id="people" ask="Who is it for, and who sees what?" answer="Everyone gets their own view. Where it stops matters as much as what it shows." className="py-24">
-            <Desks />
+          <Section id="roles" className="py-20">
+            <Roles />
+            <WhoSees />
           </Section>
 
-          <Section id="pricing" ask="What would it cost us?" answer="The college subscribes; students never pay. Set your size and the yearly price is worked out below." className="py-24">
+          <Section id="how" className="py-20">
+            <Rise><p className="label-mono"><b>04</b> How it works</p></Rise>
+            <TextReveal className="mt-3 max-w-[960px] text-[clamp(2.1rem,1.4rem+2.4vw,3.6rem)] font-semibold leading-[1.06] tracking-[-0.04em] text-ink">From sign-up to offer, in four moves.</TextReveal>
+            <HowItWorks />
+          </Section>
+
+          <Section id="pricing" className="py-20">
             <Plans />
           </Section>
 
-          <Section id="questions" ask="What else do colleges ask?" answer="Straight answers, including the ones that are not a yes." className="py-24">
+          <Section id="questions" className="py-20">
+            <Heading n="06" label="Questions">What else do colleges <Accent>ask?</Accent></Heading>
             <Faq />
           </Section>
 
-          <section id="closing" className="relative mx-auto max-w-[1240px] px-5 pb-24 sm:px-6">
-            <div className="lq-silk lq-silk--4 overflow-hidden rounded-[36px] px-6 py-20 sm:px-14 sm:py-28">
-              <h2 className="max-w-[760px] font-display text-[clamp(2.6rem,1.6rem+4.4vw,5.4rem)] leading-[0.98] tracking-[-0.02em] text-ink">Ready when your season is?</h2>
-              <p className="mt-5 max-w-[520px] text-[17px] leading-[1.6] text-ink">Tell us your college and how many students you have. You can run one batch free for 30 days first.</p>
-              <div className="mt-8 flex flex-wrap gap-3">
-                <button type="button" onClick={() => openContact()} className="lq-btn">Bring it to your college</button>
-                <Link to="/login" className="lq-btn lq-btn--quiet">Sign in</Link>
+          <Section id="closing" className="pb-28 pt-12">
+            <Rise>
+              <div className="gradient-border rounded-[36px]">
+                <div className="glass-strong relative overflow-hidden rounded-[36px] px-6 py-20 text-center sm:px-14 sm:py-24">
+                  <div aria-hidden className="prism opacity-70" />
+                  <LogoMark size={64} className="relative mx-auto" />
+                  <h2 className="relative mx-auto mt-7 max-w-[760px] text-[clamp(2.3rem,1.4rem+3vw,4rem)] font-semibold leading-[1.04] tracking-[-0.042em] text-ink">
+                    Walk into every drive <Accent>prepared.</Accent>
+                  </h2>
+                  <p className="relative mx-auto mt-5 max-w-[540px] text-[17px] leading-[1.6] text-ink">Tell us your college and how many students you have. You can run one batch free for 30 days first.</p>
+                  <div className="relative mt-9 flex flex-wrap justify-center gap-3">
+                    <button type="button" onClick={() => openContact()} className="lq-btn">Bring it to your college</button>
+                    <Link to="/login" className="lq-btn lq-btn--quiet">Sign in</Link>
+                  </div>
+                </div>
               </div>
-            </div>
-          </section>
+            </Rise>
+          </Section>
         </main>
         <MegaFooter />
       </div>

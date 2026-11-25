@@ -26,8 +26,8 @@ intentional. Priority order: **hierarchy → storytelling → interaction → mo
 - The signed-in app is a working tool: quick, quiet motion (entrances, feedback, transitions). The landing page is where
   cinematic scroll, 3D and cursor effects live.
 - Create an original visual language on the existing system (glass over aurora, violet/sky/mint, Geist + Instrument Serif).
-  Do not copy another site. On the landing page type carries meaning: questions people ask are in Instrument Serif, answers
-  in Geist. No eyebrow labels, section numbers, fake browser chrome or invented figures.
+  Do not copy another site. The landing page is the liquid stage (hero and demo), then numbered sections of glass over
+  the aurora: Geist headlines with one Instrument Serif accent. No invented figures; examples say so.
 
 ## Library ownership (one owner per job)
 | Job | Use | Not |
