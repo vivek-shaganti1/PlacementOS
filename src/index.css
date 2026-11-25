@@ -219,16 +219,6 @@ button, [role='button'], [role='tab'] { -webkit-user-select: none; user-select: 
   to { transform: translate3d(6%, -42%, 0) rotate(-3deg); }
 }
 
-/* Slow vertical float for the decorative chips around the hero. */
-@keyframes float-y { from { transform: translateY(-6px); } to { transform: translateY(6px); } }
-.float-y { animation: float-y 5s var(--ease-inout) infinite alternate; }
-
-/* Thin grid of hairlines behind technical sections. */
-.hairline-grid {
-  background-image: linear-gradient(oklch(0.6 0.05 285 / .08) 1px, transparent 1px), linear-gradient(90deg, oklch(0.6 0.05 285 / .08) 1px, transparent 1px);
-  background-size: 56px 56px;
-}
-
 /* animated conic border for hero highlights */
 @property --angle { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
 .gradient-border { position: relative; isolation: isolate; }
@@ -251,15 +241,12 @@ button, [role='button'], [role='tab'] { -webkit-user-select: none; user-select: 
 }
 @keyframes shimmer { to { transform: translateX(100%); } }
 
-@keyframes marquee { to { transform: translateX(-50%); } }
-.marquee__track { animation: marquee 40s linear infinite; }
-
 .scroll-thin::-webkit-scrollbar { width: 8px; height: 8px; }
 .scroll-thin::-webkit-scrollbar-thumb { background: oklch(0.8 0.03 285 / .6); border-radius: 999px; }
 .scroll-thin::-webkit-scrollbar-track { background: transparent; }
 
 @media (prefers-reduced-motion: reduce) {
-  .aurora__blob, .marquee__track, .gradient-border::before, .shimmer::after, .prism, .float-y { animation: none !important; }
+  .aurora__blob, .gradient-border::before, .shimmer::after, .prism { animation: none !important; }
   .btn-ink::after, .btn-primary::after { display: none; }
   .card-hover:hover { transform: none; }
   html { scroll-behavior: auto; }
@@ -269,40 +256,6 @@ button, [role='button'], [role='tab'] { -webkit-user-select: none; user-select: 
   .glass-strong { background: #fff; }
 }
 
-/* ---------- landing: bento edges, scan line, typing, pulse ---------- */
-.bento::before {
-  content: ''; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none;
-  background: linear-gradient(140deg, oklch(0.65 0.22 285 / .55), oklch(0.8 0.12 200 / .35) 45%, transparent 70%);
-  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
-  opacity: 0; transition: opacity var(--dur-base) var(--ease-out);
-}
-@media (hover: hover) and (pointer: fine) {
-  .bento:hover::before { opacity: 1; }
-  .bento:hover { transform: translateY(-3px); box-shadow: var(--shadow-2), inset 0 1px 0 oklch(1 0 0 / .9); }
-}
-
-
-.typing-dot { animation: typing 0.9s var(--ease-inout) infinite; }
-@keyframes typing { 0%, 100% { transform: translateY(0); opacity: .4; } 50% { transform: translateY(-4px); opacity: 1; } }
-
-.pulse-dot { animation: pulse-ring 2.2s var(--ease-out) infinite; }
-@keyframes pulse-ring { 0% { box-shadow: 0 0 0 0 rgba(18,183,106,.45); } 70%, 100% { box-shadow: 0 0 0 10px rgba(18,183,106,0); } }
-
-/* ---------- landing: trust panel ---------- */
-/* The grid is drawn once on a layer one cell larger than the panel and slid by a transform (compositor only);
-   animating background-position instead repainted the whole panel every frame. */
-.trust-grid { overflow: hidden; mask-image: radial-gradient(ellipse at 30% 20%, #000 15%, transparent 70%); }
-.trust-grid::before {
-  content: ''; position: absolute; inset: -48px 0 0 -48px;
-  background-image: linear-gradient(oklch(1 0 0 / .05) 1px, transparent 1px), linear-gradient(90deg, oklch(1 0 0 / .05) 1px, transparent 1px);
-  background-size: 48px 48px;
-  animation: grid-pan 30s linear infinite;
-}
-@keyframes grid-pan { to { transform: translate(48px, 48px); } }
-.trust-card.spotlight::after { background: radial-gradient(260px circle at var(--mx, 50%) var(--my, 50%), oklch(0.85 0.12 175 / .12), transparent 60%); }
-.caret { display: inline-block; width: 7px; height: 14px; margin-left: 2px; vertical-align: -2px; background: #8ef5d9; animation: blink 1.1s steps(1) infinite; }
-@keyframes blink { 50% { opacity: 0; } }
-
 /* ---------- landing: mega footer wordmark ---------- */
 .mega-footer__grain {
   opacity: .08;
@@ -310,13 +263,13 @@ button, [role='button'], [role='tab'] { -webkit-user-select: none; user-select: 
 }
 .wordmark__text { display: grid; font-size: clamp(3.5rem, 16.4vw, 17rem); }
 .wordmark__text > span { grid-area: 1 / 1; }
-.wordmark__outline { color: transparent; -webkit-text-stroke: 1px oklch(1 0 0 / .14); transform: translate(.025em, -.04em); }
 .wordmark__fill, .wordmark__light {
   color: transparent; -webkit-background-clip: text; background-clip: text;
   -webkit-mask-image: linear-gradient(180deg, #000 45%, transparent 98%); mask-image: linear-gradient(180deg, #000 45%, transparent 98%);
 }
 .wordmark__fill {
-  background-image: linear-gradient(100deg, #6d4aff, #38bdf8 25%, #8ef5d9 45%, #f9a8d4 65%, #a78bfa 82%, #6d4aff);
+  /* Liquid metal: hard bands of light and ink with the brand colours in the falls. */
+  background-image: linear-gradient(100deg, #f6f4ff, #7a6cc4 7%, #2c2463 13%, #efeaff 19%, #8fd8ff 27%, #3b3180 36%, #fff 43%, #a9f5e2 49%, #4a3f96 58%, #f6f4ff 66%, #8a78ff 76%, #262058 85%, #f6f4ff);
   background-size: 300% 100%; animation: wordmark-flow 14s linear infinite;
 }
 @keyframes wordmark-flow { to { background-position: 300% 0; } }
@@ -329,35 +282,95 @@ button, [role='button'], [role='tab'] { -webkit-user-select: none; user-select: 
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .typing-dot, .pulse-dot, .trust-grid::before, .caret, .wordmark__fill { animation: none !important; }
-  .bento:hover { transform: none; }
+  .wordmark__fill { animation: none !important; }
 }
-.role-progress { width: 100%; transform: scaleX(0); transform-origin: left; animation-name: role-fill; animation-timing-function: linear; animation-fill-mode: forwards; }
-@keyframes role-fill { to { transform: scaleX(1); } }
 .legal-body ul { list-style: none; display: grid; gap: .4rem; }
 .legal-body li { position: relative; padding-left: 1rem; }
 .legal-body li::before { content: ''; position: absolute; left: 0; top: .7em; width: 6px; height: 6px; border-radius: 999px; background: oklch(0.6 0.22 285); }
 
-/* Landing hero: a slowly turning colour halo behind the live board (transform only; still for reduced motion). */
-.hero-halo {
-  overflow: hidden;
-  filter: blur(24px);
-  opacity: 0.55;
+/* ---------- landing: liquid stage ----------
+   `.lq` is a pane of glass. Where the WebGL stage runs it draws the pane itself, so the CSS look steps aside; everywhere
+   else (phones, reduced motion, no WebGL, before the scene loads) this is the pane. */
+.landing { --paper: #f7f8fd; background: var(--paper); }
+.lq { background: oklch(1 0 0 / .66); box-shadow: inset 0 0 0 1px oklch(1 0 0 / .75), inset 0 1.5px 0 #fff, var(--shadow-2); }
+.lq-lens { background: radial-gradient(circle at 32% 26%, oklch(1 0 0 / .6), oklch(1 0 0 / .1) 46%, oklch(1 0 0 / .3)); box-shadow: inset 0 0 0 1px oklch(1 0 0 / .6), inset 0 0 40px oklch(1 0 0 / .4), var(--shadow-3); }
+[data-stage='live'] .lq { background: none; box-shadow: none; }
+.lq-mark { display: grid; aspect-ratio: 1; place-items: center; }
+.lq-mark > svg { width: 44%; height: auto; transition: opacity var(--dur-slow) var(--ease-out); }
+[data-stage='live'] .lq-mark > svg { opacity: 0 !important; }
+.lq-still {
+  background:
+    linear-gradient(90deg, var(--paper) 8%, oklch(0.98 0.008 285 / .85) 34%, transparent 70%),
+    radial-gradient(46% 60% at 96% 8%, #ffc2a1, transparent 70%),
+    radial-gradient(50% 70% at 70% 100%, #8ef5d9, transparent 72%),
+    radial-gradient(60% 80% at 100% 62%, #4cc3f8, transparent 74%),
+    linear-gradient(120deg, #e9e4ff, #8d72ff);
 }
-.hero-halo::before {
-  content: '';
-  position: absolute;
-  inset: -50%;
-  background: conic-gradient(from 0deg, #6d4aff, #38bdf8, #8ef5d9, #f7b955, #6d4aff);
-  animation: hero-halo-spin 10s linear infinite;
-}
-@keyframes hero-halo-spin {
-  to {
-    transform: rotate(1turn);
+@media (max-width: 1023px) {
+  .lq-still {
+    background:
+      linear-gradient(180deg, var(--paper) 30%, oklch(0.98 0.008 285 / .7) 56%, transparent 84%),
+      radial-gradient(70% 40% at 100% 70%, #4cc3f8, transparent 74%),
+      radial-gradient(70% 40% at 10% 96%, #8ef5d9, transparent 72%),
+      radial-gradient(60% 30% at 80% 100%, #ffc2a1, transparent 70%),
+      linear-gradient(180deg, #e9e4ff, #a08aff);
   }
 }
-@media (prefers-reduced-motion: reduce) {
-  .hero-halo::before {
-    animation: none;
-  }
+
+/* The stage's silk, still: its colours and its pleats (wide arcs), for panels further down the page. */
+.lq-silk { position: relative; isolation: isolate; }
+.lq-silk::before { content: ''; position: absolute; inset: 0; z-index: -1; opacity: .5; background: repeating-radial-gradient(130% 190% at -10% 130%, oklch(1 0 0 / .5) 0 1.5px, transparent 4px 15px); -webkit-mask-image: linear-gradient(200deg, #000, transparent 75%); mask-image: linear-gradient(200deg, #000, transparent 75%); }
+.lq-silk--1 { background: radial-gradient(90% 120% at 100% 0%, #8f76ff, transparent 70%), radial-gradient(70% 90% at 0% 100%, #f7f8fd, transparent 75%), linear-gradient(160deg, #cdbfff, #bfe4ff); }
+.lq-silk--2 { background: radial-gradient(90% 120% at 100% 0%, #45b8f7, transparent 70%), radial-gradient(70% 90% at 0% 100%, #f7f8fd, transparent 75%), linear-gradient(160deg, #cfe9ff, #bff5e6); }
+.lq-silk--3 { background: radial-gradient(90% 120% at 100% 0%, #6fe3c6, transparent 70%), radial-gradient(70% 90% at 0% 100%, #f7f8fd, transparent 75%), linear-gradient(160deg, #d6f7ec, #ffdcc7); }
+
+/* The closing panel: silk and pleats on the right, melting into the page under the words on the left. */
+.lq-closing { background: radial-gradient(40% 70% at 96% 0%, #ffc2a1, transparent 70%), radial-gradient(44% 70% at 66% 108%, #8ef5d9, transparent 72%), radial-gradient(50% 90% at 100% 70%, #4cc3f8, transparent 74%), linear-gradient(120deg, #e9e4ff 30%, #8d72ff); -webkit-mask-image: linear-gradient(90deg, transparent 3%, oklch(0 0 0 / .4) 34%, #000 66%); mask-image: linear-gradient(90deg, transparent 3%, oklch(0 0 0 / .4) 34%, #000 66%); }
+.lq-closing::before { content: ''; position: absolute; inset: 0; opacity: .5; background: repeating-radial-gradient(130% 190% at -10% 130%, oklch(1 0 0 / .5) 0 1.5px, transparent 4px 15px); -webkit-mask-image: linear-gradient(200deg, #000, transparent 75%); mask-image: linear-gradient(200deg, #000, transparent 75%); }
+@media (max-width: 767px) { .lq-closing { -webkit-mask-image: linear-gradient(180deg, oklch(0 0 0 / .25) 40%, #000 92%); mask-image: linear-gradient(180deg, oklch(0 0 0 / .25) 40%, #000 92%); } }
+
+/* The landing page has a dozen glass panels over the aurora. Blurring a backdrop that is already a blur is invisible but
+   redone every frame for each panel, and on a computer drawing without a GPU it stops the page from drawing at all. Here
+   the aurora is drawn soft (gradients instead of an 80px blur) and the panels are plainly translucent. Only the nav, which
+   text passes under, keeps its blur. */
+.landing :is(.glass, .glass-strong) { -webkit-backdrop-filter: none; backdrop-filter: none; }
+.landing .glass { background: linear-gradient(180deg, oklch(1 0 0 / .8), oklch(1 0 0 / .68)); }
+.landing .aurora__blob { filter: none; border-radius: 0; margin: -90px; background: radial-gradient(closest-side, var(--c) 18%, color-mix(in oklab, var(--c) 72%, transparent) 46%, color-mix(in oklab, var(--c) 26%, transparent) 72%, transparent); }
+.landing .aurora__blob--a { --c: oklch(0.78 0.13 290); width: calc(46vw + 180px); height: calc(46vw + 180px); }
+.landing .aurora__blob--b { --c: oklch(0.86 0.09 215); width: calc(38vw + 180px); height: calc(38vw + 180px); }
+.landing .aurora__blob--c { --c: oklch(0.9 0.07 55); width: calc(34vw + 180px); height: calc(34vw + 180px); }
+
+/* The liquid stage melts into the aurora below it instead of ending on a line. */
+.lq-fade { -webkit-mask-image: linear-gradient(#000 calc(100% - 260px), transparent); mask-image: linear-gradient(#000 calc(100% - 260px), transparent); }
+.hairline-grid {
+  background-image: linear-gradient(oklch(0.6 0.05 285 / .08) 1px, transparent 1px), linear-gradient(90deg, oklch(0.6 0.05 285 / .08) 1px, transparent 1px);
+  background-size: 56px 56px;
 }
+/* Small labels sit straight on the aurora here, so they are a step darker and larger than in the app. */
+.landing .label-mono { color: #45405e; font-size: 12px; }
+.landing .label-mono > b { color: #4527c9; font-weight: 600; }
+/* The brand gradient, dark enough to pass 3:1 as display text over the aurora and the prism. */
+.lq-accent { background: linear-gradient(100deg, oklch(0.46 0.25 285), oklch(0.52 0.2 260) 55%, oklch(0.53 0.11 215)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.plan-tint { background: radial-gradient(90% 60% at 0% 20%, oklch(0.96 0.05 75 / .8), transparent 70%), radial-gradient(90% 60% at 60% 100%, oklch(0.94 0.07 195 / .9), transparent 72%), radial-gradient(80% 60% at 100% 40%, oklch(0.94 0.05 290 / .9), transparent 70%), oklch(1 0 0 / .86); }
+.role-progress { width: 100%; transform: scaleX(0); transform-origin: left; animation-name: role-fill; animation-timing-function: linear; animation-fill-mode: forwards; }
+@keyframes role-fill { to { transform: scaleX(1); } }
+[data-motion='paused'] :is(.aurora__blob, .prism, .role-progress, .wordmark__fill), [data-motion='paused'] .gradient-border::before { animation-play-state: paused !important; }
+
+.lq-nav { position: relative; background: oklch(1 0 0 / .64); -webkit-backdrop-filter: blur(16px) saturate(160%); backdrop-filter: blur(16px) saturate(160%); box-shadow: inset 0 0 0 1px oklch(1 0 0 / .55), inset 0 1.5px 0 oklch(1 0 0 / .95), inset 0 -1px 0 oklch(0.4 0.1 285 / .08), var(--shadow-2); }
+
+.lq-btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-full px-6 text-[15px] font-semibold text-white;
+  height: 50px; background: #14112a;
+  transition: background var(--dur-fast) var(--ease-out), scale var(--dur-instant) var(--ease-out);
+}
+.lq-btn--quiet { color: #14112a; background: oklch(1 0 0 / .82); box-shadow: inset 0 0 0 1px oklch(0.2 0.05 285 / .12); }
+.lq-btn:active { scale: 0.97; }
+@media (hover: hover) and (pointer: fine) { .lq-btn:hover { background: #5233e8; } .lq-btn--quiet:hover { background: #fff; } }
+
+/* A slider whose thumb is a drop of glass. 32 px tall hit area; the track shows the value as a fill. */
+.lq-range { -webkit-appearance: none; appearance: none; display: block; width: 100%; height: 32px; background: none; cursor: pointer; }
+.lq-range::-webkit-slider-runnable-track { height: 8px; border-radius: 99px; background: linear-gradient(90deg, #6d4aff, #38a9f0) 0 0 / var(--fill) 100% no-repeat, oklch(0.4 0.06 285 / .16); }
+.lq-range::-moz-range-track { height: 8px; border-radius: 99px; background: linear-gradient(90deg, #6d4aff, #38a9f0) 0 0 / var(--fill) 100% no-repeat, oklch(0.4 0.06 285 / .16); }
+.lq-range::-webkit-slider-thumb { -webkit-appearance: none; width: 30px; height: 24px; margin-top: -8px; border-radius: 99px; background: linear-gradient(180deg, #fff, oklch(1 0 0 / .78)); box-shadow: inset 0 0 0 1px oklch(1 0 0 / .9), inset 0 -3px 5px oklch(0.6 0.15 265 / .25), 0 0 0 1px oklch(0.4 0.1 285 / .28), 0 3px 8px oklch(0.25 0.08 285 / .28); }
+.lq-range::-moz-range-thumb { width: 30px; height: 24px; border: 0; border-radius: 99px; background: linear-gradient(180deg, #fff, oklch(1 0 0 / .78)); box-shadow: inset 0 -3px 5px oklch(0.6 0.15 265 / .25), 0 0 0 1px oklch(0.4 0.1 285 / .28), 0 3px 8px oklch(0.25 0.08 285 / .28); }
+@media (forced-colors: active) { .lq-range { -webkit-appearance: auto; appearance: auto; } .lq { border: 1px solid CanvasText; } }

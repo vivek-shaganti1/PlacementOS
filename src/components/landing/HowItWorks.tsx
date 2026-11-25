@@ -1,58 +1,59 @@
 import { motion, useReducedMotion, useScroll, useTransform, type MotionValue } from 'motion/react'
 import { useRef } from 'react'
-import { IconRoadmap, IconSpark, IconStacks, IconUser } from '../Icons'
 import { companyCatalog } from '../../data/companies'
 import { coreCatalog } from '../../data/coreCompanies'
+import { IconDrives, IconSpark, IconStacks, IconUser } from '../Icons'
 
 const RECRUITERS = companyCatalog.length + coreCatalog.length
 
 const steps = [
-  { title: 'Create your profile', body: 'Academics, skills, projects and internships, stored in structured tables that only you can read.', Icon: IconUser, meta: '2 min' },
+  { title: 'Create your profile', body: 'Your college adds you and records your marks. You add skills, projects and internships.', Icon: IconUser, meta: 'one profile' },
   { title: 'Connect your evidence', body: 'Upload your resume and link what proves your branch: design files on GitHub, Credly badges, NPTEL certificates, a GATE scorecard, coding platforms.', Icon: IconSpark, meta: '9 sources' },
-  { title: `Get scored against ${RECRUITERS} recruiters`, body: 'Software, VLSI, embedded, power, mechanical, civil, chemical and more. You see your match, stack and exact gaps.', Icon: IconStacks, meta: '< 1 ms' },
-  { title: 'Close gaps and apply', body: 'Follow the roadmap, practise, log mocks, tailor your resume per job, and track every application.', Icon: IconRoadmap, meta: 'every drive' },
+  { title: `Get scored against ${RECRUITERS} recruiters`, body: 'Software, VLSI, embedded, power, mechanical, civil, chemical and more. You see your match, your group and the exact gaps.', Icon: IconStacks, meta: 'every change' },
+  { title: 'Close gaps and apply', body: 'Follow the roadmap, practise, log mocks, tailor your resume per job, and track every application.', Icon: IconDrives, meta: 'every drive' },
 ]
 
 /**
- * One step: lights up when the scroll-linked progress line reaches it (Motion values, no re-render per frame).
- * Only the icon tile changes (a glow and a small lift); the text always stays at full contrast, so a step the line has
- * not reached yet is still fully readable.
+ * One step: its tile lights up when the line reaches it (Motion values, no re-render per frame). The text is always at full
+ * contrast, so a step the line has not reached yet is still readable.
  */
 function Step({ i, progress, reduce }: { i: number; progress: MotionValue<number>; reduce: boolean | null }) {
   const at = i / (steps.length - 1)
-  const lit = useTransform(progress, [Math.max(0, at - 0.12), at], [0, 1])
+  const lit = useTransform(progress, [Math.max(0, at - 0.12), Math.max(0.01, at)], [i === 0 ? 1 : 0, 1])
   const scale = useTransform(lit, [0, 1], [0.92, 1])
-  const glow = useTransform(lit, [0, 1], ['0 0 0 0 rgba(109,74,255,0)', '0 0 0 8px rgba(109,74,255,.12), 0 12px 30px rgba(109,74,255,.35)'])
   const { title, body, Icon, meta } = steps[i]
   return (
-    <div className="relative">
-      <motion.span style={reduce ? undefined : { boxShadow: glow, scale }} className="glass-strong relative z-10 grid h-14 w-14 place-items-center rounded-[18px] text-brand-dark">
-        <Icon className="h-5 w-5" />
-        <span className="absolute -right-2 -top-2 grid h-6 min-w-6 place-items-center rounded-full bg-[oklch(0.2_0.045_285)] px-1.5 font-mono text-[10px] text-white">0{i + 1}</span>
+    <li className="relative flex gap-5 md:block">
+      <motion.span style={reduce ? undefined : { scale }} className="glass-strong relative z-10 grid h-[60px] w-[60px] shrink-0 place-items-center rounded-[20px] text-brand-dark">
+        {/* The halo is its own layer, so only its opacity changes. */}
+        <motion.span aria-hidden style={{ opacity: reduce ? 1 : lit }} className="absolute inset-0 rounded-[20px] shadow-[0_0_0_8px_rgba(109,74,255,.13),0_14px_34px_rgba(109,74,255,.34)]" />
+        <Icon className="relative h-[22px] w-[22px]" />
+        <span className="absolute -right-2.5 -top-2.5 grid h-7 min-w-7 place-items-center rounded-full bg-[oklch(0.2_0.045_285)] px-1.5 font-mono text-[11px] text-white">0{i + 1}</span>
       </motion.span>
-      <p className="mt-5 text-[16px] font-semibold tracking-[-0.02em]">{title}</p>
-      <p className="mt-1.5 text-[13px] leading-[1.6] text-ink-mute">{body}</p>
-      <span className="mt-3 inline-block rounded-full bg-white/70 px-2.5 py-1 font-mono text-[10.5px] text-ink-soft ring-1 ring-line">{meta}</span>
-    </div>
+      <div className="md:mt-6 md:pr-4">
+        <h3 className="text-[18px] font-semibold leading-[1.25] tracking-[-0.022em] text-ink">{title}</h3>
+        <p className="mt-2 text-[15px] leading-[1.6] text-ink-soft">{body}</p>
+        <span className="mt-4 inline-block rounded-full bg-white/80 px-3 py-1.5 font-mono text-[12px] text-ink-soft ring-1 ring-line">{meta}</span>
+      </div>
+    </li>
   )
 }
 
 export function HowItWorks() {
-  const ref = useRef<HTMLDivElement>(null)
+  const ref = useRef<HTMLOListElement>(null)
   const reduce = useReducedMotion()
-  const { scrollYProgress } = useScroll({ target: ref, offset: ['start 80%', 'end 55%'] })
+  const { scrollYProgress } = useScroll({ target: ref, offset: ['start 78%', 'end 62%'] })
+  const line = reduce ? 1 : scrollYProgress
   return (
-    <div ref={ref} className="relative mt-14 grid grid-cols-1 gap-8 md:grid-cols-4 md:gap-5">
-      {/* Track and the part already travelled. */}
-      <span aria-hidden className="absolute left-[28px] right-[12%] top-[27px] hidden h-[2px] rounded-full bg-[oklch(0.6_0.05_285/.15)] md:block" />
-      <motion.span
-        aria-hidden
-        style={{ scaleX: reduce ? 1 : scrollYProgress }}
-        className="absolute left-[28px] right-[12%] top-[27px] hidden h-[2px] origin-left rounded-full bg-gradient-to-r from-[#6d4aff] via-[#38bdf8] to-[#8ef5d9] md:block"
-      />
-      {steps.map((_, i) => (
-        <Step key={i} i={i} progress={scrollYProgress} reduce={reduce} />
-      ))}
-    </div>
+    <ol ref={ref} className="relative mt-14 grid grid-cols-1 gap-11 md:grid-cols-4 md:gap-6">
+      {/* The track and the part already travelled: across on wide screens, down on phones. */}
+      <li aria-hidden className="pointer-events-none absolute inset-0 list-none" role="presentation">
+        <span className="absolute left-[30px] right-[calc(25%-30px)] top-[29px] hidden h-[2px] rounded-full bg-[oklch(0.6_0.05_285/.18)] md:block" />
+        <motion.span style={{ scaleX: line }} className="absolute left-[30px] right-[calc(25%-30px)] top-[29px] hidden h-[2px] origin-left rounded-full bg-gradient-to-r from-[#6d4aff] via-[#38bdf8] to-[#5fdcc0] md:block" />
+        <span className="absolute bottom-24 left-[29px] top-[30px] w-[2px] rounded-full bg-[oklch(0.6_0.05_285/.18)] md:hidden" />
+        <motion.span style={{ scaleY: line }} className="absolute bottom-24 left-[29px] top-[30px] w-[2px] origin-top rounded-full bg-gradient-to-b from-[#6d4aff] via-[#38bdf8] to-[#5fdcc0] md:hidden" />
+      </li>
+      {steps.map((_, i) => <Step key={i} i={i} progress={scrollYProgress} reduce={reduce} />)}
+    </ol>
   )
 }

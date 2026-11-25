@@ -81,3 +81,52 @@ test('the landing page works where WebGL is not available', async ({ page }) => 
   await expect(page.locator('h1').first()).toBeVisible()
   expect(errors).toEqual([])
 })
+
+// The landing page explains the product by running its real engine: moving a control must change the answer.
+test('the landing demo answers as the visitor changes the profile', async ({ page }) => {
+  const errors = watchErrors(page)
+  await page.goto('/')
+  const demo = page.locator('#try')
+  const answer = demo.getByRole('status')
+  const open = async () => Number((await answer.textContent())!.match(/(\d+) of/)![1])
+  const start = await open()
+  // The prerendered page is replaced once the app has loaded, and only the app's controls answer: try until one does.
+  await expect(async () => {
+    await demo.getByLabel('CGPA').fill('5.5', { timeout: 2_000 })
+    expect(await open()).toBeLessThan(start)
+  }).toPass()
+  await demo.getByLabel('CGPA').fill('9')
+  await expect.poll(open).toBeGreaterThanOrEqual(start)
+
+  // Any company on the board explains itself.
+  const company = demo.getByRole('region', { name: /^Can become/ }).getByRole('button').first()
+  const name = (await company.textContent())!
+  await company.click()
+  await expect(company).toHaveAttribute('aria-pressed', 'true')
+  await expect(demo.getByText(`${name}: can become`)).toBeVisible()
+
+  // The suggested change can be made, and changes the board.
+  const before = await demo.getByRole('region').evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')).join())
+  await demo.getByRole('button', { name: 'Make that change' }).click()
+  await expect.poll(() => demo.getByRole('region').evaluateAll((els) => els.map((e) => e.getAttribute('aria-label')).join())).not.toBe(before)
+
+  // Every branch works, and the controls work from the keyboard.
+  for (const b of ['Electronics', 'Electrical', 'Mechanical', 'Civil', 'Computer Science']) {
+    await demo.getByLabel('Branch').selectOption({ label: b })
+    await expect(answer).toContainText(/\d+ of \d+ companies/)
+  }
+  await demo.getByLabel('CGPA').focus()
+  const cgpa = await demo.getByLabel('CGPA').inputValue()
+  await page.keyboard.press('ArrowRight')
+  expect(Number(await demo.getByLabel('CGPA').inputValue())).toBeGreaterThan(Number(cgpa))
+  expect(errors).toEqual([])
+})
+
+test('the landing page stands still for visitors who ask for less motion', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' })
+  await page.goto('/')
+  await page.waitForTimeout(3_500)
+  await expect(page.locator('canvas')).toHaveCount(0)
+  await expect(page.locator('[data-stage]')).toHaveAttribute('data-stage', 'still')
+  await expect(page.locator('#how h3').last()).toBeAttached()
+})

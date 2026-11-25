@@ -584,6 +584,35 @@ test('BRANCH a role template only ever names skills of its own track', () => {
     for (const s of Object.keys(skills as object)) assert.ok(track.skills.includes(s), `${id} role tests "${s}", which the track does not list`)
   }
 })
+/* ---------------------------------------------------------------- landing page demo */
+const { DEMO_BRANCHES, bestFix, demoSkills, runDemo, startProfile } = await import('../src/components/landing/demo')
+test('LANDING every branch starts with four sliders and something to improve', () => {
+  for (const b of DEMO_BRANCHES) {
+    const p = startProfile(b.id)
+    const all = runDemo(p)
+    assert.equal(demoSkills(b.id).length, 4, b.id)
+    assert.ok(all.length >= 5, `${b.id}: ${all.length} companies`)
+    assert.ok(all.some((c: any) => c.bucket !== 'eligible'), `${b.id}: nothing left to improve`)
+    const fix = bestFix(p, all)
+    assert.ok(fix && fix.moves > 0, `${b.id}: no fix on the starting profile`)
+  }
+})
+test('LANDING the fix does what it says, and no single change does better', () => {
+  const rank: Record<string, number> = { notEligible: 0, canBecome: 1, nearly: 2, eligible: 3 }
+  const p = startProfile('cse')
+  const before = new Map(runDemo(p).map((c: any) => [c.id, rank[c.bucket]]))
+  const moved = (q: any) => runDemo(q).filter((c: any) => rank[c.bucket] > before.get(c.id)!).length
+  const fix = bestFix(p, runDemo(p))!
+  assert.equal(moved(fix.next), fix.moves)
+  for (const [s, v] of Object.entries(p.levels)) assert.ok(moved({ ...p, levels: { ...p.levels, [s]: (v as number) + 10 } }) <= fix.moves, s)
+})
+test('LANDING a better profile never loses an open company', () => {
+  const p = startProfile('ece')
+  const open = (q: any) => runDemo(q).filter((c: any) => c.bucket === 'eligible').length
+  assert.ok(open({ ...p, cgpa: 9.5, levels: Object.fromEntries(Object.keys(p.levels).map((k) => [k, 95])) }) >= open(p))
+  assert.equal(bestFix({ ...p, cgpa: 10, levels: Object.fromEntries(Object.keys(p.levels).map((k) => [k, 100])) }, runDemo({ ...p, cgpa: 10, levels: Object.fromEntries(Object.keys(p.levels).map((k) => [k, 100])) })), null)
+})
+
 test('BRANCH a student strong in their own track is eligible somewhere, in every branch', () => {
   for (const b of BRANCHES) {
     const all = evaluateAll(studentOf(b.name, 90))
