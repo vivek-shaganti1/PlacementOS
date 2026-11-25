@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react'
-import { intensity, useMotionTier } from '../../lib/motion'
+import { ErrorBoundary } from '../ErrorBoundary'
+import { canUseWebGL, intensity, useMotionTier } from '../../lib/motion'
 
 const DistortionCanvas = lazy(() => import('../3d/DistortionImage'))
 
@@ -10,12 +11,14 @@ const DistortionCanvas = lazy(() => import('../3d/DistortionImage'))
 export function Distortion({ src, alt, className, strength = 0.35 }: { src: string; alt: string; className?: string; strength?: number }) {
   const tier = useMotionTier()
   const img = <img src={src} alt={alt} className="h-full w-full object-cover" loading="lazy" decoding="async" />
-  if (!intensity[tier].webgl) return <div className={className}>{img}</div>
+  if (!intensity[tier].webgl || !canUseWebGL()) return <div className={className}>{img}</div>
   return (
     <div className={`relative ${className ?? ''}`} role="img" aria-label={alt}>
-      <Suspense fallback={img}>
-        <DistortionCanvas src={src} strength={strength} />
-      </Suspense>
+      <ErrorBoundary fallback={img}>
+        <Suspense fallback={img}>
+          <DistortionCanvas src={src} strength={strength} />
+        </Suspense>
+      </ErrorBoundary>
     </div>
   )
 }

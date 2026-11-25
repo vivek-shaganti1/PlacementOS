@@ -11,11 +11,13 @@ import { intensity, useMotionTier } from '../../lib/motion'
  * - R3F disposes geometries and materials declared in JSX on unmount; dispose anything you create imperatively.
  * Callers must lazy-load the module that renders this, and render a static fallback when WebGL is off.
  */
-export function Scene({ children, className, camera = { position: [0, 0, 5], fov: 40 }, interactive = false, ...rest }: { children: ReactNode; className?: string; interactive?: boolean } & Omit<CanvasProps, 'children'>) {
+export function Scene({ children, className, camera = { position: [0, 0, 5], fov: 40 }, interactive = false, maxDpr = 2, ...rest }: { children: ReactNode; className?: string; interactive?: boolean; maxDpr?: number } & Omit<CanvasProps, 'children'>) {
   const tier = useMotionTier()
   const wrap = useRef<HTMLDivElement>(null)
   const [visible, setVisible] = useState(true)
-  const [dpr, setDpr] = useState(intensity[tier].dpr[1])
+  // A full-screen shader costs four times as much at a pixel ratio of 2 and looks the same; its scene passes a lower cap.
+  const top = Math.min(intensity[tier].dpr[1], maxDpr)
+  const [dpr, setDpr] = useState(top)
 
   useEffect(() => {
     const el = wrap.current
@@ -34,7 +36,7 @@ export function Scene({ children, className, camera = { position: [0, 0, 5], fov
         camera={camera}
         {...rest}
       >
-        <PerformanceMonitor onDecline={() => setDpr(1)} onIncline={() => setDpr(intensity[tier].dpr[1])} />
+        <PerformanceMonitor onDecline={() => setDpr(1)} onIncline={() => setDpr(top)} />
         <AdaptiveDpr pixelated={false} />
         <Suspense fallback={null}>{children}</Suspense>
       </Canvas>

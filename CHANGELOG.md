@@ -5,6 +5,13 @@ Semantic versioning; see `docs/ENGINEERING.md` for how releases are made.
 ## Unreleased
 
 ### Added
+- **New landing page.** It opens with the question students ask and answers it by running the real eligibility engine in the
+  visitor's browser: change a sample student's marks and skills, see which companies open, why, and the one change that
+  moves the most. Then why it exists, what each kind of person sees, how it works in four moves, how a season runs, and plans with a
+  price worked out for the college's size, in glass over the aurora. Behind it, one
+  WebGL scene: a flowing gradient, glass that refracts it, and the mark in liquid metal (notices in
+  `THIRD_PARTY_NOTICES.md`). Phones, reduced motion, weak or lost GPUs get the same page with a still backdrop, and the
+  background can be paused.
 - **Download my data** (Settings, every role): one JSON file with everything stored about the account.
 - **Activity log** for placement cells and platform admins: who changed the roster, access, drives and certificates,
   with a filter, search and CSV export.
@@ -48,6 +55,11 @@ Semantic versioning; see `docs/ENGINEERING.md` for how releases are made.
 - The CSV export opens correctly in Excel.
 
 ### Fixed
+- **Landing claims that were not true or not checkable** are gone: "parsed in your browser" (it is on the server), a
+  hard-coded test count, response times, "most chosen", a named college with a plan, recruiters posting drives, and a
+  question box that only led to the sign-in page.
+- **Landing page without WebGL:** where the browser cannot create a WebGL context (blocked GPU, old driver), the whole page
+  was replaced by the error screen. It now asks first, and a 3D failure falls back to the static glow.
 - **Company data honesty:** the catalogue's applicant, offer, selection-ratio and round counts were invented and have
   been removed. Company pages now say the CTC range is typical and unverified, the process is a template, and link to a
   careers search when no verified page is recorded. College drives are marked as the college's own data.
