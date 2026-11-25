@@ -53,7 +53,7 @@ export default function Certifications() {
     <Page title="Certifications" subtitle="Credentials you hold and the ones that move your eligibility the most.">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <Stat label="Certifications held" value={`${p.certifications.length}`} />
-        <Stat label="In progress" value={`${enrolled.length}`} tone="text-[#d97706]" />
+        <Stat label="In progress" value={`${enrolled.length}`} tone="text-[#b54708]" />
         <Stat label="Recommended" value={`${recommended.length}`} tone="text-brand-dark" />
       </div>
 
@@ -68,7 +68,7 @@ export default function Certifications() {
               {safeUrl(c.credential_url) && (
                 <a href={safeUrl(c.credential_url)} target="_blank" rel="noreferrer" className="text-[11.5px] font-medium text-brand-dark hover:underline">Credential</a>
               )}
-              <button onClick={() => save(p.certifications.filter((_, j) => j !== i), 'Certification removed.')} aria-label={`Remove ${c.name}`} className="text-[11px] text-ink-faint opacity-0 focus-visible:opacity-100 [@media(hover:none)]:opacity-100 hover:text-[#d92d20] group-hover:opacity-100">Remove</button>
+              <button onClick={() => save(p.certifications.filter((_, j) => j !== i), 'Certification removed.')} aria-label={`Remove ${c.name}`} className="text-[11px] text-ink-faint opacity-0 focus-visible:opacity-100 [@media(hover:none)]:opacity-100 hover:text-[#b42318] group-hover:opacity-100">Remove</button>
             </div>
           ))}
           {p.certifications.length === 0 && <p className="py-3 text-[12px] text-ink-faint">No certifications yet. Add one below or import them from your resume.</p>}
@@ -109,7 +109,7 @@ export default function Certifications() {
               <button
                 onClick={() => toggleEnrollment(c.name)}
                 className={`w-[92px] rounded-[9px] border py-[7px] text-[12px] font-semibold ${
-                  enrolled.includes(c.name) ? 'border-[#fbe3bd] bg-[#fff8ec] text-[#d97706]' : 'border-[#d5cbff] text-brand-dark hover:bg-[#faf8ff]'
+                  enrolled.includes(c.name) ? 'border-[#fbe3bd] bg-[#fff8ec] text-[#b54708]' : 'border-[#d5cbff] text-brand-dark hover:bg-[#faf8ff]'
                 }`}
               >
                 {enrolled.includes(c.name) ? 'Enrolled' : 'Enroll'}
