@@ -59,3 +59,25 @@ test('fonts are served by the site itself', async ({ page }) => {
   expect(await page.evaluate(() => document.fonts.check('16px "Geist Variable"'))).toBe(true)
   expect(external).toEqual([])
 })
+
+// Blocked GPUs, old drivers and locked-down campus computers have no WebGL; the 3D there is decoration.
+test('the landing page works where WebGL is not available', async ({ page }) => {
+  const errors = watchErrors(page)
+  await page.addInitScript(() => {
+    const real = HTMLCanvasElement.prototype.getContext
+    HTMLCanvasElement.prototype.getContext = function (this: HTMLCanvasElement, kind: string, ...rest: unknown[]) {
+      return /webgl/i.test(kind) ? null : (real as (...a: unknown[]) => unknown).call(this, kind, ...rest)
+    } as typeof real
+    // The fullest device tier, so the page would choose the 3D scene if it did not check.
+    Object.defineProperty(navigator, 'hardwareConcurrency', { get: () => 12 })
+    Object.defineProperty(navigator, 'deviceMemory', { get: () => 8 })
+  })
+  await page.setViewportSize({ width: 1280, height: 800 })
+  await page.goto('/')
+  await expect(page.locator('h1').first()).toBeVisible()
+  // Long enough for the idle-time scene to have been tried.
+  await page.waitForTimeout(6_000)
+  await expect(page.getByText('Something went wrong on this screen')).toHaveCount(0)
+  await expect(page.locator('h1').first()).toBeVisible()
+  expect(errors).toEqual([])
+})

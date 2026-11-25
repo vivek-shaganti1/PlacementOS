@@ -11,7 +11,7 @@ import { coreCatalog } from '../data/coreCompanies'
 const RECRUITERS = companyCatalog.length + coreCatalog.length
 import { Glow } from '../components/effects'
 import { CursorFollower, Magnetic, ScrollHighlight, ScrollProgress, SmoothScroll, TextReveal } from '../components/motion'
-import { intensity, useMotionTier } from '../lib/motion'
+import { canUseWebGL, intensity, useMotionTier } from '../lib/motion'
 import { usePauseOffscreen } from '../lib/pauseOffscreen'
 import { usd, PLANS } from '../lib/pricing'
 import { ContactDialog, openContact } from '../components/landing/ContactDialog'
@@ -19,6 +19,7 @@ import { Features } from '../components/landing/Features'
 import { HeroPreview } from '../components/landing/HeroPreview'
 import { HowItWorks } from '../components/landing/HowItWorks'
 import { MegaFooter } from '../components/landing/MegaFooter'
+import { ErrorBoundary } from '../components/ErrorBoundary'
 import { Trust } from '../components/landing/Trust'
 
 // three.js loads only on devices that get WebGL, once the browser is idle after the first paint.
@@ -463,10 +464,12 @@ export default function Landing() {
         <section className="relative mx-auto grid max-w-[1160px] grid-cols-1 items-center gap-10 px-6 pb-16 pt-12 sm:gap-14 sm:pb-24 sm:pt-16 lg:grid-cols-[0.85fr_1.15fr]">
           {/* 3D brand orb behind the product preview; a static glow everywhere WebGL is off. */}
           <div aria-hidden className="pointer-events-none absolute inset-y-0 right-[-8%] -z-10 hidden w-[70%] lg:block">
-            {idle && intensity[tier].webgl ? (
-              <Suspense fallback={<Glow size={560} className="right-[10%] top-[10%]" />}>
-                <HeroScene className="h-full w-full" />
-              </Suspense>
+            {idle && intensity[tier].webgl && canUseWebGL() ? (
+              <ErrorBoundary fallback={<Glow size={560} className="right-[10%] top-[10%]" />}>
+                <Suspense fallback={<Glow size={560} className="right-[10%] top-[10%]" />}>
+                  <HeroScene className="h-full w-full" />
+                </Suspense>
+              </ErrorBoundary>
             ) : (
               <Glow size={560} className="right-[10%] top-[10%]" />
             )}

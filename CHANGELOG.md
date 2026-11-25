@@ -60,6 +60,8 @@ Semantic versioning; see `docs/ENGINEERING.md` for how releases are made.
 - The CSV export opens correctly in Excel.
 
 ### Fixed
+- **Landing page without WebGL:** where the browser cannot create a WebGL context (blocked GPU, old driver), the whole page
+  was replaced by the error screen. It now asks first, and a 3D failure falls back to the static glow.
 - **Admin console at scale:** reading 5,000 students' skills took 21.9 s (Postgres cancels at 8 s); it takes 33 ms.
 - **Resume score** is computed from the stored file on the server; text sent by the browser is ignored.
 - **Password reset:** a stolen session could mark itself as needing a new password and then set one.
