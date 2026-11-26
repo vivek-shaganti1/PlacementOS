@@ -5,7 +5,7 @@
 // categories their tracks hire for (catalogFor).
 import { companyCatalog } from '../data/companies'
 import { coreCatalog } from '../data/coreCompanies'
-import type { Bucket, Category, Company, CompanyBase, Criterion, Requirements } from '../data/types'
+import type { Bucket, CatalogOverride, Category, Company, CompanyBase, Criterion, Requirements } from '../data/types'
 import { branchCodesOf, skillShort, TRACK_BY_ID, tracksFor } from './branches'
 
 export const SKILLS = [
@@ -250,10 +250,36 @@ function score(base: CompanyBase, p: StudentLike, category: Category, r: Require
   return { ...base, category, requirements: r, match, bucket, breakdown: { academic, skills, experience, projects: projectScore }, criteria, gaps }
 }
 
+// Verified details from public.company_catalog, set once by the app after it loads them. Empty until then (and in the
+// mobile app), so every company keeps its built-in typical figures.
+let overrides = new Map<string, CatalogOverride>()
+export function setCatalogOverrides(rows: CatalogOverride[]) {
+  overrides = new Map(rows.map((r) => [r.id, r]))
+}
+
+/** A built-in company with any verified details applied. Only filled-in fields replace the typical ones. */
+export function withOverride<T extends CompanyBase>(c: T): T {
+  const o = overrides.get(c.id)
+  if (!o) return c
+  const min = o.ctc_min === null ? null : Number(o.ctc_min)
+  const max = o.ctc_max === null ? null : Number(o.ctc_max)
+  const ctc = min !== null && max !== null && Number.isFinite(min) && Number.isFinite(max) ? { ctcMin: min, ctcMax: max, ctcAvg: Math.round(((min + max) / 2) * 10) / 10 } : {}
+  const verified = !!o.last_checked && !!o.source_url
+  return {
+    ...c,
+    ...ctc,
+    about: o.about || c.about,
+    careers: o.careers_url || c.careers,
+    ...(verified ? { provenance: 'verified' as const, sourceUrl: o.source_url, lastChecked: o.last_checked ?? undefined } : {}),
+    ...(verified && 'ctcMin' in ctc ? { ctcVerified: true, stats: [{ label: 'Fresher CTC', value: `₹${ctc.ctcMin}–${ctc.ctcMax} LPA` }] } : {}),
+    jobBoard: !!o.ats && !!o.ats_board,
+  }
+}
+
 /** The recruiters relevant to a student: every company whose category hires for one of the student's tracks. */
 export function catalogFor(p: Pick<StudentLike, 'branch' | 'tracks'>): CompanyBase[] {
   const cats = new Set(tracksFor(p).flatMap((t) => TRACK_BY_ID.get(t)?.categories ?? []))
-  return [...companyCatalog.filter((c) => cats.has(categories[c.name] ?? 'service')), ...coreCatalog.filter((c) => cats.has(c.category))]
+  return [...companyCatalog.filter((c) => cats.has(categories[c.name] ?? 'service')), ...coreCatalog.filter((c) => cats.has(c.category))].map(withOverride)
 }
 
 export const evaluateAll = (p: StudentLike): Company[] => catalogFor(p).map((c) => evaluate(c, p)).sort((a, b) => b.match - a.match)

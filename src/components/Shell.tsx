@@ -41,6 +41,7 @@ const AdminClasses = lazy(() => import('../pages/AdminOrg').then((m) => ({ defau
 const SuperAdmins = lazy(() => import('../pages/AdminOrg').then((m) => ({ default: m.SuperAdmins })))
 const SuperCertifications = lazy(() => import('../pages/SuperCertifications'))
 const SuperEnquiries = lazy(() => import('../pages/SuperEnquiries'))
+const SuperCompanies = lazy(() => import('../pages/SuperCompanies'))
 const ResumeAnalyzer = lazy(() => import('../pages/ResumeAnalyzer'))
 const AuditLog = lazy(() => import('../pages/AuditLog'))
 
@@ -74,6 +75,7 @@ function RoleRoutes() {
         <Route path="/super/admins" element={<SuperAdmins />} />
         <Route path="/super/certifications" element={<SuperCertifications />} />
         <Route path="/super/enquiries" element={<SuperEnquiries />} />
+        <Route path="/super/companies" element={<SuperCompanies />} />
         <Route path="/admin" element={<AdminOverview />} />
         <Route path="/admin/students" element={<AdminStudents />} />
         <Route path="/admin/classes" element={<AdminClasses />} />

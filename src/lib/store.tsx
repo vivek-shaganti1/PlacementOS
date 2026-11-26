@@ -122,12 +122,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // New shortlists and offers appear without a reload, while the tab is in use.
   useEffect(() => {
+    let alive = true
     const id = window.setInterval(async () => {
       if (document.visibilityState !== 'visible') return
       const { data } = await supabase.from('notifications').select('id, text, link, read, created_at').order('created_at', { ascending: false }).limit(50)
-      if (data) setNotifications(data as Notification[])
+      // Signed out, or a different account, while the request was in flight.
+      if (data && alive) setNotifications(data as Notification[])
     }, 60_000)
-    return () => window.clearInterval(id)
+    return () => {
+      alive = false
+      window.clearInterval(id)
+    }
   }, [uid])
 
   // One progress snapshot per day (latest values win) powers the history charts on Analytics.

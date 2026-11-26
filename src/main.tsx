@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App'
 import { holdPrerender } from './lib/prerendered'
+import { startMonitoring } from './lib/monitoring'
 // Fonts are served from this site (no request to Google). Only the scripts a page uses are downloaded (unicode-range).
 import '@fontsource-variable/geist/wght.css'
 import '@fontsource-variable/geist-mono/wght.css'
@@ -25,6 +26,9 @@ window.addEventListener('vite:preloadError', (event) => {
   event.preventDefault()
   window.location.reload()
 })
+
+// After the first screen is up, so it never delays it.
+;(window.requestIdleCallback ?? ((f: () => void) => setTimeout(f, 2000)))(startMonitoring)
 
 const root = document.getElementById('root')!
 holdPrerender(root)

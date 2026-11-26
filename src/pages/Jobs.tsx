@@ -11,6 +11,7 @@ import { motionConfig } from '../lib/motion'
 import { useApp } from '../lib/store'
 import { errMsg, supabase } from '../lib/supabase'
 import { HoldButton } from '../components/HoldButton'
+import { OffCampus } from '../components/OffCampus'
 import { deadlineIcs } from '../lib/calendar'
 import { downloadText } from '../lib/csv'
 
@@ -249,6 +250,7 @@ export default function Jobs() {
           </AnimatePresence>
         </div>
       )}
+      <OffCampus defaultRole={(p.target_roles ?? '').split(',')[0]?.trim() ?? ''} />
     </Page>
   )
 }

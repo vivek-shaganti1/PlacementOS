@@ -50,4 +50,9 @@ psql --no-psqlrc --tuples-only --dbname "$url" --command "
     select 'user_roles', (select count(*) from public.user_roles) union all
     select 'audit_log', (select count(*) from public.audit_log)
   ) c;"
+# An empty restore is a failed backup, whatever psql said.
+for t in auth.users public.profiles public.organizations; do
+  n=$(psql --no-psqlrc --tuples-only --no-align --dbname "$url" --command "select count(*) from $t")
+  [ "$n" -gt 0 ] || { echo "::error::Restored copy has no rows in $t"; exit 1; }
+done
 echo "Restore check passed."

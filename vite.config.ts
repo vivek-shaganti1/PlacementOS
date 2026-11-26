@@ -54,6 +54,8 @@ function preloadFonts(): Plugin {
 
 export default defineConfig({
   plugins: [react(), apiDevServer(), preloadFonts()],
+  // Which Vercel environment this build is for ('production', 'preview' or '' locally); see src/lib/supabase.ts.
+  define: { 'import.meta.env.VITE_DEPLOY_ENV': JSON.stringify(process.env.VERCEL_ENV ?? '') },
   server: { port: 5199 },
   build: {
     rollupOptions: {

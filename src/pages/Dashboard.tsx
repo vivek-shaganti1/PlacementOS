@@ -2,6 +2,7 @@ import { motion } from 'motion/react'
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { BRAND, Donut, EmptyChart, STATUS, TrendChart } from '../components/charts'
+import { ConsentPrompt } from '../components/Consent'
 import CompanyLogo from '../components/CompanyLogo'
 import { Card, Meter, Page, revealProps, Ring, Stat } from '../components/Page'
 import { completeness } from '../components/ProfileExtras'
@@ -53,6 +54,7 @@ export default function Dashboard() {
 
   return (
     <Page title="Welcome back," accent={first} subtitle="Your placement readiness, computed live from your profile, resume and coding activity." wide>
+      <ConsentPrompt userId={student.id} />
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.25fr_1fr]">
         <motion.section {...revealProps} className="glass-dark relative flex flex-col overflow-hidden rounded-[24px] p-5 text-white sm:p-7">
           {/* Static light: a soft spectral band and hairline grid (no motion in the app). */}
