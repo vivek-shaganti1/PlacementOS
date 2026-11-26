@@ -621,6 +621,7 @@ test('RESEARCH a fact is kept only when its quote is on the page and holds its n
   assert.ok(!R.checkFinding({ value: 'CGPA 8', quote: 'Candidates must have a minimum CGPA of 8.0' }, page), 'a quote that is not on the page')
   assert.ok(R.checkFinding({ value: 'CSE, ECE, EEE', quote: 'Open to B.Tech CSE, ECE and EEE.' }, page))
   assert.ok(!R.checkFinding({ value: 'x', quote: 'Open' }, page), 'too short to prove anything')
+  assert.ok(!R.checkFinding({ value: 'A leading supplier of embedded processors', quote: 'Candidates must have a minimum CGPA of 7.0' }, page), 'a fact the quote does not say')
 })
 test('RESEARCH pages that opt out of AI or indexing are left alone', () => {
   assert.ok(R.optedOut('<meta name="robots" content="noai, noimageai">', new Headers()))

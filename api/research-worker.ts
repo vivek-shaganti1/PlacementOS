@@ -5,8 +5,13 @@
 // A request moves: understanding (what the student asked for) → finding (which companies) → reading (one company at a
 // time: its official pages and public job board, facts kept only if quoted word for word) → done, with a notification.
 // See docs/RESEARCH.md for the sources and the rules.
+import { coreCatalog } from '../src/data/coreCompanies'
+import { companyCatalog } from '../src/data/companies'
+import { categoryLabel, requirementsFor } from '../src/lib/eligibility'
+import { ROLES, TRACK_BY_ID } from '../src/lib/branches'
+import type { Category } from '../src/data/types'
 import { env, groq, log, STYLE_RULES } from './_lib'
-import { adzunaHiring, checkFinding, companiesInIndustry, db, readPage, safeUrl, searchConfigured, siteOf, sourceKind, webSearch, websiteFor, type Page } from './_research'
+import { adzunaHiring, boardFromLink, checkFinding, isHiringPlatform, companiesInIndustry, db, readPage, safeUrl, searchConfigured, siteOf, sourceKind, webSearch, websiteFor, type Page } from './_research'
 
 export const config = { runtime: 'edge' }
 
@@ -57,6 +62,51 @@ async function understand(r: Job): Promise<Plan> {
 
 /* ---------------------------------------------------------------- 2. finding companies */
 
+// Words a student might use for each kind of company in the built-in list (src/data/companies.ts, coreCompanies.ts).
+const SECTOR: [RegExp, Category[]][] = [
+  [/semi ?conductor|vlsi|chip|silicon|asic|fpga/i, ['semiconductor', 'hardware']],
+  [/embedded|iot|firmware|electronics/i, ['embedded', 'semiconductor']],
+  [/telecom|wireless|\brf\b|5g|network(ing)? equipment/i, ['telecom']],
+  [/power|energy|utility|utilities|renewable|solar|grid/i, ['energy', 'electrical']],
+  [/electrical/i, ['electrical']],
+  [/automation|plc|instrumentation|robotic/i, ['automation']],
+  [/automo|vehicle|\bev\b|electric vehicle|car|mobility/i, ['automotive']],
+  [/manufactur|steel|metal|production|industrial/i, ['manufacturing']],
+  [/engineering services|design services|cad|cae/i, ['engineering_services']],
+  [/construction|civil|infrastructure|real estate|structural/i, ['construction']],
+  [/chemical|process|petro|refin|oil|gas|fmcg/i, ['process']],
+  [/bio|pharma|life science|health ?care/i, ['biotech']],
+  [/cyber|security/i, ['security']],
+  [/quant|trading|hft/i, ['quant']],
+  [/\bai\b|machine learning|\bml\b|data science|deep tech/i, ['ai']],
+  [/bank|fintech|finance|payments?/i, ['fintech']],
+  [/consult/i, ['consulting']],
+  [/it services|service compan|outsourc/i, ['service']],
+  [/startup|start-up/i, ['startup']],
+  [/product compan|saas|software product/i, ['product', 'top']],
+  [/cloud|infra|database|devops/i, ['infra']],
+]
+/** The kinds of company that hire for a job role, from the engineering tree (Data Analyst → the AI and data track). */
+export function categoriesForRole(role: string): Category[] {
+  const words = role.toLowerCase().split(/[^a-z]+/).filter((w) => w.length > 2 && !['engineer', 'engineering', 'developer', 'fresher', 'freshers', 'role', 'roles', 'job', 'jobs', 'and', 'the', 'for'].includes(w))
+  if (!words.length) return []
+  const best = ROLES.map((r) => ({ r, hits: words.filter((w) => r.title.toLowerCase().includes(w)).length })).sort((a, b) => b.hits - a.hits)[0]
+  return best?.hits ? ((TRACK_BY_ID.get(best.r.track)?.categories ?? []) as Category[]) : []
+}
+
+/** Companies of a kind from the built-in list, most relevant category first. A sector wins; a role is the fallback. */
+export function catalogInSector(industry: string, limit: number, role = ''): string[] {
+  const text = industry
+  const cats = [...new Set(text ? SECTOR.filter(([re]) => re.test(text)).flatMap(([, c]) => c) : categoriesForRole(role))]
+  if (!cats.length && text) {
+    const byLabel = (Object.entries(categoryLabel) as [Category, string][]).filter(([, l]) => l.toLowerCase().split(/[^a-z]+/).some((w) => w.length > 3 && text.toLowerCase().includes(w)))
+    cats.push(...byLabel.map(([c]) => c))
+  }
+  const names = [...coreCatalog.filter((c) => cats.includes(c.category)).sort((a, b) => cats.indexOf(a.category) - cats.indexOf(b.category)).map((c) => c.name),
+    ...companyCatalog.filter((c) => cats.includes(requirementsFor(c).category)).map((c) => c.name)]
+  return [...new Set(names)].slice(0, limit)
+}
+
 async function find(r: Job, plan: Plan): Promise<{ companies: Omit<Company, 'id'>[]; plan: Plan }> {
   const out: Omit<Company, 'id'>[] = []
   const add = (c: Omit<Company, 'id'>) => {
@@ -70,6 +120,8 @@ async function find(r: Job, plan: Plan): Promise<{ companies: Omit<Company, 'id'
     const website = known?.careers_url || (await websiteFor(name))
     add({ name: known?.name ?? name, website, ats: known?.ats ?? null, ats_board: known?.ats_board ?? null, found_via: known ? 'catalog' : 'named' })
   }
+  // A student who named companies gets those companies, not others like them.
+  if ((plan.companies ?? []).length) return { companies: out, plan: { ...plan, adzuna: [] } }
   // A kind of company: who is hiring for the role now (Adzuna), and which companies in the sector operate in India (Wikidata).
   let hiring: Hiring[] = []
   if (out.length < MAX_COMPANIES && (plan.role || plan.industry)) {
@@ -79,6 +131,14 @@ async function find(r: Job, plan: Plan): Promise<{ companies: Omit<Company, 'id'
       if (out.some((c) => c.name.toLowerCase() === h.company.toLowerCase())) continue
       const known = fromCatalog(h.company)
       add({ name: known?.name ?? h.company, website: known?.careers_url || (await websiteFor(h.company)), ats: known?.ats ?? null, ats_board: known?.ats_board ?? null, found_via: 'adzuna' })
+    }
+  }
+  // The built-in list knows which companies are semiconductor, automotive, construction and so on (Wikidata's India
+  // filter misses companies with a head office abroad, which is most of them).
+  if (out.length < MAX_COMPANIES && (plan.industry || plan.role)) {
+    for (const name of catalogInSector(plan.industry ?? '', MAX_COMPANIES - out.length, plan.role ?? '')) {
+      const known = fromCatalog(name)
+      add({ name, website: known?.careers_url || (await websiteFor(name)), ats: known?.ats ?? null, ats_board: known?.ats_board ?? null, found_via: 'catalog' })
     }
   }
   if (out.length < MAX_COMPANIES && plan.industry) {
@@ -101,6 +161,10 @@ async function find(r: Job, plan: Plan): Promise<{ companies: Omit<Company, 'id'
 /* ---------------------------------------------------------------- 3. reading one company */
 
 const CAMPUS = /campus|graduate|university|fresher|student|early[-_ ]?career|intern|entry[-_ ]?level|new[-_ ]?grad|young[-_ ]?professional/i
+/** The distinctive words of a company name: "Tata Consultancy Services" → tata, consultancy. */
+const tokensOf = (name: string) =>
+  name.toLowerCase().split(/[^a-z0-9]+/).filter((t) => t.length >= 3 && !/^(ltd|limited|pvt|private|inc|corp|corporation|technologies|technology|tech|solutions|services|india|group|the|and|company|systems|labs)$/.test(t))
+const BOARD_LINK = /greenhouse\.io|lever\.co|ashbyhq\.com/i
 const INDIA = /india|bengaluru|bangalore|hyderabad|pune|chennai|mumbai|delhi|gurgaon|gurugram|noida|kolkata|ahmedabad|remote/i
 
 /** Roles from a public job board's JSON: structured facts, so the role title itself is the quote. */
@@ -133,31 +197,62 @@ async function read(r: Job, c: Company, robots: Map<string, string>, plan: Plan)
     findings.push({ company: c.name, kind: 'role', field: h.location.slice(0, 60), value: h.title, quote: `${h.title}, ${h.location}`.slice(0, 300), source_url: h.url, source_kind: 'adzuna' })
     if (h.salary) findings.push({ company: c.name, kind: 'salary', field: h.title.slice(0, 60), value: h.salary, quote: `${h.title}: ${h.salary} (as listed on Adzuna)`.slice(0, 300), source_url: h.url, source_kind: 'adzuna' })
   }
-  if (!c.website && !c.ats) return { findings, note: 'No official website found.' }
+  if (!c.website && !c.ats) return { findings, note: 'No official website found in Wikidata or the checked company list.' }
 
-  // Pages to read: the job board, the site's careers page, and the best campus or graduate page found on it or by search.
+  // Pages to read, in rounds. First: the job board, the site's front page, its /careers page and the usual careers
+  // subdomains (careers., jobs.), plus official pages a web search finds when a search key is set.
+  const sites = c.website ? [c.website] : []
   const urls = new Set<string>()
-  if (c.ats && c.ats_board) urls.add(boardUrl(c))
   const site = c.website ? safeUrl(c.website) : null
+  if (c.ats && c.ats_board) urls.add(boardUrl(c))
   if (site) {
+    const root = siteOf(site.hostname)
     urls.add(site.href)
     if (!/career|job/i.test(site.pathname)) urls.add(new URL('/careers', site).href)
+    urls.add(`https://careers.${root}/`)
+    urls.add(`https://jobs.${root}/`)
     if (searchConfigured()) {
-      for (const h of await webSearch(`${c.name} campus hiring graduate freshers eligibility criteria careers`, { domains: [siteOf(site.hostname)], max: 4 })) {
-        if (sourceKind(h.url, c.website) === 'official') urls.add(h.url)
+      for (const h of await webSearch(`${c.name} campus hiring graduate freshers eligibility criteria careers`, { domains: [root], max: 4 })) {
+        if (sourceKind(h.url, sites) === 'official') urls.add(h.url)
       }
     }
   }
-  const pages = (await Promise.all([...urls].slice(0, 4).map((u) => readPage(u, robots, record)))).filter((p): p is Page => !!p)
-  // One more hop: a campus or graduate page linked from what was read, on the same site.
-  const next = pages.flatMap((p) => p.links).find((l) => CAMPUS.test(l) && !urls.has(l) && sourceKind(l, c.website) === 'official')
-  if (next) {
-    const p = await readPage(next, robots, record)
+  const pages = (await Promise.all([...urls].slice(0, 6).map((u) => readPage(u, robots, record)))).filter((p): p is Page => !!p)
+  // Second round: what the company's own pages link to. A careers or campus page, even on another domain the company
+  // uses for careers, and a public job board it names.
+  const links = pages.filter((p) => sourceKind(p.url, sites)).flatMap((p) => p.links)
+  const careersLink = /career|jobs?\b|join[-_ ]?us|work[-_ ]?with[-_ ]?us|life[-_ ]?at/i
+  const board = links.map(boardFromLink).find(Boolean)
+  if (board && !c.ats) Object.assign(c, { ats: board.ats, ats_board: board.board })
+  const follow = [
+    ...(board ? [boardUrl(c)] : []),
+    links.find((l) => CAMPUS.test(l) && safeUrl(l) && !urls.has(l)),
+    links.find((l) => careersLink.test(new URL(l).pathname + new URL(l).hostname) && safeUrl(l) && !urls.has(l) && !BOARD_LINK.test(l)),
+  ].filter((l): l is string => !!l)
+  // A hiring platform the company's own page links to (SmartRecruiters, Workday, Darwinbox, ...) is its job board.
+  const platform = links.find((l) => isHiringPlatform(l) && tokensOf(c.name).some((t) => l.toLowerCase().includes(t)))
+  if (platform && !follow.includes(platform)) follow.unshift(platform)
+  // Another domain counts as the company's own only if it carries the company's name (zoho.com for Zoho), so a link to
+  // a recruitment agency never becomes a source of eligibility.
+  const tokens = tokensOf(c.name)
+  for (const l of [...follow]) {
+    const host = safeUrl(l)
+    if (!host || sourceKind(l, sites) || BOARD_LINK.test(l) || isHiringPlatform(l)) continue
+    if (tokens.some((t) => siteOf(host.hostname).replace(/[^a-z0-9]/g, '').includes(t))) sites.push(host.origin + '/')
+    else follow.splice(follow.indexOf(l), 1)
+  }
+  for (const p of await Promise.all(follow.slice(0, 3).map((u) => readPage(u, robots, record)))) if (p) pages.push(p)
+  // Third: a campus page linked from the careers page just read.
+  const more = pages.slice(-2).filter((p) => sourceKind(p.url, sites)).flatMap((p) => p.links).find((l) => CAMPUS.test(l) && !pages.some((p) => p.url === l) && sourceKind(l, sites) === 'official')
+  if (more) {
+    const p = await readPage(more, robots, record)
     if (p) pages.push(p)
   }
   for (const p of pages) if (p.json && c.ats) findings.push(...boardRoles(c, p))
-  const text = pages.filter((p) => !p.json && p.text && sourceKind(p.url, c.website, { ats: c.ats, board: c.ats_board }))
-  if (!text.length) return { findings, note: pages.length ? 'Read the job board.' : 'The official pages could not be read (blocked by robots.txt, missing or not public).' }
+  const platformPage = (url: string) => !!platform && url.split('?')[0].startsWith(platform.split('?')[0].replace(/\/$/, ''))
+  const kindOf = (url: string) => sourceKind(url, sites, { ats: c.ats, board: c.ats_board }) ?? (platformPage(url) ? 'job_board' : null)
+  const text = pages.filter((p) => !p.json && p.text && kindOf(p.url))
+  if (!text.length) return { findings, note: pages.some((p) => p.json) ? 'Read the job board.' : 'The site asks bots not to read it (robots.txt), refused us, or has no public careers page. We respect that.' }
 
   // Facts from the official pages, each with the exact words it came from.
   const out = await groq(
@@ -171,7 +266,7 @@ async function read(r: Job, c: Company, robots: Map<string, string>, plan: Plan)
           '"about":{"value":"one sentence","quote":"","url":""},"process":[{"value":"selection step","quote":"","url":""}],' +
           '"careers":{"value":"how to apply","quote":"","url":""}}. ' +
           'Rules: every "quote" is copied exactly, character for character, from the page text given, 12 to 280 characters, and it must contain the fact. ' +
-          '"url" is the page the quote comes from. Eligibility means stated requirements for freshers, graduates, campus hires or interns only. ' +
+          '"url" is the page the quote comes from. Eligibility means stated requirements for freshers, graduates, campus hires or interns only; a page saying a requirement does not apply (for example that degrees or marks are not required) is also eligibility, with field "other". ' +
           'Leave a list empty or a value "" when the pages do not say it. Never guess, never use outside knowledge.',
       },
       { role: 'user', content: text.map((p) => `PAGE ${p.url}\n${p.text.slice(0, 9_000)}`).join('\n\n').slice(0, 28_000) + `\n\nThe student asked: ${r.query.slice(0, 200)}` },
@@ -197,7 +292,7 @@ async function read(r: Job, c: Company, robots: Map<string, string>, plan: Plan)
   let dropped = 0
   for (const f of candidates) {
     const page = text.find((p) => p.url === f.source_url) ?? text.find((p) => checkFinding(f, p.text))
-    const kind = page ? sourceKind(page.url, c.website, { ats: c.ats, board: c.ats_board }) : null
+    const kind = page ? kindOf(page.url) : null
     if (!page || !kind || !f.value || !checkFinding(f, page.text)) {
       dropped++
       continue

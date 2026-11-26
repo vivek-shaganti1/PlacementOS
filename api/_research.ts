@@ -48,14 +48,37 @@ const BOARD_HOSTS: Record<string, 'greenhouse' | 'lever' | 'ashby'> = {
   'boards-api.greenhouse.io': 'greenhouse', 'boards.greenhouse.io': 'greenhouse', 'job-boards.greenhouse.io': 'greenhouse',
   'api.lever.co': 'lever', 'jobs.lever.co': 'lever', 'api.ashbyhq.com': 'ashby', 'jobs.ashbyhq.com': 'ashby',
 }
-/** Whether a page belongs to the company: its own site (any subdomain) or its public job board. */
-export function sourceKind(url: string, website: string, board?: { ats: string | null; board: string | null }): 'official' | 'job_board' | null {
+/**
+ * Whether a page belongs to the company: one of its own sites (any subdomain of the registered domain) or its public job
+ * board. `sites` is the website on record plus any careers site the company's own pages link to (zohocorp.com links its
+ * careers to zoho.com/careers): a link from the company's own page is the company saying the site is theirs.
+ */
+export function sourceKind(url: string, sites: string | string[], board?: { ats: string | null; board: string | null }): 'official' | 'job_board' | null {
   const u = safeUrl(url)
   if (!u) return null
   const ats = BOARD_HOSTS[u.hostname]
   if (ats) return board?.ats === ats && board.board && u.pathname.toLowerCase().includes(`/${board.board.toLowerCase()}`) ? 'job_board' : null
-  const w = safeUrl(website)
-  return w && siteOf(u.hostname) === siteOf(w.hostname) ? 'official' : null
+  const own = (Array.isArray(sites) ? sites : [sites]).map((w) => safeUrl(w)).filter((w): w is URL => !!w).map((w) => siteOf(w.hostname))
+  return own.includes(siteOf(u.hostname)) ? 'official' : null
+}
+
+/**
+ * Other hiring platforms companies use for their careers pages. A page on one of them counts as the company's job board
+ * only when the company's own page links to it, and only that exact board (its path names the company).
+ */
+const HIRING_PLATFORMS = /(^|\.)(smartrecruiters\.com|myworkdayjobs\.com|darwinbox\.in|darwinbox\.com|icims\.com|taleo\.net|oraclecloud\.com|successfactors\.com|zohorecruit\.com|zohorecruit\.in|keka\.com|freshteam\.com|recruitee\.com|workable\.com|teamtailor\.com|bamboohr\.com|personio\.de|jobvite\.com)$/i
+export const isHiringPlatform = (url: string) => {
+  const u = safeUrl(url)
+  return !!u && HIRING_PLATFORMS.test(u.hostname)
+}
+
+/** A job board named by a link on the company's own page (boards.greenhouse.io/acme, jobs.lever.co/acme, jobs.ashbyhq.com/acme). */
+export function boardFromLink(link: string): { ats: 'greenhouse' | 'lever' | 'ashby'; board: string } | null {
+  const u = safeUrl(link)
+  const ats = u ? BOARD_HOSTS[u.hostname] : undefined
+  if (!u || !ats || u.hostname.startsWith('api.') || u.hostname.startsWith('boards-api.')) return null
+  const board = u.pathname.split('/').filter(Boolean)[0] ?? ''
+  return /^[A-Za-z0-9._-]{1,80}$/.test(board) && board !== 'embed' ? { ats, board } : null
 }
 
 /* ---------------------------------------------------------------- robots.txt */
@@ -197,8 +220,16 @@ export function checkFinding(f: { value: string; quote: string }, page: string):
   if (quote.length < 12 || quote.length > 300) return false
   if (!norm(page).includes(quote)) return false
   const numbers = f.value.match(/\d+(\.\d+)?/g) ?? []
-  return numbers.every((n) => new RegExp(`(^|[^\\d.])${n.replace('.', '\\.')}($|[^\\d])`).test(quote))
+  if (!numbers.every((n) => new RegExp(`(^|[^\\d.])${n.replace('.', '\\.')}($|[^\\d])`).test(quote))) return false
+  // The fact must say what the quote says: most of its words (by their first five letters) are in the quote, so a
+  // summary written from memory next to an unrelated quote is dropped.
+  const words = (t: string) => norm(t).split(/[^a-z0-9]+/).filter((w) => w.length >= 4 && !STOP.has(w)).map((w) => w.slice(0, 5))
+  const v = words(f.value)
+  if (!v.length) return true
+  const q = new Set(words(f.quote))
+  return v.filter((w) => q.has(w)).length / v.length >= 0.6
 }
+const STOP = new Set(['with', 'that', 'this', 'from', 'they', 'their', 'have', 'will', 'your', 'which', 'into', 'more', 'than', 'also', 'such', 'other', 'about', 'should', 'must', 'candidates', 'students', 'company'])
 
 /* ---------------------------------------------------------------- finding companies */
 
@@ -219,14 +250,24 @@ async function sparql(query: string): Promise<Record<string, { value: string }>[
   return data.results?.bindings ?? []
 }
 
+/** How far an address is from a company's main site: www. or the bare domain, then .com or .in, then shorter names. */
+const main = (u: URL) =>
+  (/^www\./.test(u.hostname) || u.hostname === siteOf(u.hostname) ? 0 : 100) + (/\.(com|in|co\.in)$/.test(u.hostname) ? 0 : 50) + u.hostname.length
+
 /** The official website Wikidata records for a company name (P856), if there is one. */
 export async function websiteFor(name: string): Promise<string> {
   const hits = await wikidataSearch(name, 3)
   if (!hits.length) return ''
   const ids = hits.map((h) => `wd:${h.id}`).join(' ')
   // Prefer an item that is a business (instance of a subclass of Q4830453).
-  const rows = await sparql(`SELECT ?c ?site WHERE { VALUES ?c { ${ids} } ?c wdt:P856 ?site . OPTIONAL { ?c wdt:P31/wdt:P279* wd:Q4830453 . BIND(1 AS ?biz) } } ORDER BY DESC(?biz) LIMIT 1`)
-  return safeUrl(rows[0]?.site.value ?? '')?.href ?? ''
+  const rows = await sparql(`SELECT ?c ?site ?biz WHERE { VALUES ?c { ${ids} } ?c wdt:P856 ?site . OPTIONAL { ?c wdt:P31/wdt:P279* wd:Q4830453 . BIND(1 AS ?biz) } } LIMIT 30`)
+  // Wikidata often records the address as http://; ask for the same site over https (we never read plain http). A
+  // company can have several addresses (an office page in one country): prefer a business, then the site's front page.
+  const best = rows
+    .map((r) => ({ c: r.c?.value, biz: r.biz ? 1 : 0, u: safeUrl(String(r.site?.value ?? '').replace(/^http:\/\//i, 'https://')) }))
+    .filter((x): x is { c: string; biz: number; u: URL } => !!x.u)
+    .sort((a, b) => b.biz - a.biz || hits.findIndex((h) => a.c.endsWith(h.id)) - hits.findIndex((h) => b.c.endsWith(h.id)) || main(a.u) - main(b.u) || a.u.pathname.length - b.u.pathname.length)[0]
+  return best ? `${best.u.origin}/` : ''
 }
 
 /** Companies in an industry that operate in India, with their official websites (Wikidata, CC0). */
@@ -241,7 +282,7 @@ export async function companiesInIndustry(industry: string, limit = 6): Promise<
   } LIMIT ${limit * 2}`)
   const seen = new Set<string>()
   return rows
-    .map((r) => ({ name: r.cLabel?.value ?? '', website: safeUrl(r.site?.value ?? '')?.href ?? '' }))
+    .map((r) => ({ name: r.cLabel?.value ?? '', website: safeUrl(String(r.site?.value ?? '').replace(/^http:\/\//i, 'https://'))?.href ?? '' }))
     .filter((r) => r.name && r.website && !/^Q\d+$/.test(r.name) && !seen.has(r.name) && (seen.add(r.name), true))
     .slice(0, limit)
 }
