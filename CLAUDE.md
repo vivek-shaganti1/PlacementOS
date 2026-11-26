@@ -92,6 +92,11 @@ Project skills in `.claude/skills/`: `motion-design` (start here), `premium-ui`,
 `page-transitions`, `magnetic-effects`, `parallax`, `particle-effects`, `cursor-effects`, `glassmorphism`,
 `typography-animation`, `performance`, `accessibility`.
 
+## Engineering tree
+`src/data/engineering/` is Engineering → family → branch → career track → job role → skills, one file per branch and per
+track; its README is the tree map (`node scripts/taxonomy.mjs`, checked in CI). `src/lib/branches.ts` keeps the lookups the
+app uses. Branch patterns are copied into `private.branch_codes` in SQL; `scripts/branch-parity.mjs` checks both agree.
+
 ## Mobile app
 `mobile/` is a separate Expo (React Native) project that imports the pure logic in `src/lib` and `src/data` listed in
 `mobile/src/lib/shared.ts`. Keep those files free of DOM, `import.meta` and npm imports (`npm run check:shared`). Types go in

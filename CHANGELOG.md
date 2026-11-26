@@ -5,6 +5,9 @@ Semantic versioning; see `docs/ENGINEERING.md` for how releases are made.
 ## Unreleased
 
 ### Added
+- **The engineering tree.** Branches, career tracks, job roles and skills now live as a tree of files
+  (`src/data/engineering/`: Engineering → family → branch → track → role → skills) with a generated map in its README.
+  59 job roles were added across the 18 tracks. Nothing a student sees changes, apart from the two fixes below.
 - **New landing page.** It opens with the question students ask and answers it by running the real eligibility engine in the
   visitor's browser: change a sample student's marks and skills, see which companies open, why, and the one change that
   moves the most. Then why it exists, what each kind of person sees, how it works in four moves, how a season runs, and plans with a
@@ -67,6 +70,8 @@ Semantic versioning; see `docs/ENGINEERING.md` for how releases are made.
 - The CSV export opens correctly in Excel.
 
 ### Fixed
+- **Branch names:** "AI & Data Science" was read as Data Science, and "Electronics & Computer Engineering" as CSE, so its
+  students started on the software track instead of embedded. Fixed in the app and in the database's drive rule.
 - **Landing claims that were not true or not checkable** are gone: "parsed in your browser" (it is on the server), a
   hard-coded test count, response times, "most chosen", a named college with a plan, recruiters posting drives, and a
   question box that only led to the sign-in page.

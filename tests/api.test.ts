@@ -584,6 +584,34 @@ test('BRANCH a role template only ever names skills of its own track', () => {
     for (const s of Object.keys(skills as object)) assert.ok(track.skills.includes(s), `${id} role tests "${s}", which the track does not list`)
   }
 })
+/* ---------------------------------------------------------------- engineering tree */
+const tree = await import('../src/data/engineering')
+const await_branches = await import('../src/lib/branches')
+test('TREE every branch, track, role and skill hangs together', () => {
+  const skills = new Set(tree.SKILL_RULES.map((s: any) => s.name))
+  assert.equal(skills.size, tree.SKILL_RULES.length, 'skill names are unique')
+  const trackIds = new Set(tree.TRACKS.map((t: any) => t.id))
+  for (const f of tree.FAMILIES) {
+    for (const b of f.branches) assert.equal(b.family, f.id, `${b.code} sits in its own family`)
+    for (const id of f.defaultTracks) assert.ok(trackIds.has(id), `${f.id} starts on a real track`)
+    for (const t of f.tracks) assert.ok(t.families.includes(f.id), `${t.id} is open to its home family`)
+  }
+  assert.equal(tree.FAMILIES.flatMap((f: any) => f.branches).length, tree.BRANCHES.length, 'every branch is in exactly one family')
+  assert.equal(tree.FAMILIES.flatMap((f: any) => f.tracks).length, tree.TRACKS.length, 'every track has one home family')
+  for (const b of tree.BRANCHES) for (const id of b.tracks ?? []) assert.ok(trackIds.has(id), `${b.code} starts on a real track`)
+  for (const t of tree.TRACKS) {
+    for (const s of t.skills) assert.ok(skills.has(s), `${t.id}: ${s} is a known skill`)
+    assert.ok(t.roles.length >= 2, `${t.id} has roles`)
+    for (const r of t.roles) for (const s of r.skills) assert.ok(t.skills.includes(s), `${t.id}/${r.id}: ${s} is one of the track's skills`)
+  }
+  const roleIds = tree.ROLES.map((r: any) => r.id)
+  assert.equal(new Set(roleIds).size, roleIds.length, 'role ids are unique')
+})
+test('TREE each branch is recognised as itself, before any broader branch', () => {
+  const { branchOf } = await_branches
+  for (const b of tree.BRANCHES) assert.equal(branchOf(b.name)?.code, b.code, b.name)
+})
+
 /* ---------------------------------------------------------------- landing page demo */
 const { DEMO_BRANCHES, bestFix, demoSkills, runDemo, startProfile } = await import('../src/components/landing/demo')
 test('LANDING every branch starts with four sliders and something to improve', () => {

@@ -39,6 +39,8 @@ jobs:
         run: node scripts/check-edge.mjs
       - name: API description matches the functions
         run: node scripts/check-openapi.mjs
+      - name: The engineering tree map matches the tree
+        run: npm run check:taxonomy
       - name: Code shared with the mobile app stays pure
         run: npm run check:shared
       - name: Dependency advisories (production, moderate and above)

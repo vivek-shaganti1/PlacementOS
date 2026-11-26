@@ -14,6 +14,7 @@
     "test:e2e": "playwright test",
     "stack:seed": "node scripts/e2e-seed.mjs",
     "stack:serve": "node scripts/serve-prod.mjs",
+    "check:taxonomy": "node scripts/taxonomy.mjs --check",
     "check:shared": "node scripts/check-shared.mjs"
   },
   "dependencies": {

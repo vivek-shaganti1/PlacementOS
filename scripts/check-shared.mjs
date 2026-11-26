@@ -30,7 +30,9 @@ while (queue.length) {
       if (!typeOnly) problems.push(`${name}: imports the package "${spec}" (shared files may only import other shared files)`)
       continue
     }
-    const target = resolve(dirname(file), `${spec}.ts`)
+    // A folder import ('../data/engineering') means its index.ts.
+    const base = resolve(dirname(file), spec)
+    const target = existsSync(`${base}.ts`) ? `${base}.ts` : existsSync(resolve(base, 'index.ts')) ? resolve(base, 'index.ts') : `${base}.ts`
     if (/\/lib\/supabase\.ts$/.test(target) && !typeOnly) problems.push(`${name}: imports the web Supabase client (use ./types for types)`)
     else if (!/\/lib\/supabase\.ts$/.test(target)) queue.push(target)
   }
