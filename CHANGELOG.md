@@ -5,6 +5,18 @@ Semantic versioning; see `docs/ENGINEERING.md` for how releases are made.
 ## Unreleased
 
 ### Added
+- **Live company research.** Students ask in plain words; a background worker finds the companies, reads their own pages
+  and public job boards (robots.txt obeyed, nothing behind a login, never LinkedIn, Naukri, Glassdoor or similar), keeps only
+  facts it can quote word for word, and shows them within minutes as "Not verified yet". Platform admins approve them in
+  Research review, which makes them "Verified by PlacementIQ" for everyone. Pages are never stored: a fact, a short quote
+  and the link. See `docs/RESEARCH.md`; needs migration `20261127000000_live_research.sql` and `RESEARCH_WORKER_SECRET`.
+- **Placement score** on the dashboard: one number out of 100 covering academics, track skills, proven skills, projects,
+  internships, resume, certifications, aptitude, interview practice and achievements. Each part shows its points, where
+  its number comes from (college records, proven, self-reported) and the next step that would raise it
+  (`placementScore` in `src/lib/predict.ts`). Readiness and rankings are unchanged.
+- **The engineering tree.** Branches, career tracks, job roles and skills now live as a tree of files
+  (`src/data/engineering/`: Engineering → family → branch → track → role → skills) with a generated map in its README.
+  59 job roles were added across the 18 tracks. Nothing a student sees changes, apart from the two fixes below.
 - **New landing page.** It opens with the question students ask and answers it by running the real eligibility engine in the
   visitor's browser: change a sample student's marks and skills, see which companies open, why, and the one change that
   moves the most. Then why it exists, what each kind of person sees, how it works in four moves, how a season runs, and plans with a
@@ -67,6 +79,8 @@ Semantic versioning; see `docs/ENGINEERING.md` for how releases are made.
 - The CSV export opens correctly in Excel.
 
 ### Fixed
+- **Branch names:** "AI & Data Science" was read as Data Science, and "Electronics & Computer Engineering" as CSE, so its
+  students started on the software track instead of embedded. Fixed in the app and in the database's drive rule.
 - **Landing claims that were not true or not checkable** are gone: "parsed in your browser" (it is on the server), a
   hard-coded test count, response times, "most chosen", a named college with a plan, recruiters posting drives, and a
   question box that only led to the sign-in page.

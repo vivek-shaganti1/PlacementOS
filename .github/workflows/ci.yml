@@ -39,6 +39,8 @@ jobs:
         run: node scripts/check-edge.mjs
       - name: API description matches the functions
         run: node scripts/check-openapi.mjs
+      - name: The engineering tree map matches the tree
+        run: npm run check:taxonomy
       - name: Code shared with the mobile app stays pure
         run: npm run check:shared
       - name: Dependency advisories (production, moderate and above)
@@ -92,6 +94,9 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
+          cache: npm
+      # branch-parity.mjs bundles the engineering tree with esbuild
+      - run: npm ci
       - name: Replay migrations and run access tests
         run: bash scripts/test-db.sh
 

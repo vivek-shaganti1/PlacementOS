@@ -74,6 +74,7 @@ Previews cannot reach production: the app, the functions, the proxy and the cont
 | 20261115000000_live_console | Publishes console tables for live updates | 2026-11-15 |
 | 20261116000000_company_catalog | Verified company catalogue, drive statistics | 2026-11-15 |
 | 20261125000000_checklist_fixes | Set-based visibility, AI daily cap, consent, retention, delete guard | **Pending** |
+| 20261127000000_live_research | Live company research, two branch-name fixes | **Pending** |
 
 ## Releases and versions
 

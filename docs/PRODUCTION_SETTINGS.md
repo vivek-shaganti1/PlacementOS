@@ -25,7 +25,9 @@ change it from the repository.
 | `VITE_GRIEVANCE_CONTACT` | A named person and email | unset |
 | `VITE_SENTRY_DSN`, `SENTRY_DSN` | Set to turn error reports on | A separate Sentry project |
 | `AI_DISABLED` | unset; `true` pauses every AI feature | unset |
-| `ADZUNA_APP_ID`, `ADZUNA_APP_KEY` | Optional | unset |
+| `ADZUNA_APP_ID`, `ADZUNA_APP_KEY` | Optional (off-campus search, and companies hiring now for research) | unset |
+| `RESEARCH_WORKER_SECRET` | Set, the same value as the Vault secret `research_worker_secret` (docs/RESEARCH.md) | unset |
+| `TAVILY_API_KEY` or `BRAVE_SEARCH_API_KEY` | Optional: lets research find official pages by web search | unset |
 
 The production domain is named in `vercel.json` (three `host` rules: the `/supabase` proxy and the content security policy).
 Change it there when the domain changes. A preview on any other host cannot reach the production database: its pages have no

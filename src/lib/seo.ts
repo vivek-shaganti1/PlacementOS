@@ -48,6 +48,7 @@ const APP: Record<string, string> = {
   '/settings': 'Settings',
   '/help': 'Help & Support',
   '/jobs': 'Campus Jobs',
+  '/research': 'Company research',
   '/admin': 'Placement cell overview',
   '/admin/students': 'Students',
   '/admin/classes': 'Classes',
@@ -57,6 +58,7 @@ const APP: Record<string, string> = {
   '/super/orgs': 'Organizations',
   '/super/admins': 'Platform admins',
   '/super/certifications': 'Certification catalog',
+  '/super/research': 'Research review',
   '/recruiter': 'My drives',
 }
 
