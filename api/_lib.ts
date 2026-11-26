@@ -110,7 +110,7 @@ export async function rest(token: string, path: string, init: RequestInit = {}, 
   if (!res.ok) {
     const text = await res.text()
     // Turn the common database refusals into messages an admin can act on.
-    const known = text.match(/(ROSTER_DOMAIN|APPLICATION_STEP|DRIVE_HAS_OUTCOMES|CREDENTIAL_TAKEN): ([^"]{1,200})/)
+    const known = text.match(/(ROSTER_DOMAIN|APPLICATION_STEP|DRIVE_HAS_OUTCOMES|CREDENTIAL_TAKEN|RESEARCH_LIMIT): ([^"]{1,200})/)
     if (known) throw new HttpError(422, known[2])
     if (/coding_profiles_one_owner/.test(text)) throw new HttpError(409, 'Another student has already proven this account is theirs. If it is yours, ask your placement cell.')
     if (/credentials_one_owner/.test(text)) throw new HttpError(409, 'This certificate is already on another student\'s profile.')
@@ -137,7 +137,7 @@ export async function rest(token: string, path: string, init: RequestInit = {}, 
  * Records one AI action against the student's monthly plan quota, before the model is called.
  * Throws 429 with a readable message once the quota is used up.
  */
-export async function consumeAi(token: string, kind: 'chat' | 'resume' | 'jd_match') {
+export async function consumeAi(token: string, kind: 'chat' | 'resume' | 'jd_match' | 'research') {
   // A switch for the owner: AI_DISABLED=true stops every model call without a deploy of new code.
   if (env('AI_DISABLED') === 'true') throw new HttpError(503, 'AI features are paused right now. Everything else still works.')
   const res = await fetch(`${SUPABASE_URL}/rest/v1/rpc/consume_ai`, {

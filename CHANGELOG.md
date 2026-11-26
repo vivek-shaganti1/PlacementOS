@@ -5,6 +5,11 @@ Semantic versioning; see `docs/ENGINEERING.md` for how releases are made.
 ## Unreleased
 
 ### Added
+- **Live company research.** Students ask in plain words; a background worker finds the companies, reads their own pages
+  and public job boards (robots.txt obeyed, nothing behind a login, never LinkedIn, Naukri, Glassdoor or similar), keeps only
+  facts it can quote word for word, and shows them within minutes as "Not verified yet". Platform admins approve them in
+  Research review, which makes them "Verified by PlacementIQ" for everyone. Pages are never stored: a fact, a short quote
+  and the link. See `docs/RESEARCH.md`; needs migration `20261127000000_live_research.sql` and `RESEARCH_WORKER_SECRET`.
 - **Placement score** on the dashboard: one number out of 100 covering academics, track skills, proven skills, projects,
   internships, resume, certifications, aptitude, interview practice and achievements. Each part shows its points, where
   its number comes from (college records, proven, self-reported) and the next step that would raise it

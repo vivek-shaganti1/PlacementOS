@@ -125,6 +125,65 @@ paths:
           description: Done
         '503':
           description: Not available right now
+  /api/research:
+    post:
+      summary: Ask for live company research (signed in; one AI action; 3 an hour, 10 a day)
+      security:
+        - bearer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query]
+              properties:
+                query:
+                  type: string
+                  minLength: 3
+                  maxLength: 300
+                  example: Semiconductor companies hiring ECE freshers in Bengaluru
+                branch:
+                  type: string
+                  example: ECE
+      responses:
+        '202':
+          description: "Queued: progress and results are read from the database"
+        '401':
+          description: Not signed in
+        '422':
+          description: Request too short or too long, or the hourly or daily limit is reached
+        '429':
+          description: AI quota used up
+    get:
+      summary: Which optional research sources are set up (signed in)
+      security:
+        - bearer: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+          example: "1"
+      responses:
+        '200':
+          description: Done
+        '401':
+          description: Not signed in
+  /api/research-worker:
+    post:
+      summary: "Works through queued research (the database scheduler only; needs the x-worker-key secret)"
+      parameters:
+        - name: x-worker-key
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Streams progress lines while it works
+        '403':
+          description: Wrong or missing key
   /api/openings:
     get:
       summary: Open roles at a company, or an off-campus search (signed in)

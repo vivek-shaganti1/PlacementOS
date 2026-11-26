@@ -5,7 +5,7 @@ import { NavLink } from 'react-router-dom'
 import {
   IconAward, IconChart, IconCheckSquare, IconDashboard, IconDrives, IconFile, IconFileText,
   IconHelp, IconPractice, IconRoadmap, IconSettings, IconSpark, IconStacks,
-  IconTarget, IconUser, IconUsers,
+  IconSearch, IconTarget, IconUser, IconUsers,
 } from './Icons'
 import { useDialog } from '../lib/useDialog'
 
@@ -40,6 +40,7 @@ const groups = [
     label: 'Apply',
     items: [
       { to: '/jobs', label: 'Campus Jobs', Icon: IconDrives },
+      { to: '/research', label: 'Company Research', Icon: IconSearch },
       { to: '/drives', label: 'Company Insights', Icon: IconStacks },
       { to: '/applications', label: 'Applications', Icon: IconFile },
     ],
@@ -75,6 +76,7 @@ export const NAV: Record<AccountRole, Group[]> = {
         { to: '/super/orgs', label: 'Organizations', Icon: IconStacks },
         { to: '/super/admins', label: 'Platform admins', Icon: IconSettings },
         { to: '/super/companies', label: 'Companies', Icon: IconDrives },
+        { to: '/super/research', label: 'Research review', Icon: IconSearch },
         { to: '/super/certifications', label: 'Certifications', Icon: IconAward },
         { to: '/super/enquiries', label: 'Enquiries', Icon: IconHelp },
       ],

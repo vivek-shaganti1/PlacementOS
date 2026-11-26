@@ -6,7 +6,8 @@ select plan(2);
 
 select is(
   (select array_agg(tablename::text order by tablename) from pg_publication_tables where pubname = 'supabase_realtime' and schemaname = 'public'),
-  array['credentials', 'job_applications', 'job_postings', 'org_students'],
+  -- research_requests: a student's own research progress (20261127000000_live_research.sql).
+  array['credentials', 'job_applications', 'job_postings', 'org_students', 'research_requests'],
   'exactly the console tables are published for live updates'
 );
 -- Realtime decides who hears a change by the same policies as a read, so every published table must have RLS on.

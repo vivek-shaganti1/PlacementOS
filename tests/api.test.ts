@@ -10,6 +10,7 @@ env.SUPABASE_SECRET_KEY = 'test-secret'
 env.SUPABASE_URL = 'https://db.test'
 env.GROQ_API_KEY = 'test-groq'
 env.CONNECT_PROOF_SECRET = 'test-proof-secret'
+env.RESEARCH_WORKER_SECRET = 'test-worker-secret'
 
 type Call = { url: string; method: string; body: any; headers: Record<string, string> }
 let calls: Call[] = []
@@ -584,6 +585,123 @@ test('BRANCH a role template only ever names skills of its own track', () => {
     for (const s of Object.keys(skills as object)) assert.ok(track.skills.includes(s), `${id} role tests "${s}", which the track does not list`)
   }
 })
+/* ---------------------------------------------------------------- live company research */
+const R = await import('../api/_research')
+const { default: researchWorker } = await import('../api/research-worker')
+const { default: research } = await import('../api/research')
+
+test('RESEARCH only public https pages are read, and never sites that forbid collection', () => {
+  for (const bad of ['http://acme.com/', 'https://localhost/', 'https://10.0.0.1/', 'https://[::1]/', 'https://acme.internal/x', 'https://user:pw@acme.com/', 'https://acme.com:8443/', 'https://www.linkedin.com/company/acme', 'https://in.indeed.com/jobs', 'https://www.naukri.com/x', 'https://www.glassdoor.co.in/x', 'https://www.google.com/search?q=a', 'notaurl'])
+    assert.equal(R.safeUrl(bad), null, bad)
+  assert.equal(R.safeUrl('https://careers.acme.com/jobs#top')?.href, 'https://careers.acme.com/jobs')
+})
+test('RESEARCH a page belongs to the company only on its own site or its own job board', () => {
+  assert.equal(R.siteOf('careers.tcs.com'), 'tcs.com')
+  assert.equal(R.siteOf('www.infosys.co.in'), 'infosys.co.in')
+  assert.equal(R.sourceKind('https://careers.acme.com/campus', 'https://www.acme.com/'), 'official')
+  assert.equal(R.sourceKind('https://acme-careers.example.com/', 'https://www.acme.com/'), null)
+  assert.equal(R.sourceKind('https://boards-api.greenhouse.io/v1/boards/acme/jobs', 'https://acme.com/', { ats: 'greenhouse', board: 'acme' }), 'job_board')
+  assert.equal(R.sourceKind('https://boards-api.greenhouse.io/v1/boards/other/jobs', 'https://acme.com/', { ats: 'greenhouse', board: 'acme' }), null)
+})
+test('RESEARCH robots.txt is obeyed: our own group first, longest rule wins, Allow on a tie', () => {
+  const robots = 'User-agent: *\nDisallow: /private\nAllow: /private/careers\n\nUser-agent: BadBot\nDisallow: /'
+  assert.equal(R.robotsAllows(robots, '/careers'), true)
+  assert.equal(R.robotsAllows(robots, '/private/x'), false)
+  assert.equal(R.robotsAllows(robots, '/private/careers/campus'), true)
+  assert.equal(R.robotsAllows('User-agent: PlacementIQ-ResearchBot\nDisallow: /\n\nUser-agent: *\nAllow: /', '/careers'), false)
+  assert.equal(R.robotsAllows('User-agent: *\nDisallow: /*.pdf$', '/brochure.pdf'), false)
+  assert.equal(R.robotsAllows('User-agent: *\nDisallow:', '/anything'), true)
+  assert.equal(R.robotsAllows('', '/anything'), true)
+})
+test('RESEARCH a fact is kept only when its quote is on the page and holds its numbers', () => {
+  const page = R.htmlToText('<html><head><title>x</title><script>var cgpa=9</script></head><body><h2>Graduate programme</h2><p>Candidates must have a minimum CGPA of 7.0 with no active backlogs.</p><p>Open to B.Tech&nbsp;CSE, ECE and EEE.</p></body></html>')
+  assert.doesNotMatch(page, /var cgpa/)
+  assert.ok(R.checkFinding({ value: 'CGPA 7.0', quote: 'Candidates must have a minimum CGPA of 7.0' }, page))
+  assert.ok(!R.checkFinding({ value: 'CGPA 7.5', quote: 'Candidates must have a minimum CGPA of 7.0' }, page), 'a number the quote does not hold')
+  assert.ok(!R.checkFinding({ value: 'CGPA 8', quote: 'Candidates must have a minimum CGPA of 8.0' }, page), 'a quote that is not on the page')
+  assert.ok(R.checkFinding({ value: 'CSE, ECE, EEE', quote: 'Open to B.Tech CSE, ECE and EEE.' }, page))
+  assert.ok(!R.checkFinding({ value: 'x', quote: 'Open' }, page), 'too short to prove anything')
+})
+test('RESEARCH pages that opt out of AI or indexing are left alone', () => {
+  assert.ok(R.optedOut('<meta name="robots" content="noai, noimageai">', new Headers()))
+  assert.ok(R.optedOut('', new Headers({ 'x-robots-tag': 'noindex' })))
+  assert.ok(!R.optedOut('<meta name="robots" content="index, follow">', new Headers()))
+})
+
+test('RESEARCH the worker needs its secret', async () => {
+  calls = []
+  const res = await researchWorker(new Request('https://app.test/api/research-worker', { method: 'POST', headers: { 'x-worker-key': 'wrong' } }))
+  assert.equal(res.status, 403)
+  assert.equal(calls.length, 0)
+})
+
+test('RESEARCH a request is understood, companies found, pages read politely, and only quotable facts kept', async () => {
+  const job = { id: 'r1', user_id: uid, query: 'Acme campus hiring for CSE', branch: 'CSE', stage: 'queued', plan: {}, attempts: 1 }
+  let claimed = false
+  const careers = '<html><body><h1>Careers at Acme</h1><p>Our graduate engineer programme hires B.Tech students every year.</p><p>Eligibility: minimum CGPA of 7.0 and no active backlogs at the time of joining.</p><a href="/careers/campus-hiring">Campus hiring</a></body></html>'
+  const campus = '<html><body><p>Selection includes an online test, two technical interviews and an HR round.</p></body></html>'
+  const html = (body: string) => new Response(body, { status: 200, headers: { 'content-type': 'text/html; charset=utf-8' } })
+  let extract = 0
+  reply = (c) => {
+    if (c.url.includes('rpc/research_claim')) return ok(claimed ? [] : ((claimed = true), [job]))
+    if (c.url.includes('api.groq.com')) {
+      const plan = c.body.messages[0].content.includes('Turn the request into a plan')
+      if (plan) return ok({ choices: [{ message: { content: JSON.stringify({ companies: ['Acme'], industry: '', role: 'software engineer', location: '' }) } }] })
+      extract++
+      return ok({ choices: [{ message: { content: JSON.stringify({
+        roles: [{ value: 'Graduate engineer', quote: 'Our graduate engineer programme hires B.Tech students every year.', url: 'https://www.acme.com/careers' }],
+        eligibility: [
+          { field: 'min_cgpa', value: 'CGPA 7.0, no active backlogs', quote: 'Eligibility: minimum CGPA of 7.0 and no active backlogs', url: 'https://www.acme.com/careers' },
+          { field: 'min_percentage', value: '60% in Class X', quote: 'Candidates need 60% in Class X and XII.', url: 'https://www.acme.com/careers' },
+        ],
+        process: [{ value: 'Online test, two technical interviews, HR', quote: 'Selection includes an online test, two technical interviews and an HR round.', url: 'https://www.acme.com/careers/campus-hiring' }],
+      }) } }] })
+    }
+    if (c.url.includes('rest/v1/company_catalog')) return ok([{ name: 'Acme', careers_url: 'https://www.acme.com/careers', ats: null, ats_board: null }])
+    if (c.url.endsWith('/robots.txt')) return new Response('User-agent: *\nDisallow: /private', { status: 200 })
+    if (c.url === 'https://www.acme.com/careers') return html(careers)
+    if (c.url === 'https://www.acme.com/careers/campus-hiring') return html(campus)
+    if (c.url.includes('acme.com')) return new Response('nope', { status: 404, headers: { 'content-type': 'text/html' } })
+    if (c.url.includes('research_findings?request_id') && c.method === 'GET') return new Response('[]', { status: 200, headers: { 'content-range': '0-0/4' } })
+    if (c.url.includes('research_companies?request_id')) return ok([{ id: 'c1', name: 'Acme', website: 'https://www.acme.com/careers', ats: null, ats_board: null, found_via: 'catalog', state: 'pending' }])
+    return undefined
+  }
+  calls = []
+  const res = await researchWorker(new Request('https://app.test/api/research-worker', { method: 'POST', headers: { 'x-worker-key': 'test-worker-secret' } }))
+  assert.equal(res.status, 200)
+  const said = await res.text()
+  assert.match(said, /handled 1/)
+  assert.equal(extract, 1)
+  // Every page fetch names our agent, and robots.txt was read before the pages.
+  const pages = calls.filter((c) => c.url.includes('acme.com'))
+  assert.ok(pages.every((c) => String(c.headers['user-agent'] ?? '').startsWith('PlacementIQ-ResearchBot/')), 'agent named')
+  assert.ok(pages[0].url.endsWith('/robots.txt'))
+  const saved = calls.find((c) => c.url.includes('rest/v1/research_findings') && c.method === 'POST')!.body as any[]
+  assert.deepEqual(saved.map((f) => f.kind).sort(), ['eligibility', 'process', 'role'], 'the fact not on the page was dropped')
+  for (const f of saved) assert.match(f.source_url, /^https:\/\/www\.acme\.com\//)
+  assert.ok(saved.every((f) => f.quote.length <= 300 && f.source_kind === 'official'))
+  const last = calls.filter((c) => c.url.includes('research_requests?id=eq.r1')).at(-1)!.body
+  assert.equal(last.status, 'done')
+  assert.ok(calls.some((c) => c.url.includes('rest/v1/notifications') && c.body.link === '/research?id=r1'), 'the student is notified')
+  assert.ok(!calls.some((c) => /linkedin|naukri|glassdoor|indeed/.test(c.url)))
+})
+
+test('RESEARCH asking costs one AI action, and a refused request gives it back', async () => {
+  calls = []
+  reply = (c) => (c.url.includes('rest/v1/profiles?') ? ok([{ id: uid, branch: 'ECE' }]) : c.url.includes('consume_ai') ? ok(5) : c.url.includes('rest/v1/research_requests') ? ok([{ id: 'r9' }]) : undefined)
+  const res = await research(post({ query: 'Semiconductor companies hiring ECE freshers in Hyderabad' }, jwt({ sub: uid })))
+  assert.equal(res.status, 202)
+  assert.match((await res.json()).message, /We're working on it/)
+  assert.equal(calls.find((c) => c.url.includes('research_requests'))!.body.branch, 'ECE')
+  reply = (c) => (c.url.includes('rest/v1/profiles?') ? ok([{ id: uid, branch: 'ECE' }]) : c.url.includes('consume_ai') ? ok(5) : c.url.includes('rest/v1/research_requests') ? new Response('{"message":"RESEARCH_LIMIT: You can ask for 3 researches an hour. Try again later."}', { status: 400 }) : undefined)
+  calls = []
+  const limited = await research(post({ query: 'Acme' }, jwt({ sub: uid })))
+  assert.equal(limited.status, 422)
+  assert.match((await limited.json()).error, /3 researches an hour/)
+  assert.ok(calls.some((c) => c.url.includes('rpc/refund_ai')))
+  assert.equal((await research(post({ query: 'a' }, jwt({ sub: uid })))).status, 422)
+})
+
 /* ---------------------------------------------------------------- placement score */
 const { placementScore } = await import('../src/lib/predict')
 const scoreStudent = (branch: string, level: number) => {
