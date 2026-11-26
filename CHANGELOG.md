@@ -5,6 +5,10 @@ Semantic versioning; see `docs/ENGINEERING.md` for how releases are made.
 ## Unreleased
 
 ### Added
+- **Placement score** on the dashboard: one number out of 100 covering academics, track skills, proven skills, projects,
+  internships, resume, certifications, aptitude, interview practice and achievements. Each part shows its points, where
+  its number comes from (college records, proven, self-reported) and the next step that would raise it
+  (`placementScore` in `src/lib/predict.ts`). Readiness and rankings are unchanged.
 - **The engineering tree.** Branches, career tracks, job roles and skills now live as a tree of files
   (`src/data/engineering/`: Engineering → family → branch → track → role → skills) with a generated map in its README.
   59 job roles were added across the 18 tracks. Nothing a student sees changes, apart from the two fixes below.

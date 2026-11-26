@@ -584,6 +584,41 @@ test('BRANCH a role template only ever names skills of its own track', () => {
     for (const s of Object.keys(skills as object)) assert.ok(track.skills.includes(s), `${id} role tests "${s}", which the track does not list`)
   }
 })
+/* ---------------------------------------------------------------- placement score */
+const { placementScore } = await import('../src/lib/predict')
+const scoreStudent = (branch: string, level: number) => {
+  const tracks = tree.BRANCHES.find((b: any) => b.code === branch)?.tracks
+  const sk = (await_branches as any).skillsFor({ branch, tracks })
+  return {
+    branch, tracks, cgpa: 9, backlogs: 0, class_x: 90, class_xii: 90, skills: sk.map((name: string) => ({ name, level })),
+    projects: [1, 2, 3], internships: [1, 2], certifications: [{ name: 'a' }], achievements: [{ title: 'a' }, { title: 'b' }],
+    mock_feedback: [{ score: level / 10 }, { score: level / 10 }, { score: level / 10 }], resume_analysis: { overall: level }, credentials: [{ kind: 'nptel', status: 'verified' }, { kind: 'gate', status: 'verified' }],
+  }
+}
+test('SCORE the parts add up to 100, and the score is their sum', () => {
+  const s = placementScore(scoreStudent('CSE', 80), [])
+  assert.equal(s.parts.reduce((a: number, p: any) => a + p.points, 0), 100)
+  assert.equal(s.score, Math.round(s.parts.reduce((a: number, p: any) => a + (p.points * p.value) / 100, 0)))
+  for (const p of s.parts) assert.ok(p.value >= 0 && p.value <= 100, p.key)
+})
+test('SCORE every branch can reach 100, and an empty profile earns only its clean record', () => {
+  for (const b of tree.BRANCHES) {
+    const st = scoreStudent(b.code, 100)
+    const proof = (await_branches as any).skillsFor(st).map((name: string) => ({ name, level: 100 }))
+    assert.equal(placementScore(st, proof).score, 100, b.code)
+  }
+  const empty = { branch: 'CSE', cgpa: 0, backlogs: 0, class_x: 0, class_xii: 0, skills: [], projects: [], internships: [] }
+  assert.equal(placementScore(empty as any, []).score, 4, 'only "no active backlogs" earns anything: 25% of 15 points')
+})
+test('SCORE more of anything never lowers it, and proof counts only when given', () => {
+  const base = scoreStudent('ECE', 50)
+  const s0 = placementScore(base, []).score
+  assert.ok(placementScore({ ...base, cgpa: 9.5 }, []).score >= s0)
+  assert.ok(placementScore({ ...base, backlogs: 2 }, []).score < s0)
+  assert.ok(placementScore(base, (await_branches as any).skillsFor(base).map((name: string) => ({ name, level: 80 }))).score > s0)
+  assert.equal(placementScore(base, []).parts.find((p: any) => p.key === 'proof').value, 0)
+})
+
 /* ---------------------------------------------------------------- engineering tree */
 const tree = await import('../src/data/engineering')
 const await_branches = await import('../src/lib/branches')

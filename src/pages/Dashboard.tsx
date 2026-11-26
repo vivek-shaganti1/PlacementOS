@@ -15,6 +15,7 @@ import { shortDate, useHistory } from '../lib/history'
 import { useApp } from '../lib/store'
 import { interviewReadiness, predictSalary } from '../lib/predict'
 import { FeedbackPrompt } from '../components/Feedback'
+import { PlacementScoreCard } from '../components/PlacementScore'
 
 const tone = (v: number) => (v >= 75 ? '#12b76a' : v >= 60 ? '#f79009' : '#f04438')
 
@@ -116,6 +117,8 @@ export default function Dashboard() {
         </div>
       </div>
       <FeedbackPrompt target="next_step" label="Was the next best step useful?" />
+
+      <PlacementScoreCard student={student} />
 
       {drives.length > 0 && (
         <Card title="Campus drives for you" action={<button onClick={() => navigate('/jobs')} className="text-[11.5px] font-semibold text-brand-dark hover:underline">All campus jobs →</button>}>

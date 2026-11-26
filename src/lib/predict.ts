@@ -178,3 +178,138 @@ export function bucketChanges(before: Snapshot, after: Snapshot) {
     .filter((x) => x.from !== x.to)
     .sort((a, b) => RANK[b.to] - RANK[b.from] - (RANK[a.to] - RANK[a.from]) || b.matchDelta - a.matchDelta)
 }
+
+/* ---------------------------------------------------------------- placement score */
+
+export type ScorePart = {
+  key: 'academics' | 'skills' | 'proof' | 'projects' | 'internships' | 'resume' | 'certifications' | 'aptitude' | 'mocks' | 'achievements'
+  label: string
+  /** Points this part is worth; the parts add up to 100. */
+  points: number
+  /** How much of the part the student has, 0 to 100. */
+  value: number
+  /** Points earned: points × value / 100. */
+  earned: number
+  /** Where the number comes from, so a reader knows how much to trust it. */
+  source: 'college' | 'evidence' | 'self' | 'resume' | 'mixed'
+  /** What the number is made of, in words. */
+  basis: string
+  /** The next thing that would raise this part, or null when it is full. */
+  next: string | null
+}
+
+export type PlacementScore = { score: number; parts: ScorePart[] }
+
+type ScoreInput = StudentLike & {
+  certifications?: { name: string }[]
+  achievements?: { title: string }[]
+  mock_feedback?: { score: number }[]
+  resume_analysis?: { overall: number } | null
+  credentials?: { kind: string; status: string }[]
+  integrations?: StudentLike['integrations'] & { credly?: { badges: unknown[]; ownership?: { proven?: boolean } }; github?: { original_repos?: number; ownership?: { proven?: boolean } } }
+}
+
+const pct = (v: number) => Math.max(0, Math.min(100, Math.round(v)))
+
+/**
+ * The Placement score: one number out of 100 that covers everything a campus process looks at, each part a fixed formula
+ * of the student's own data (CLAUDE.md: predictions stay explainable). It sits next to readiness, which compares the student
+ * with companies; this one measures the student alone. `evidenceLevels` are skill levels from proven evidence only
+ * (lib/trust evidenceSkills); without them the proof part is 0.
+ *
+ *  15  Academics: CGPA from 5.0 (0) to 8.5 (full; the highest cut-off in the requirement templates) 60%, no active
+ *      backlogs 25% (one backlog half), Class X and XII averaged against 85% 15%.
+ *  20  Track skills: the student's levels in the strongest track's skills (aptitude counted separately), averaged.
+ *  15  Proven skills: the same skills, levels from proven accounts and confirmed credentials only.
+ *  10  Projects: three projects for full marks (the most any requirement template asks); a proven GitHub account's
+ *      original repositories count as projects.
+ *  10  Internships: one is 70, two or more 100.
+ *  10  Resume: the resume analysis score.
+ *   5  Certifications: a confirmed NPTEL or GATE credential 50 each, a Credly badge on a proven account 30, a listed
+ *      certificate 15, up to 100.
+ *   5  Aptitude: the aptitude level.
+ *   5  Interview practice: the average mock interview score, scaled by how many of three mocks are logged.
+ *   5  Achievements: two listed achievements (hackathons, awards) for full marks.
+ */
+export function placementScore(p: ScoreInput, evidenceLevels: { name: string; level: number }[] = []): PlacementScore {
+  const core = coreSkills(p)
+  const trackSkills = (TRACK_BY_ID.get(core.track)?.skills ?? []).filter((s) => s !== APTITUDE)
+  const avg = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0)
+  const proven = new Map(evidenceLevels.map((e) => [e.name, e.level]))
+  const githubRepos = p.integrations?.github?.ownership?.proven ? p.integrations.github.original_repos ?? 0 : 0
+  const projects = Math.max(p.projects.length, Math.min(6, githubRepos))
+  const confirmed = (p.credentials ?? []).filter((c) => c.status === 'verified').length
+  const credly = p.integrations?.credly?.ownership?.proven ? p.integrations.credly.badges.length : 0
+  const listed = p.certifications?.length ?? 0
+  const mocks = p.mock_feedback ?? []
+  const mockAvg = mocks.length ? avg(mocks.map((m) => Number(m.score) * 10)) : 0
+  const achievements = p.achievements?.length ?? 0
+  const school = p.class_x && p.class_xii ? (p.class_x + p.class_xii) / 2 : p.class_x || p.class_xii || 0
+  const weakSkill = [...trackSkills].sort((a, b) => skill(p, a) - skill(p, b))[0]
+  const weakProof = [...trackSkills].sort((a, b) => (proven.get(a) ?? 0) - (proven.get(b) ?? 0))[0]
+
+  const parts: Omit<ScorePart, 'earned'>[] = [
+    {
+      key: 'academics', label: 'Academics', points: 15, source: 'college',
+      value: pct(60 * Math.max(0, Math.min(1, (p.cgpa - 5) / 3.5)) + 25 * (p.backlogs === 0 ? 1 : p.backlogs === 1 ? 0.5 : 0) + 15 * Math.min(1, school / 85)),
+      basis: `CGPA ${p.cgpa || 'not set'}, ${p.backlogs ? `${p.backlogs} active backlog${p.backlogs === 1 ? '' : 's'}` : 'no active backlogs'}, Class X and XII ${school ? `${Math.round(school)}%` : 'not set'}`,
+      next: p.backlogs > 0 ? 'Clear your active backlogs: most drives allow none.' : p.cgpa < 8.5 ? 'Every 0.1 of CGPA up to 8.5 adds to this part.' : null,
+    },
+    {
+      key: 'skills', label: 'Track skills', points: 20, source: 'self',
+      value: pct(avg(trackSkills.map((s) => skill(p, s)))),
+      basis: `Your levels in ${TRACK_BY_ID.get(core.track)?.label ?? core.track}: ${trackSkills.map(skillShort).join(', ')}`,
+      next: weakSkill && skill(p, weakSkill) < 85 ? `Raise ${skillShort(weakSkill)} (now ${skill(p, weakSkill)}).` : null,
+    },
+    {
+      key: 'proof', label: 'Proven skills', points: 15, source: 'evidence',
+      value: pct(avg(trackSkills.map((s) => proven.get(s) ?? 0))),
+      basis: 'The same skills, counted only from accounts you proved are yours and confirmed credentials',
+      next: weakProof && (proven.get(weakProof) ?? 0) < 70 ? `Add proof for ${skillShort(weakProof)}: a repository, a verified badge or a certificate.` : null,
+    },
+    {
+      key: 'projects', label: 'Projects', points: 10, source: githubRepos ? 'mixed' : 'self',
+      value: pct((Math.min(3, projects) / 3) * 100),
+      basis: `${projects} project${projects === 1 ? '' : 's'}${githubRepos ? ` (${githubRepos} original repositories on your proven GitHub)` : ''}`,
+      next: projects < 3 ? `Add ${3 - projects} more project${3 - projects === 1 ? '' : 's'} in your track.` : null,
+    },
+    {
+      key: 'internships', label: 'Internships', points: 10, source: 'self',
+      value: p.internships.length >= 2 ? 100 : p.internships.length === 1 ? 70 : 0,
+      basis: `${p.internships.length} internship${p.internships.length === 1 ? '' : 's'}`,
+      next: p.internships.length >= 2 ? null : p.internships.length === 1 ? 'A second internship completes this part.' : 'One internship is worth 7 points here.',
+    },
+    {
+      key: 'resume', label: 'Resume', points: 10, source: 'resume',
+      value: pct(p.resume_analysis?.overall ?? 0),
+      basis: p.resume_analysis ? `Resume analysis score ${p.resume_analysis.overall}` : 'No resume analysed yet',
+      next: !p.resume_analysis ? 'Upload your resume for an analysis.' : p.resume_analysis.overall < 85 ? 'Apply the resume analysis fixes and analyse again.' : null,
+    },
+    {
+      key: 'certifications', label: 'Certifications', points: 5, source: confirmed || credly ? 'evidence' : 'self',
+      value: pct(50 * confirmed + 30 * credly + 15 * listed),
+      basis: `${confirmed} confirmed credential${confirmed === 1 ? '' : 's'}, ${credly} Credly badge${credly === 1 ? '' : 's'}, ${listed} listed certificate${listed === 1 ? '' : 's'}`,
+      next: 50 * confirmed + 30 * credly + 15 * listed >= 100 ? null : 'A confirmed NPTEL certificate in your track is worth the most here.',
+    },
+    {
+      key: 'aptitude', label: 'Aptitude', points: 5, source: 'self',
+      value: pct(skill(p, APTITUDE)),
+      basis: `Aptitude level ${skill(p, APTITUDE)}`,
+      next: skill(p, APTITUDE) < 85 ? 'Aptitude is the first round at most drives: practise it weekly.' : null,
+    },
+    {
+      key: 'mocks', label: 'Interview practice', points: 5, source: 'self',
+      value: pct(mockAvg * Math.min(1, mocks.length / 3)),
+      basis: mocks.length ? `${mocks.length} mock interview${mocks.length === 1 ? '' : 's'}, average ${(mockAvg / 10).toFixed(1)} of 10` : 'No mock interviews logged',
+      next: mocks.length < 3 ? `Log ${3 - mocks.length} more mock interview${3 - mocks.length === 1 ? '' : 's'}.` : mockAvg < 85 ? 'Work on the weakest area your mocks found.' : null,
+    },
+    {
+      key: 'achievements', label: 'Achievements', points: 5, source: 'self',
+      value: pct((Math.min(2, achievements) / 2) * 100),
+      basis: `${achievements} listed achievement${achievements === 1 ? '' : 's'} (hackathons, awards)`,
+      next: achievements < 2 ? 'A hackathon or competition result in your track counts here.' : null,
+    },
+  ]
+  const full = parts.map((x) => ({ ...x, earned: Math.round((x.points * x.value) / 10) / 10 }))
+  return { score: Math.round(full.reduce((a, x) => a + (x.points * x.value) / 100, 0)), parts: full }
+}
