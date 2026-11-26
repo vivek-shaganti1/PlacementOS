@@ -3,7 +3,8 @@
 // POST { action: 'match', jd }                 -> matches the saved resume against a job description
 // POST { action: 'clear' }                     -> removes the stored resume text
 import { skillsForTracks, TRACK_BY_ID, tracksFor } from '../src/lib/branches'
-import { bearer, consumeAi, deleteRows, env, groq, handle, HttpError, insertVerified, json, loadProfile, parseJson, refundAi, rest, saveServerField, STYLE_RULES, SUPABASE_KEY, SUPABASE_URL, tidyDeep, timeout } from './_lib'
+import { bearer, consumeAi, deleteRows, env, groq, handle, HttpError, insertVerified, json, log, loadProfile, parseJson, refundAi, rest, saveServerField, STYLE_RULES, SUPABASE_KEY, SUPABASE_URL, tidyDeep, timeout } from './_lib'
+import { extractText, fileKind } from './_resumeText'
 
 export const config = { runtime: 'edge' }
 
@@ -104,7 +105,7 @@ type AiAnalysis = {
   skill_levels: Record<string, number>
 }
 
-async function analyze(text: string, fileName: string | null, targetRole: string, tracks: string[] = ['software']) {
+async function analyze(text: string, fileName: string | null, targetRole: string, tracks: string[] = ['software'], user?: string) {
   const m = measure(text, tracks)
   const SKILLS = skillsForTracks(tracks)
   const prompt = `You are an expert technical recruiter and ATS reviewer for Indian campus placements. Analyze the resume below for a "${targetRole}" role (career tracks: ${tracks.map((t) => TRACK_BY_ID.get(t)?.label ?? t).join(", ")}; judge depth in those fields, not software, unless software is one of them).
@@ -134,7 +135,7 @@ RESUME:
 """
 ${text.slice(0, 14000)}
 """`
-  const ai = tidyDeep(parseJson<AiAnalysis>(await groq([{ role: 'user', content: prompt }], { json: true, maxTokens: 2200, temperature: 0.2 })))
+  const ai = tidyDeep(parseJson<AiAnalysis>(await groq([{ role: 'user', content: prompt }], { json: true, maxTokens: 2200, temperature: 0.2, user })))
 
   const checks = m.checks.map((c) => ({ ...c, tip: String(ai.tips?.[c.label] ?? '').slice(0, 300) }))
   const avg = checks.reduce((a, c) => a + c.score, 0) / checks.length
@@ -165,7 +166,7 @@ ${text.slice(0, 14000)}
   }
 }
 
-async function match(resume: string, jd: string) {
+async function match(resume: string, jd: string, user?: string) {
   const resumeTech = findTech(resume)
   const jdTech = findTech(jd)
   const overlap = jdTech.length ? jdTech.filter((k) => resumeTech.includes(k)).length / jdTech.length : 0
@@ -194,7 +195,7 @@ RESUME:
 """
 ${resume.slice(0, 12000)}
 """`
-  const ai = tidyDeep(parseJson<Record<string, unknown>>(await groq([{ role: 'user', content: prompt }], { json: true, maxTokens: 1500, temperature: 0.2 })))
+  const ai = tidyDeep(parseJson<Record<string, unknown>>(await groq([{ role: 'user', content: prompt }], { json: true, maxTokens: 1500, temperature: 0.2, user })))
   return {
     score: Math.round(jdTech.length ? 0.4 * overlap * 100 + 0.6 * clampScore(ai.fit) : clampScore(ai.fit)),
     verdict: String(ai.verdict ?? '').slice(0, 500),
@@ -208,17 +209,20 @@ ${resume.slice(0, 12000)}
   }
 }
 
-/** The first bytes of the stored file must be a PDF or a Word (zip) document, whatever type the upload declared. */
-async function checkResumeFile(token: string, path: string) {
+/** The stored file's own text. The first bytes must be a PDF or a Word (zip) document, whatever type the upload declared. */
+async function readResumeFile(token: string, path: string) {
   const res = await fetch(`${SUPABASE_URL}/storage/v1/object/resumes/${path.split('/').map(encodeURIComponent).join('/')}`, {
     signal: timeout(10_000),
-    headers: { apikey: SUPABASE_KEY, authorization: `Bearer ${token}`, range: 'bytes=0-7' },
+    headers: { apikey: SUPABASE_KEY, authorization: `Bearer ${token}` },
   })
   if (!res.ok) throw new HttpError(422, 'Upload the resume to your own folder.')
-  const head = new Uint8Array(await res.arrayBuffer()).subarray(0, 5)
-  const pdf = String.fromCharCode(...head) === '%PDF-'
-  const zip = head[0] === 0x50 && head[1] === 0x4b && head[2] === 0x03 && head[3] === 0x04
-  if (!pdf && !zip) throw new HttpError(422, 'The resume must be a PDF or Word file.')
+  const file = new Uint8Array(await res.arrayBuffer())
+  if (file.length > 12_000_000) throw new HttpError(422, 'This file is too large. Use a resume under 10 MB.')
+  const kind = fileKind(file)
+  if (!kind) throw new HttpError(422, 'The resume must be a PDF or Word file.')
+  // Read on the server, from the file itself: text sent by the browser could say anything (checklist A-14).
+  const text = await extractText(file, kind).catch(() => '')
+  return text.replace(/\u0000/g, '').trim().slice(0, 40_000)
 }
 
 export default handle(async (req) => {
@@ -228,28 +232,29 @@ export default handle(async (req) => {
   const profile = await loadProfile(token)
 
   if (body.action === 'analyze') {
-    const text = String(body.text ?? '').replace(/\u0000/g, '').trim().slice(0, 40000)
-    if (text.length < 200) throw new HttpError(422, 'Could not read enough text from this file. If it is a scanned image, export it as a text-based PDF.')
     // The path is checked before the AI action is charged, so a bad request costs nothing.
     const path = typeof body.path === 'string' ? body.path : ''
-    if (path && !new RegExp(`^${profile.id}/(?!\\.+$)[\\w.-]+$`).test(path)) throw new HttpError(422, 'Upload the resume to your own folder.')
-    if (path) await checkResumeFile(token, path)
+    if (!path) throw new HttpError(422, 'Upload the resume file first.')
+    if (!new RegExp(`^${profile.id}/(?!\\.+$)[\\w.-]+$`).test(path)) throw new HttpError(422, 'Upload the resume to your own folder.')
+    const text = await readResumeFile(token, path)
+    if (text.length < 200) throw new HttpError(422, 'Could not read enough text from this file. If it is a scanned image, export it as a text-based PDF.')
     await consumeAi(token, 'resume')
     const role = String(profile.target_roles || 'Software Engineer').slice(0, 120)
-    const analysis = await analyze(text, body.file_name ? String(body.file_name).slice(0, 200) : null, role, tracksFor(profile)).catch(async (e: unknown) => {
+    // The action is given back if anything after the charge fails, including saving the result.
+    const analysis = await (async () => {
+      const result = await analyze(text, body.file_name ? String(body.file_name).slice(0, 200) : null, role, tracksFor(profile), profile.id)
+      const { analyzed_at, ...row } = result
+      void analyzed_at
+      // The new file, its text and its analysis are recorded together here, so the profile never points at one file while
+      // describing another.
+      await insertVerified(token, profile.id, 'resume_analyses', row)
+      await saveServerField(token, profile.id, { resume_text: text, resume_path: path, resume_name: row.file_name, resume_uploaded_at: new Date().toISOString() })
+      await deleteRows(token, 'jd_matches', `user_id=eq.${profile.id}`)
+      return result
+    })().catch(async (e: unknown) => {
       await refundAi(profile.id)
       throw e
     })
-    const { analyzed_at, ...row } = analysis
-    void analyzed_at
-    // The new file, its text and its analysis are recorded together here, so the profile never points at one file while
-    // describing another. Older clients send no path and record the file themselves.
-    await insertVerified(token, profile.id, 'resume_analyses', row)
-    await saveServerField(token, profile.id, {
-      resume_text: text,
-      ...(path ? { resume_path: path, resume_name: row.file_name, resume_uploaded_at: new Date().toISOString() } : {}),
-    })
-    await deleteRows(token, 'jd_matches', `user_id=eq.${profile.id}`)
     return json({ analysis })
   }
 
@@ -272,13 +277,16 @@ export default handle(async (req) => {
     if (jd.length < 80) throw new HttpError(422, 'Paste the full job description (at least a few lines).')
     if (!profile.resume_text) throw new HttpError(422, 'Upload and analyze your resume first.')
     await consumeAi(token, 'jd_match')
-    const result = await match(profile.resume_text, jd).catch(async (e: unknown) => {
+    const result = await (async () => {
+      const r = await match(profile.resume_text, jd, profile.id)
+      const { analyzed_at, ...row } = r
+      void analyzed_at
+      await insertVerified(token, profile.id, 'jd_matches', { ...row, jd_text: jd.slice(0, 20000), job_id: jobId })
+      return r
+    })().catch(async (e: unknown) => {
       await refundAi(profile.id)
       throw e
     })
-    const { analyzed_at, ...row } = result
-    void analyzed_at
-    await insertVerified(token, profile.id, 'jd_matches', { ...row, jd_text: jd.slice(0, 20000), job_id: jobId })
     // ai_fit is shown to recruiters and placement cells, so students cannot write it themselves (no update policy);
     // the server writes it with the service key, scoped to this student's own application for this job.
     const key = env('SUPABASE_SECRET_KEY')
@@ -291,7 +299,7 @@ export default handle(async (req) => {
         body: JSON.stringify({ ai_fit: result.score }),
       }).catch(() => null)
       fitSaved = !!saved?.ok
-      if (!fitSaved) console.error('ai_fit not saved', saved?.status ?? 'network')
+      if (!fitSaved) log('warn', 'ai_fit not saved', { status: saved?.status ?? 0 })
     }
     return json({ match: result, fit_saved: fitSaved })
   }

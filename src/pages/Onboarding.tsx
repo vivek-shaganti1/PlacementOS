@@ -7,6 +7,8 @@ import { useAuth, useProfile } from '../lib/auth'
 import { BRANCHES as ALL_BRANCHES, familyOf, skillsForTracks, TRACK_BY_ID, tracksFor, tracksForBranch } from '../lib/branches'
 import { resumeImports, uploadAndAnalyzeResume } from '../lib/resumeFlow'
 import { errMsg } from '../lib/supabase'
+import { ConsentFields, type ConsentState } from '../components/Consent'
+import { giveConsent } from '../lib/consent'
 import { allEvidence } from '../lib/verify'
 import { plural } from '../lib/format'
 
@@ -30,6 +32,7 @@ export default function Onboarding() {
   const [step, setStep] = useState(0)
   const [busy, setBusy] = useState<string | null>(null)
   const [error, setError] = useState('')
+  const [consent, setConsent] = useState<ConsentState>({ agreed: false, age: '' })
   const [about, setAbout] = useState({
     full_name: p.full_name,
     phone: p.phone,
@@ -92,7 +95,12 @@ export default function Onboarding() {
         return setError('Fill in your name, phone, college, branch and a 4-digit graduation batch.')
       if (!tracks.length) return setError('Pick at least one track you are preparing for.')
       const fields = Object.fromEntries(Object.entries(about).map(([k, v]) => [k, v.trim()]))
+      if (!consent.agreed || !consent.age) return setError('Agree to the privacy policy and choose one of the two age options to continue.')
+      const age = consent.age
       const saved = await run('Saving…', async () => {
+        // First, so nothing is stored about someone who has not agreed.
+        const failed = session && (await giveConsent(session.user.id, age))
+        if (failed) throw new Error(failed)
         try {
           await updateProfile({ ...fields, tracks })
         } catch (e) {
@@ -233,6 +241,7 @@ export default function Onboarding() {
                     </div>
                     {tracks.length > 0 && <p className="mt-1.5 text-[11px] text-ink-faint">{tracks.map((t) => TRACK_BY_ID.get(t)?.blurb).join(' ')}</p>}
                   </div>
+                  <ConsentFields value={consent} onChange={setConsent} />
                 </div>
               )}
 

@@ -97,6 +97,8 @@ writeFileSync('tests/e2e/.state/totp.json', JSON.stringify(secrets, null, 2))
 sql(`
 update public.profiles set onboarded_at = now(), target_roles = 'Software Engineer', phone = '9000000001'
  where id in (${q(ids.student)}, ${q(ids.otherStudent)});
+insert into public.consents (user_id, notice_version, age)
+select u, '2026-11-25', 'adult' from unnest(array[${q(ids.student)}, ${q(ids.coreStudent)}]::uuid[]) u on conflict do nothing;
 -- A civil engineering student, strong in three of the track's subjects and weak in one, for the core-branch journeys.
 update public.profiles set onboarded_at = now(), target_roles = 'Structural Engineer' where id = ${q(ids.coreStudent)};
 insert into public.user_skills (user_id, skill, level)

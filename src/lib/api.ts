@@ -16,3 +16,15 @@ export async function callApi<T>(name: string, body: unknown): Promise<T> {
   if (json === null) throw new Error('Unexpected response from the server. Try again.')
   return json
 }
+
+/** GETs one of our /api functions as the signed-in user (for read-only lookups the browser may cache briefly). */
+export async function getApi<T>(name: string, params: Record<string, string>): Promise<T> {
+  const { data } = await supabase.auth.getSession()
+  const token = data.session?.access_token
+  if (!token) throw new Error('You are signed out. Please sign in again.')
+  const res = await fetch(`/api/${name}?${new URLSearchParams(params)}`, { headers: { authorization: `Bearer ${token}` } })
+  const json = (await res.json().catch(() => null)) as (T & { error?: string }) | null
+  if (!res.ok) throw Object.assign(new Error(json?.error || `Request failed (${res.status})`), { status: res.status })
+  if (json === null) throw new Error('Unexpected response from the server. Try again.')
+  return json
+}

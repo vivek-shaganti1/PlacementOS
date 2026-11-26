@@ -95,8 +95,12 @@ Names only; `.env.example` lists them. Set real values in `.env.local` and in Ve
 | `GROQ_API_KEY` | Server only | AI calls |
 | `GROQ_MODEL` | Server only, optional | Primary model, default `openai/gpt-oss-120b` |
 | `GROQ_FALLBACK_MODELS` | Server only, optional | Comma-separated models used when the primary is rate limited, default `openai/gpt-oss-20b,qwen/qwen3.8-27b` |
+| `SENTRY_DSN`, `VITE_SENTRY_DSN` | Optional | Error reports (server, browser) with personal data removed |
+| `VITE_GRIEVANCE_CONTACT` | Browser | Published privacy contact; required before real students are added |
+| `AI_DISABLED` | Server only, optional | `true` pauses every AI feature |
 | `GITHUB_TOKEN` | Server only, optional | Raises the GitHub rate limit for evidence reads |
-| `CONNECT_PROOF_SECRET` | Server only | Used by `/api/connect` for proof that a student owns an account |
+| `CONNECT_PROOF_SECRET` | Server only, required | Used by `/api/connect` for proof that a student owns an account |
+| `ADZUNA_APP_ID`, `ADZUNA_APP_KEY` | Server only, optional | Off-campus job search on Campus Jobs (`/api/openings`). Free key from developer.adzuna.com; without both, the search stays hidden |
 
 `SIGNUP_VERIFY_EMAIL` no longer exists: self-registration always goes through the emailed link. Remove it if it is still set.
 

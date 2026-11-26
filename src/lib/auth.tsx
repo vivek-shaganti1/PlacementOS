@@ -1,6 +1,7 @@
 import type { Session } from '@supabase/supabase-js'
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { assembleProfile, COLLECTIONS, RELATED, type RelatedRows } from './profileShape'
+import { loadCatalog } from './catalog'
 import { supabase, type Profile, type ProfilePatch, type Credential } from './supabase'
 
 type AuthCtx = {
@@ -96,8 +97,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setProfile(null)
       return
     }
-    const [base, role, creds, ...rel] = await Promise.all([
+    const [base, , role, creds, ...rel] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', userId).maybeSingle(),
+      // Verified company details (once per session): scores computed from this profile must already use them.
+      loadCatalog().then(() => ({ data: null, error: null })),
       supabase.from('user_roles').select('role,org_id').eq('user_id', userId),
       // NPTEL certificates and GATE scorecards. Optional: an error (e.g. before the migration) just means none yet.
       supabase.from('credentials').select('*').eq('user_id', userId).order('created_at', { ascending: false }),

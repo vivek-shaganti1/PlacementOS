@@ -1,7 +1,7 @@
 // A student deletes their own account. POST { action: 'delete', confirm_email }
 // Removes the stored files, the roster entry and the login; database rows go with the login (on delete cascade).
 // Admin and recruiter accounts are removed by a college or platform admin instead, so nobody can lock a college out.
-import { bearer, env, handle, HttpError, json, SUPABASE_KEY, SUPABASE_URL, timeout } from './_lib'
+import { bearer, env, handle, HttpError, json, log, SUPABASE_KEY, SUPABASE_URL, timeout } from './_lib'
 
 export const config = { runtime: 'edge' }
 
@@ -62,7 +62,7 @@ export default handle(async (req) => {
   // The login is gone, so the student cannot retry; a leftover roster row is the college's to remove and holds no account.
   if (rows.length && !rosterRemoved) {
     const roster = await removeRoster()
-    if (!roster.ok) console.error('account: roster rows left after deletion', roster.status)
+    if (!roster.ok) log('error', 'account: roster rows left after deletion', { status: roster.status })
   }
   return json({ ok: true })
 })

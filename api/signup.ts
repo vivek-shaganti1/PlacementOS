@@ -2,7 +2,7 @@
 // POST { email, full_name, roll_number }
 // Only students already on a college roster can register, and their roll number must match the roster.
 // Admin accounts are never self-registered: the platform admin creates them.
-import { env, handle, HttpError, json, SUPABASE_URL, timeout } from './_lib'
+import { env, handle, HttpError, json, log, SUPABASE_URL, timeout } from './_lib'
 
 export const config = { runtime: 'edge' }
 
@@ -47,7 +47,7 @@ export default handle(async (req) => {
     const err = (await invite.json().catch(() => ({}))) as { msg?: string; message?: string; error_code?: string }
     const msg = err.msg ?? err.message ?? ''
     if (/already|exists|registered/i.test(msg + (err.error_code ?? ''))) throw new HttpError(409, 'An account already exists for this email. Sign in instead.')
-    console.error('signup invite', invite.status, msg.slice(0, 300))
+    log('error', 'signup invite', { status: invite.status, message: msg })
     if (invite.status === 429) throw new HttpError(429, 'Too many sign-up emails were sent in the last hour. Try again later, or ask your placement cell to create your login.')
     throw new HttpError(502, 'Could not send your sign-up email. Try again, or ask your placement cell for help.')
   }

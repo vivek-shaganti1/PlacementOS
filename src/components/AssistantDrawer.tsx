@@ -77,7 +77,7 @@ export default function AssistantDrawer() {
                 <p className="text-[14px] font-semibold">AI Career Assistant</p>
                 <p className="flex items-center gap-1.5 text-[11px] text-white/60">
                   <span className="h-1.5 w-1.5 rounded-full bg-[#8ef5d9]" /> Grounded in your profile
-                  {quota && <span className="text-white/45">{' '}· {Math.max(0, quota.quota - quota.used)} of {quota.quota} AI actions left this month</span>}
+                  {quota && <span className="text-white/70">{' '}· {Math.max(0, quota.quota - quota.used)} of {quota.quota} AI actions left this month</span>}
                 </p>
               </div>
               {chat.length > 1 && (

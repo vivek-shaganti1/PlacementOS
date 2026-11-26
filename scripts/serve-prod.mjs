@@ -38,8 +38,10 @@ const local = (v) =>
     .split(PROD_SUPABASE.replace('https:', 'wss:')).join(supabaseUrl.replace(/^http/, 'ws'))
     .split(PROD_SUPABASE).join(supabaseUrl)
     .replace(/;\s*upgrade-insecure-requests/, '')
-const rewrites = vercel.rewrites.map((r) => ({ re: pattern(r.source), destination: r.destination }))
-const headerRules = vercel.headers.map((h) => ({ re: pattern(h.source), headers: h.headers.map((x) => [x.key, local(x.value)]) }))
+// Host rules ("has"/"missing") separate the production domain from previews; this server plays the production domain.
+const forProduction = (r) => !r.missing
+const rewrites = vercel.rewrites.filter(forProduction).map((r) => ({ re: pattern(r.source), destination: r.destination }))
+const headerRules = vercel.headers.filter(forProduction).map((h) => ({ re: pattern(h.source), headers: h.headers.map((x) => [x.key, local(x.value)]) }))
 
 // Bundle each route in api/ (files starting with "_" are helpers, as on Vercel).
 const apiOut = join(tmpdir(), `piq-api-${process.pid}`)

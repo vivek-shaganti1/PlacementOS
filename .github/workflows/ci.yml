@@ -20,6 +20,8 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
@@ -31,10 +33,16 @@ jobs:
         run: node scripts/check-entry.mjs
       - name: API and ranking tests
         run: npm run test:unit
+      - name: The bundled PDF reader matches its package
+        run: node scripts/vendor-pdf.mjs --check
+      - name: API functions run in the edge sandbox
+        run: node scripts/check-edge.mjs
+      - name: API description matches the functions
+        run: node scripts/check-openapi.mjs
       - name: Code shared with the mobile app stays pure
         run: npm run check:shared
-      - name: Dependency advisories (production, high and above)
-        run: npm audit --omit=dev --audit-level=high
+      - name: Dependency advisories (production, moderate and above)
+        run: npm audit --omit=dev --audit-level=moderate
       - name: Development tool advisories (reported, not blocking)
         run: npm audit --audit-level=high || echo "::warning::Development dependencies have high advisories"
         continue-on-error: true
@@ -48,6 +56,8 @@ jobs:
         working-directory: mobile
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
@@ -77,6 +87,8 @@ jobs:
       PGUSER: postgres
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22

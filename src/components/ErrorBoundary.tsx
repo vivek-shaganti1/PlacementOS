@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react'
+import { reportError } from '../lib/monitoring'
 
 /**
  * Catches render errors so a bug in one page or panel shows a recoverable message instead of a blank screen.
@@ -14,6 +15,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode; resetKey?: s
 
   componentDidCatch(error: Error, info: ErrorInfo) {
     console.error('PlacementIQ render error', error, info.componentStack)
+    reportError(error, this.props.resetKey ?? (this.props.compact ? 'panel' : 'page'))
   }
 
   componentDidUpdate(prev: { resetKey?: string }) {
