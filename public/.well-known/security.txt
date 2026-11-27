@@ -1,0 +1,7 @@
+# How to report a security problem in PlacementIQ (RFC 9116).
+# Please do not test against other people's accounts.
+Contact: https://placementiq-os.vercel.app/security
+Policy: https://placementiq-os.vercel.app/security
+Canonical: https://placementiq-os.vercel.app/.well-known/security.txt
+Preferred-Languages: en
+Expires: 2027-11-01T00:00:00.000Z
