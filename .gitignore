@@ -145,3 +145,7 @@ playwright-report/
 .lighthouseci/
 zap-report/
 tests/e2e/.state/
+
+# Personal reports, papers and slides: kept on this machine, never committed
+private-docs/
+docs/iomp/
